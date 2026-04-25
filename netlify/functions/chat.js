@@ -13,6 +13,18 @@ const sceneInstructions = {
 };
 
 export default async (req) => {
+  try {
+    return await handleChat(req);
+  } catch (error) {
+    console.error("Unhandled chat error", error);
+    return json({
+      error: "Chat function crashed",
+      detail: error?.message || "未知服务器错误。"
+    }, 500);
+  }
+};
+
+async function handleChat(req) {
   if (req.method !== "POST") {
     return json({ error: "Method not allowed" }, 405);
   }
@@ -30,7 +42,7 @@ export default async (req) => {
     return json({ error: "Unauthorized", detail: authResult.detail }, 401);
   }
 
-  const body = await req.json().catch(() => ({}));
+  const body = await readRequestJson(req);
   const messages = Array.isArray(body.messages) ? body.messages : [];
   const counterpart = cleanText(body.counterpart || "");
   const scene = cleanText(body.scene || "self");
@@ -59,36 +71,53 @@ export default async (req) => {
     "- 如果用户在消息里显式改变身份或场景，以用户最新消息为准，但回答时要说明你已按新场景切换。"
   ].join("\n");
 
-  const response = await fetch(SILICONFLOW_URL, {
-    method: "POST",
-    headers: {
-      "Authorization": `Bearer ${apiKey}`,
-      "Content-Type": "application/json"
-    },
-    body: JSON.stringify({
-      model,
-      temperature,
-      stream: false,
-      messages: [
-        { role: "system", content: systemPrompt },
-        ...messages.slice(-24).map(normalizeMessage)
-      ]
-    })
-  });
+  let response;
+  try {
+    response = await fetch(SILICONFLOW_URL, {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+        "Accept": "application/json"
+      },
+      body: JSON.stringify({
+        model,
+        temperature,
+        stream: false,
+        messages: [
+          { role: "system", content: systemPrompt },
+          ...messages.slice(-24).map(normalizeMessage)
+        ]
+      })
+    });
+  } catch (error) {
+    return json({
+      error: "SiliconFlow network error",
+      detail: `无法连接 SiliconFlow：${error.message}`
+    }, 502);
+  }
 
-  const data = await response.json().catch(() => null);
+  const data = await readResponseBody(response);
   if (!response.ok) {
     return json({
       error: "SiliconFlow request failed",
-      detail: data || response.statusText
-    }, response.status);
+      detail: formatUpstreamDetail(data, response.status)
+    }, response.status >= 500 ? 502 : response.status);
+  }
+
+  const content = data?.choices?.[0]?.message?.content;
+  if (!content) {
+    return json({
+      error: "Empty model response",
+      detail: "SiliconFlow 返回成功，但没有 choices[0].message.content。"
+    }, 502);
   }
 
   return json({
-    content: data?.choices?.[0]?.message?.content || "",
+    content,
     user: authResult.user?.email || authResult.user?.id || null
   });
-};
+}
 
 export const config = {
   path: "/api/chat",
@@ -109,19 +138,61 @@ async function verifySupabaseUser(req) {
     return { ok: false, detail: "请先登录。" };
   }
 
-  const response = await fetch(`${supabaseUrl.replace(/\/$/, "")}/auth/v1/user`, {
-    headers: {
-      "apikey": supabaseAnonKey,
-      "Authorization": `Bearer ${token}`
-    }
-  });
+  let response;
+  try {
+    response = await fetch(`${supabaseUrl.replace(/\/$/, "")}/auth/v1/user`, {
+      headers: {
+        "apikey": supabaseAnonKey,
+        "Authorization": `Bearer ${token}`,
+        "Accept": "application/json"
+      }
+    });
+  } catch (error) {
+    return { ok: false, detail: `Supabase 网络错误：${error.message}` };
+  }
 
-  const user = await response.json().catch(() => null);
+  const user = await readResponseBody(response);
   if (!response.ok) {
     return { ok: false, detail: user?.msg || user?.message || "登录状态无效，请重新登录。" };
   }
 
   return { ok: true, user };
+}
+
+async function readRequestJson(req) {
+  try {
+    return await req.json();
+  } catch {
+    return {};
+  }
+}
+
+async function readResponseBody(response) {
+  const text = await response.text().catch(() => "");
+  if (!text) return null;
+  const contentType = response.headers.get("content-type") || "";
+  if (contentType.includes("application/json")) {
+    try {
+      return JSON.parse(text);
+    } catch {
+      return { raw: text, parseError: "invalid json" };
+    }
+  }
+  try {
+    return JSON.parse(text);
+  } catch {
+    return { raw: text, contentType };
+  }
+}
+
+function formatUpstreamDetail(data, status) {
+  if (!data) return `上游返回 HTTP ${status}，但没有响应体。`;
+  if (typeof data === "string") return data;
+  if (data.error?.message) return data.error.message;
+  if (typeof data.error === "string") return data.error;
+  if (data.message) return data.message;
+  if (data.raw) return `上游返回非 JSON 内容：${String(data.raw).replace(/\s+/g, " ").slice(0, 260)}`;
+  return JSON.stringify(data).slice(0, 400);
 }
 
 function normalizeMessage(message) {

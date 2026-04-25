@@ -44,6 +44,10 @@ const dom = {
   modalBody: document.querySelector("#modal-body")
 };
 
+const contextMenu = document.createElement("div");
+contextMenu.className = "context-menu hidden";
+document.body.appendChild(contextMenu);
+
 const stateKey = "mirror.room.state.v2";
 let supabase = null;
 let session = null;
@@ -94,6 +98,9 @@ dom.modalBackdrop.addEventListener("click", event => {
 document.addEventListener("keydown", event => {
   if (event.key === "Escape") closeModal();
 });
+
+document.addEventListener("click", () => hideContextMenu());
+document.addEventListener("scroll", () => hideContextMenu(), true);
 
 dom.newChat.addEventListener("click", () => {
   const conversation = createConversation();
@@ -147,7 +154,7 @@ dom.form.addEventListener("submit", async event => {
       })
     });
 
-    const data = await response.json();
+    const data = await parseResponse(response);
     if (!response.ok) throw new Error(formatError(data));
 
     thinking.pending = false;
@@ -416,14 +423,18 @@ function renderDock() {
 }
 
 function renderHistory() {
-  const sorted = [...appState.conversations].sort((a, b) => b.updatedAt - a.updatedAt);
+  const sorted = [...appState.conversations].sort((a, b) => {
+    if (a.pinned !== b.pinned) return a.pinned ? -1 : 1;
+    return b.updatedAt - a.updatedAt;
+  });
   dom.conversationList.innerHTML = sorted.map(conversation => {
     const active = conversation.id === appState.activeConversationId ? "active" : "";
+    const pinned = conversation.pinned ? "pinned" : "";
     const last = conversation.messages.at(-1)?.content || "空白对话";
     const scene = sceneOptions.find(item => item.id === conversation.settings?.scene)?.name || "真我复盘";
     return `
-      <button class="conversation-item ${active}" data-id="${conversation.id}" type="button">
-        <strong>${escapeHtml(conversation.title || "新的镜室对话")}</strong>
+      <button class="conversation-item ${active} ${pinned}" data-id="${conversation.id}" type="button">
+        <strong>${conversation.pinned ? "▲ " : ""}${escapeHtml(conversation.title || "新的镜室对话")}</strong>
         <em>${escapeHtml(scene)} · ${escapeHtml(conversation.settings?.counterpart || "未填写身份")}</em>
         <span>${escapeHtml(last.slice(0, 42))}</span>
       </button>
@@ -434,6 +445,10 @@ function renderHistory() {
       appState.activeConversationId = button.dataset.id;
       hydrateAppSettingsFromConversation();
       persistAndRender();
+    });
+    button.addEventListener("contextmenu", event => {
+      event.preventDefault();
+      showConversationMenu(button.dataset.id, event.clientX, event.clientY);
     });
   });
 }
@@ -543,6 +558,7 @@ function createConversation(push = true, settings = null) {
   const conversation = {
     id: crypto.randomUUID(),
     title: "新的镜室对话",
+    pinned: false,
     createdAt: Date.now(),
     updatedAt: Date.now(),
     settings: { ...(settings || getCurrentGlobalSettings()) },
@@ -616,9 +632,117 @@ function addSystemMessage(content) {
 
 async function fetchJson(url) {
   const response = await fetch(url);
-  const data = await response.json();
+  const data = await parseResponse(response);
   if (!response.ok) throw new Error(formatError(data));
   return data;
+}
+
+async function parseResponse(response) {
+  const text = await response.text();
+  const contentType = response.headers.get("content-type") || "";
+  if (!text) return {};
+  if (contentType.includes("application/json")) {
+    try {
+      return JSON.parse(text);
+    } catch {
+      return {
+        error: "Invalid JSON",
+        detail: `服务器返回了损坏的 JSON：${text.slice(0, 180)}`
+      };
+    }
+  }
+  try {
+    return JSON.parse(text);
+  } catch {
+    return {
+      error: response.ok ? "Unexpected response" : `HTTP ${response.status}`,
+      detail: `服务器返回了非 JSON 内容：${text.replace(/\s+/g, " ").slice(0, 220)}`
+    };
+  }
+}
+
+function showConversationMenu(conversationId, x, y) {
+  const conversation = appState.conversations.find(item => item.id === conversationId);
+  if (!conversation) return;
+
+  contextMenu.innerHTML = `
+    <button data-action="rename" type="button">重命名</button>
+    <button data-action="pin" type="button">${conversation.pinned ? "取消置顶" : "置顶"}</button>
+    <button data-action="delete" class="danger" type="button">删除</button>
+  `;
+  contextMenu.classList.remove("hidden");
+  contextMenu.style.left = `${Math.min(x, window.innerWidth - 180)}px`;
+  contextMenu.style.top = `${Math.min(y, window.innerHeight - 150)}px`;
+
+  contextMenu.querySelectorAll("[data-action]").forEach(button => {
+    button.addEventListener("click", event => {
+      event.stopPropagation();
+      handleConversationAction(conversationId, button.dataset.action);
+      hideContextMenu();
+    });
+  });
+}
+
+function hideContextMenu() {
+  contextMenu.classList.add("hidden");
+}
+
+function handleConversationAction(conversationId, action) {
+  const conversation = appState.conversations.find(item => item.id === conversationId);
+  if (!conversation) return;
+
+  if (action === "rename") {
+    openRenameModal(conversation);
+    return;
+  }
+
+  if (action === "pin") {
+    conversation.pinned = !conversation.pinned;
+    conversation.updatedAt = Date.now();
+    persistAndRender();
+    return;
+  }
+
+  if (action === "delete") {
+    deleteConversation(conversationId);
+  }
+}
+
+function openRenameModal(conversation) {
+  setModalHead("rename", "重命名对话");
+  dom.modalBody.innerHTML = `
+    <label for="rename-input">对话名称</label>
+    <input id="rename-input" value="${escapeHtml(conversation.title || "新的镜室对话")}" />
+    <button id="rename-save" class="modal-primary" type="button">保存</button>
+  `;
+  dom.modalBackdrop.classList.remove("hidden");
+  dom.modalBackdrop.setAttribute("aria-hidden", "false");
+  const input = dom.modalBody.querySelector("#rename-input");
+  input.focus();
+  input.select();
+  dom.modalBody.querySelector("#rename-save").addEventListener("click", () => {
+    const title = input.value.trim();
+    if (title) conversation.title = title;
+    conversation.updatedAt = Date.now();
+    persistAndRender();
+    closeModal();
+  });
+}
+
+function deleteConversation(conversationId) {
+  const index = appState.conversations.findIndex(item => item.id === conversationId);
+  if (index === -1) return;
+  appState.conversations.splice(index, 1);
+  if (!appState.conversations.length) {
+    const conversation = createConversation(false, defaultSettings());
+    appState.conversations.push(conversation);
+    appState.activeConversationId = conversation.id;
+  } else if (appState.activeConversationId === conversationId) {
+    const next = appState.conversations[0];
+    appState.activeConversationId = next.id;
+    hydrateAppSettingsFromConversation();
+  }
+  persistAndRender();
 }
 
 function formatError(data) {

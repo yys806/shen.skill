@@ -295,6 +295,13 @@ button {
   background: rgba(143, 45, 28, 0.08);
 }
 
+.conversation-item.pinned {
+  border-color: rgba(191, 138, 53, 0.46);
+  background:
+    linear-gradient(135deg, rgba(191, 138, 53, 0.12), rgba(255, 252, 244, 0.62)),
+    rgba(255, 252, 244, 0.58);
+}
+
 .conversation-item strong {
   overflow: hidden;
   text-overflow: ellipsis;
@@ -611,6 +618,42 @@ input[type="range"] {
   border: 1px solid var(--line);
   border-radius: 22px;
   background: rgba(255, 252, 244, 0.68);
+}
+
+.context-menu {
+  position: fixed;
+  z-index: 30;
+  width: 168px;
+  display: grid;
+  gap: 6px;
+  padding: 8px;
+  border: 1px solid rgba(255, 248, 235, 0.42);
+  border-radius: 18px;
+  background: rgba(250, 240, 220, 0.96);
+  box-shadow: 0 22px 70px rgba(16, 12, 8, 0.28);
+  backdrop-filter: blur(18px);
+}
+
+.context-menu.hidden {
+  display: none;
+}
+
+.context-menu button {
+  min-height: 38px;
+  padding: 0 12px;
+  border-radius: 12px;
+  color: var(--ink);
+  background: rgba(255, 252, 244, 0.72);
+  text-align: left;
+}
+
+.context-menu button:hover {
+  color: #fff8e8;
+  background: var(--night);
+}
+
+.context-menu button.danger:hover {
+  background: var(--lacquer);
 }
 
 @keyframes rise {
