@@ -337,8 +337,8 @@ async function submitAuth(mode) {
   if (!email) return setFeedback("邮箱不能为空。");
   if (passwordError) return setFeedback(passwordError);
 
-  setFeedback("注册中...");
-  const { error } = await supabase.auth.signUp({
+  setFeedback("注册中，成功后会自动登录...");
+  const { data, error } = await supabase.auth.signUp({
     email,
     password,
     options: {
@@ -347,8 +347,19 @@ async function submitAuth(mode) {
   });
   if (error) {
     setFeedback(error.message);
+  } else if (data.session) {
+    session = data.session;
+    updateAuthState();
+    closeModal();
   } else {
-    setFeedback("注册成功。如果开启了邮箱确认，请先去邮箱点击确认链接。");
+    const { data: loginData, error: loginError } = await supabase.auth.signInWithPassword({ email, password });
+    if (loginError) {
+      setFeedback("注册成功，但没有自动登录。请确认 Supabase Auth 已关闭邮箱验证。");
+      return;
+    }
+    session = loginData.session;
+    updateAuthState();
+    closeModal();
   }
 }
 
