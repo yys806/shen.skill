@@ -148,6 +148,10 @@ button {
   box-shadow: 0 15px 34px rgba(52, 33, 11, 0.16);
 }
 
+.dock-item.hidden {
+  display: none;
+}
+
 .dock-item span {
   color: var(--muted);
   font: 700 10px/1 "Gill Sans", "Trebuchet MS", sans-serif;

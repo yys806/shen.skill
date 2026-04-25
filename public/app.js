@@ -1,7 +1,8 @@
 import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm";
 
 const skillOptions = [
-  { id: "shen.skill", name: "禹尧珅", description: "综合人格 skill，默认先识别对方是谁。" }
+  { id: "shen.skill", name: "禹尧珅", description: "综合人格 skill，默认先识别对方是谁。", needsContext: true },
+  { id: "maoxuan-skill", name: "毛选", description: "毛选思维框架 skill，专注问题分析与战略判断。", needsContext: false }
 ];
 
 const sceneOptions = [
@@ -37,7 +38,9 @@ const dom = {
   chatTitle: document.querySelector("#chat-title"),
   template: document.querySelector("#message-template"),
   skillLabel: document.querySelector("#skill-label"),
+  counterpartDock: document.querySelector('[data-modal="counterpart"]'),
   counterpartLabel: document.querySelector("#counterpart-label"),
+  sceneDock: document.querySelector('[data-modal="scene"]'),
   sceneLabel: document.querySelector("#scene-label"),
   modelLabel: document.querySelector("#model-label"),
   temperatureLabel: document.querySelector("#temperature-label"),
@@ -188,6 +191,10 @@ dom.prompt.addEventListener("keydown", event => {
 });
 
 function openModal(type) {
+  if ((type === "counterpart" || type === "scene") && !activeSkillNeedsContext()) {
+    return;
+  }
+
   const builders = {
     skill: renderSkillModal,
     counterpart: renderCounterpartModal,
@@ -209,12 +216,13 @@ function closeModal() {
 }
 
 function renderSkillModal() {
-  setModalHead("choose skill", "选择你要和谁对话");
+  setModalHead("choose skill", "选择要启用的 skill");
   const settings = getActiveSettings();
   dom.modalBody.innerHTML = optionList(skillOptions, settings.skill);
   dom.modalBody.querySelectorAll("[data-option]").forEach(button => {
     button.addEventListener("click", () => {
       applySetting("skill", button.dataset.option);
+      normalizeSettingsForSkill(getActiveSettings());
       persistAndRender();
       closeModal();
     });
@@ -629,9 +637,12 @@ function renderDock() {
   const skill = skillOptions.find(item => item.id === settings.skill) || skillOptions[0];
   const scene = sceneOptions.find(item => item.id === settings.scene) || sceneOptions[0];
   const model = findModel(settings.provider, settings.model);
+  const needsContext = Boolean(skill.needsContext);
   dom.skillLabel.textContent = skill.name;
   dom.counterpartLabel.textContent = settings.counterpart || "未填写";
   dom.sceneLabel.textContent = scene.name;
+  dom.counterpartDock.classList.toggle("hidden", !needsContext);
+  dom.sceneDock.classList.toggle("hidden", !needsContext);
   dom.modelLabel.textContent = model ? `${model.vendor} · ${model.label}` : settings.model;
   dom.temperatureLabel.textContent = settings.temperature.toFixed(1);
   dom.workspace.classList.toggle("history-collapsed", Boolean(appState.historyCollapsed));
@@ -649,11 +660,11 @@ function renderHistory() {
     const active = conversation.id === appState.activeConversationId ? "active" : "";
     const pinned = conversation.pinned ? "pinned" : "";
     const last = conversation.messages.at(-1)?.content || "空白对话";
-    const scene = sceneOptions.find(item => item.id === conversation.settings?.scene)?.name || "真我复盘";
+    const meta = conversationMeta(conversation);
     return `
       <button class="conversation-item ${active} ${pinned}" data-id="${conversation.id}" type="button">
         <strong>${conversation.pinned ? "▲ " : ""}${escapeHtml(conversation.title || "新的镜室对话")}</strong>
-        <em>${escapeHtml(scene)} · ${escapeHtml(conversation.settings?.counterpart || "未填写身份")}</em>
+        <em>${escapeHtml(meta)}</em>
         <span>${escapeHtml(last.slice(0, 42))}</span>
       </button>
     `;
@@ -888,6 +899,7 @@ function migrateConversationSettings() {
     if (!conversation.settings) {
       conversation.settings = defaultSettings();
     }
+    normalizeSettingsForSkill(conversation.settings);
   }
 }
 
@@ -938,11 +950,41 @@ function defaultSettings() {
   };
 }
 
+function findSkill(skillId) {
+  return skillOptions.find(item => item.id === skillId) || skillOptions[0];
+}
+
+function activeSkillNeedsContext() {
+  return Boolean(findSkill(getActiveSettings().skill).needsContext);
+}
+
+function normalizeSettingsForSkill(settings) {
+  const skill = findSkill(settings.skill);
+  if (!skill.needsContext) {
+    settings.counterpart = "";
+    settings.scene = "self";
+  }
+  return settings;
+}
+
+function conversationMeta(conversation) {
+  const settings = conversation.settings || defaultSettings();
+  const skill = findSkill(settings.skill);
+  if (!skill.needsContext) {
+    return `${skill.name} · ${settings.model || "未选择模型"}`;
+  }
+  const scene = sceneOptions.find(item => item.id === settings.scene)?.name || "真我复盘";
+  return `${scene} · ${settings.counterpart || "未填写身份"}`;
+}
+
 function applySetting(key, value, markUpdated = true) {
   const conversation = getActiveConversation();
   if (!conversation.settings) conversation.settings = defaultSettings();
   conversation.settings[key] = value;
+  normalizeSettingsForSkill(conversation.settings);
   appState[key] = value;
+  appState.counterpart = conversation.settings.counterpart;
+  appState.scene = conversation.settings.scene;
   if (markUpdated) conversation.updatedAt = Date.now();
 }
 
@@ -957,6 +999,10 @@ function hydrateAppSettingsFromConversation() {
 }
 
 function welcomeMessage() {
+  const skill = findSkill(appState?.skill || "shen.skill");
+  if (!skill.needsContext) {
+    return createMessage("assistant", `已切到${skill.name}。选好模型和温度后，直接把问题丢过来。`);
+  }
   return createMessage("assistant", "先登录，然后告诉我：你是谁？如果你是本人，我会按真我复盘来，不装、不长篇，直接帮你拆清楚。");
 }
 

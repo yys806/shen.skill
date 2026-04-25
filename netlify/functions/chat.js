@@ -63,6 +63,18 @@ async function handleChat(req) {
 
   const skillPrompt = await loadSkillPrompt(skill);
   const memories = await loadRecentMemories(req, authResult.user.id, skill);
+  const needsShenContext = skill === "shen.skill";
+  const contextRules = needsShenContext
+    ? [
+        `- 当前对话对象关系：${counterpart || "未填写；如身份影响很大，先问对方是谁。"}`,
+        `- 当前语气场景：${scene}`,
+        `- 场景执行说明：${sceneInstructions[scene] || sceneInstructions.self}`,
+        "- 如果用户在消息里显式改变身份或场景，以用户最新消息为准，但回答时要说明你已按新场景切换。"
+      ]
+    : [
+        "- 当前 skill 不使用“你是谁”和“语气场景”控制项；只按 skill 本身、模型和温度执行。",
+        "- 不要追问用户身份，除非问题本身必须明确立场、角色或使用场景。"
+      ];
   const systemPrompt = [
     skillPrompt,
     "",
@@ -80,10 +92,7 @@ async function handleChat(req) {
     `- 当前模型提供商：${providerConfig.name}`,
     `- 当前模型：${model}`,
     `- 当前登录用户：${authResult.user?.email || authResult.user?.id || "unknown"}`,
-    `- 当前对话对象关系：${counterpart || "未填写；如身份影响很大，先问对方是谁。"}`,
-    `- 当前语气场景：${scene}`,
-    `- 场景执行说明：${sceneInstructions[scene] || sceneInstructions.self}`,
-    "- 如果用户在消息里显式改变身份或场景，以用户最新消息为准，但回答时要说明你已按新场景切换。"
+    ...contextRules
   ].join("\n");
 
   let response;
