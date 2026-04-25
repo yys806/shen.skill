@@ -98,6 +98,20 @@ async function handleChat(req) {
   let response;
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), providerConfig.timeoutMs);
+  const requestBody = {
+    model,
+    temperature,
+    max_tokens: 1200,
+    stream: false,
+    messages: [
+      { role: "system", content: systemPrompt },
+      ...messages.slice(-24).map(normalizeMessage)
+    ]
+  };
+  if (provider === "deepseek") {
+    requestBody.thinking = { type: "disabled" };
+  }
+
   try {
     response = await fetch(providerConfig.url, {
       method: "POST",
@@ -108,16 +122,7 @@ async function handleChat(req) {
         "Accept": "application/json",
         ...providerConfig.headers
       },
-      body: JSON.stringify({
-        model,
-        temperature,
-        max_tokens: 1200,
-        stream: false,
-        messages: [
-          { role: "system", content: systemPrompt },
-          ...messages.slice(-24).map(normalizeMessage)
-        ]
-      })
+      body: JSON.stringify(requestBody)
     });
   } catch (error) {
     const aborted = error?.name === "AbortError";
@@ -139,11 +144,11 @@ async function handleChat(req) {
     }, response.status >= 500 ? 502 : response.status);
   }
 
-  const content = data?.choices?.[0]?.message?.content;
+  const content = extractAssistantContent(data);
   if (!content) {
     return json({
       error: "Empty model response",
-      detail: `${providerConfig.name} 返回成功，但没有 choices[0].message.content。`
+      detail: formatEmptyResponseDetail(providerConfig.name, data)
     }, 502);
   }
 
@@ -256,6 +261,32 @@ function formatUpstreamDetail(data, status) {
   if (data.message) return data.message;
   if (data.raw) return `上游返回非 JSON 内容：${String(data.raw).replace(/\s+/g, " ").slice(0, 260)}`;
   return JSON.stringify(data).slice(0, 400);
+}
+
+function extractAssistantContent(data) {
+  const choice = data?.choices?.[0];
+  const message = choice?.message || {};
+  const parts = [
+    message.content,
+    message.text,
+    choice?.text
+  ];
+  return parts.find(part => typeof part === "string" && part.trim())?.trim() || "";
+}
+
+function formatEmptyResponseDetail(providerName, data) {
+  const choice = data?.choices?.[0];
+  const message = choice?.message || {};
+  const keys = Object.keys(message).join(", ") || "none";
+  const finishReason = choice?.finish_reason || "unknown";
+  const reasoning = typeof message.reasoning_content === "string"
+    ? message.reasoning_content.replace(/\s+/g, " ").slice(0, 180)
+    : "";
+  return [
+    `${providerName} 返回成功，但没有最终回答正文。`,
+    `finish_reason=${finishReason}; message_keys=${keys}.`,
+    reasoning ? `reasoning_content 预览：${reasoning}` : ""
+  ].filter(Boolean).join(" ");
 }
 
 function normalizeMessage(message) {

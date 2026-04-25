@@ -40,6 +40,19 @@ async function testModel(provider, model) {
   const timeout = setTimeout(() => controller.abort(), Math.min(config.timeoutMs, 15_000));
 
   try {
+    const requestBody = {
+      model,
+      temperature: 0,
+      max_tokens: 24,
+      stream: false,
+      messages: [
+        { role: "user", content: "Reply OK." }
+      ]
+    };
+    if (provider === "deepseek") {
+      requestBody.thinking = { type: "disabled" };
+    }
+
     const response = await fetch(config.url, {
       method: "POST",
       signal: controller.signal,
@@ -49,15 +62,7 @@ async function testModel(provider, model) {
         "Accept": "application/json",
         ...config.headers
       },
-      body: JSON.stringify({
-        model,
-        temperature: 0,
-        max_tokens: 12,
-        stream: false,
-        messages: [
-          { role: "user", content: "Reply OK." }
-        ]
-      })
+      body: JSON.stringify(requestBody)
     });
 
     const data = await readBody(response);
@@ -71,12 +76,23 @@ async function testModel(provider, model) {
       };
     }
 
+    const sample = extractAssistantContent(data);
+    if (!sample) {
+      return {
+        ok: false,
+        provider,
+        model,
+        latencyMs: Date.now() - startedAt,
+        error: formatEmptyResponseDetail(config.name, data)
+      };
+    }
+
     return {
       ok: true,
       provider,
       model,
       latencyMs: Date.now() - startedAt,
-      sample: data?.choices?.[0]?.message?.content || ""
+      sample
     };
   } catch (error) {
     return {
@@ -133,4 +149,30 @@ function formatUpstreamDetail(data, status) {
   if (data.message) return data.message;
   if (data.raw) return `上游返回非 JSON 内容：${String(data.raw).replace(/\s+/g, " ").slice(0, 220)}`;
   return JSON.stringify(data).slice(0, 300);
+}
+
+function extractAssistantContent(data) {
+  const choice = data?.choices?.[0];
+  const message = choice?.message || {};
+  const parts = [
+    message.content,
+    message.text,
+    choice?.text
+  ];
+  return parts.find(part => typeof part === "string" && part.trim())?.trim() || "";
+}
+
+function formatEmptyResponseDetail(providerName, data) {
+  const choice = data?.choices?.[0];
+  const message = choice?.message || {};
+  const keys = Object.keys(message).join(", ") || "none";
+  const finishReason = choice?.finish_reason || "unknown";
+  const reasoning = typeof message.reasoning_content === "string"
+    ? message.reasoning_content.replace(/\s+/g, " ").slice(0, 140)
+    : "";
+  return [
+    `${providerName} 返回成功，但没有最终回答正文。`,
+    `finish_reason=${finishReason}; message_keys=${keys}.`,
+    reasoning ? `reasoning_content 预览：${reasoning}` : ""
+  ].filter(Boolean).join(" ");
 }
