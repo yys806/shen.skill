@@ -2,7 +2,12 @@ import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js
 
 const skillOptions = [
   { id: "shen.skill", name: "禹尧珅", description: "综合人格 skill，默认先识别对方是谁。", needsContext: true },
-  { id: "maoxuan-skill", name: "毛选", description: "毛选思维框架 skill，专注问题分析与战略判断。", needsContext: false }
+  { id: "maoxuan-skill", name: "毛选", description: "毛选思维框架 skill，专注问题分析与战略判断。", needsContext: false },
+  { id: "bazi-skill", name: "八字", description: "四柱八字命理分析 skill，通过出生信息进行结构化推演。", needsContext: false },
+  { id: "steve-jobs-skill", name: "乔布斯", description: "Steve Jobs 视角，聚焦产品、审美、取舍和表达。", needsContext: false },
+  { id: "elon-musk-skill", name: "马斯克", description: "Elon Musk 视角，偏第一性原理、工程压强和目标拆解。", needsContext: false },
+  { id: "munger-skill", name: "芒格", description: "Charlie Munger 视角，偏多元思维模型、反向思考和理性判断。", needsContext: false },
+  { id: "fengge-wangmingtianya-perspective", name: "峰哥亡命天涯", description: "峰哥亡命天涯视角，漂泊江湖、现实去魅和黑色幽默。", needsContext: false }
 ];
 
 const sceneOptions = [
