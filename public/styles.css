@@ -429,18 +429,25 @@ button {
   margin-top: -4px;
   color: var(--muted);
   font-size: 12px;
-  opacity: 1;
+  opacity: 0;
+  transition: opacity 160ms ease;
 }
 
 .message.user .message-tools {
   grid-column: 1;
   justify-content: flex-end;
-  opacity: 0;
-  transition: opacity 160ms ease;
 }
 
-.message.user:hover .message-tools {
+.message:hover .message-tools {
   opacity: 1;
+}
+
+.message.continued .avatar {
+  opacity: 0;
+}
+
+.message.continued .role {
+  display: none;
 }
 
 .message-tools button {

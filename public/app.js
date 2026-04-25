@@ -678,18 +678,22 @@ function renderMessages() {
   conversation.messages.forEach((message, index) => {
     if (!message.id) message.id = crypto.randomUUID();
     if (!message.createdAt) message.createdAt = Date.now();
-    const node = dom.template.content.firstElementChild.cloneNode(true);
-    node.classList.add(message.role);
-    if (message.pending) node.classList.add("thinking");
-    node.querySelector(".role").textContent = message.role === "user" ? "you" : "mirror";
-    node.querySelector(".content").textContent = message.content;
-    node.appendChild(renderMessageTools(message, index));
-    dom.messages.appendChild(node);
+    const chunks = getDisplayChunks(message);
+    chunks.forEach((chunk, chunkIndex) => {
+      const node = dom.template.content.firstElementChild.cloneNode(true);
+      node.classList.add(message.role);
+      if (message.pending) node.classList.add("thinking");
+      if (chunkIndex > 0) node.classList.add("continued");
+      node.querySelector(".role").textContent = message.role === "user" ? "you" : "mirror";
+      node.querySelector(".content").textContent = chunk;
+      node.appendChild(renderMessageTools(message, index, chunk));
+      dom.messages.appendChild(node);
+    });
   });
   dom.messages.scrollTop = dom.messages.scrollHeight;
 }
 
-function renderMessageTools(message, index) {
+function renderMessageTools(message, index, visibleContent = message.content) {
   const tools = document.createElement("div");
   tools.className = "message-tools";
 
@@ -709,15 +713,15 @@ function renderMessageTools(message, index) {
   }
 
   tools.querySelectorAll("button").forEach(button => {
-    button.addEventListener("click", () => handleMessageAction(message, index, button.dataset.action));
+    button.addEventListener("click", () => handleMessageAction(message, index, button.dataset.action, visibleContent));
   });
 
   return tools;
 }
 
-function handleMessageAction(message, index, action) {
+function handleMessageAction(message, index, action, visibleContent = message.content) {
   if (action === "copy") {
-    navigator.clipboard?.writeText(message.content);
+    navigator.clipboard?.writeText(visibleContent);
     return;
   }
 
@@ -730,6 +734,47 @@ function handleMessageAction(message, index, action) {
   if (action === "like" || action === "dislike") {
     openFeedbackModal(message, index, action);
   }
+}
+
+function getDisplayChunks(message) {
+  if (message.role !== "assistant" || message.pending) return [message.content];
+  return splitAssistantReply(message.content);
+}
+
+function splitAssistantReply(content) {
+  const text = String(content || "").trim();
+  if (text.length <= 260) return [text || ""];
+
+  const paragraphs = text
+    .split(/\n{2,}/)
+    .map(part => part.trim())
+    .filter(Boolean);
+  const units = paragraphs.length > 1
+    ? paragraphs
+    : text.split(/(?<=[。！？!?；;])\s*/).map(part => part.trim()).filter(Boolean);
+
+  const chunks = [];
+  let current = "";
+  for (const unit of units) {
+    if (!current) {
+      current = unit;
+    } else if ((current + "\n" + unit).length <= 260) {
+      current = `${current}\n${unit}`;
+    } else {
+      chunks.push(current);
+      current = unit;
+    }
+  }
+  if (current) chunks.push(current);
+
+  return chunks.flatMap(chunk => {
+    if (chunk.length <= 360) return [chunk];
+    const result = [];
+    for (let i = 0; i < chunk.length; i += 320) {
+      result.push(chunk.slice(i, i + 320));
+    }
+    return result;
+  });
 }
 
 function openFeedbackModal(message, index, feedback) {
