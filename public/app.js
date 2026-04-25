@@ -737,51 +737,7 @@ function handleMessageAction(message, index, action, visibleContent = message.co
 }
 
 function getDisplayChunks(message) {
-  if (message.role !== "assistant" || message.pending) return [message.content];
-  return splitAssistantReply(message.content);
-}
-
-function splitAssistantReply(content) {
-  const text = String(content || "").trim();
-  if (text.length <= 260) return [text || ""];
-
-  const lineChunks = text
-    .split(/\n+/)
-    .map(part => part.trim())
-    .filter(Boolean);
-
-  if (lineChunks.length > 1) {
-    return lineChunks.flatMap(chunk => splitLongChunk(chunk));
-  }
-
-  const units = text
-    ? text.split(/(?<=[。！？!?；;])\s*/).map(part => part.trim()).filter(Boolean)
-    : [];
-
-  const chunks = [];
-  let current = "";
-  for (const unit of units) {
-    if (!current) {
-      current = unit;
-    } else if ((current + "\n" + unit).length <= 260) {
-      current = `${current}\n${unit}`;
-    } else {
-      chunks.push(current);
-      current = unit;
-    }
-  }
-  if (current) chunks.push(current);
-
-  return chunks.flatMap(splitLongChunk);
-}
-
-function splitLongChunk(chunk) {
-  if (chunk.length <= 360) return [chunk];
-  const result = [];
-  for (let i = 0; i < chunk.length; i += 320) {
-    result.push(chunk.slice(i, i + 320));
-  }
-  return result;
+  return [message.content];
 }
 
 function openFeedbackModal(message, index, feedback) {
