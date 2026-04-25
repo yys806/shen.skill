@@ -1,0 +1,11 @@
+[build]
+  publish = "public"
+
+[functions]
+  directory = "netlify/functions"
+  included_files = ["skills/**"]
+
+[[redirects]]
+  from = "/api/*"
+  to = "/.netlify/functions/:splat"
+  status = 200

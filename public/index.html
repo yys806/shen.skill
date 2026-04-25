@@ -13,9 +13,29 @@
         <p class="eyebrow">private mirror / shen.skill</p>
         <h1>和另一个“禹尧珅”对话。</h1>
         <p class="lead">
-          一个先识别“你是谁”，再切换语气的网页人格镜像。适合复盘自己、让别人理解你，
-          也可以切到工作、朋友、亲密关系场景。
+          先登录，再进入镜室。这个网页会读取项目内的 shen.skill，
+          用 SiliconFlow 模型回答；聊天前会先判断“你是谁”，再切换语气。
         </p>
+
+        <div class="auth-card" id="auth-card">
+          <div class="auth-topline">
+            <span id="auth-state">checking auth</span>
+            <button id="logout" type="button" class="ghost hidden">退出</button>
+          </div>
+          <div id="auth-form" class="auth-form">
+            <label for="email">邮箱</label>
+            <input id="email" type="email" autocomplete="email" placeholder="you@example.com" />
+
+            <label for="password">密码</label>
+            <input id="password" type="password" autocomplete="current-password" placeholder="至少 6 位" />
+
+            <div class="auth-actions">
+              <button id="login" type="button">登录</button>
+              <button id="signup" type="button" class="secondary">注册</button>
+            </div>
+            <p id="auth-hint" class="auth-hint">注册登录由 Supabase 托管，聊天 API 只接受已登录用户。</p>
+          </div>
+        </div>
 
         <div class="identity-card">
           <label for="counterpart">对方是谁</label>
@@ -43,17 +63,17 @@
         </div>
 
         <div class="signals">
-          <span>生日 2005.08.06</span>
-          <span>同济 AI</span>
-          <span>项目驱动</span>
-          <span>先陪骂，再解决</span>
+          <span>Supabase Auth</span>
+          <span>Netlify Functions</span>
+          <span>API key 后端隐藏</span>
+          <span>skills 可扩展</span>
         </div>
       </section>
 
       <section class="chat-panel" aria-label="聊天窗口">
         <header class="chat-header">
           <div>
-            <p class="status-dot"><span></span> skill loaded locally</p>
+            <p class="status-dot"><span></span> protected mirror</p>
             <h2>镜室</h2>
           </div>
           <button id="clear" type="button">清空</button>
@@ -65,7 +85,7 @@
           <textarea
             id="prompt"
             rows="2"
-            placeholder="先说一句：你是谁，或者直接把你想复盘的事丢进来。"
+            placeholder="登录后开始。先说一句：你是谁，或者直接把想复盘的事丢进来。"
           ></textarea>
           <button type="submit">发送</button>
         </form>

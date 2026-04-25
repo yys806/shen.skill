@@ -4,8 +4,9 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "start": "node server.js",
-    "dev": "node server.js"
+    "start": "npx netlify dev",
+    "dev": "npx netlify dev",
+    "local": "node server.js"
   },
   "engines": {
     "node": ">=18"
