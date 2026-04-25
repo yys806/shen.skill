@@ -15,6 +15,9 @@ Copy-Item .env.example .env
 ```env
 SILICONFLOW_API_KEY=sk-your-key-here
 SILICONFLOW_MODEL=Qwen/Qwen2.5-72B-Instruct
+DEEPSEEK_API_KEY=sk-your-deepseek-key
+OPENROUTER_API_KEY=sk-your-openrouter-key
+INVITE_CODE=08060910
 SUPABASE_URL=https://gqhzwngzfoigzqndlbsq.supabase.co
 SUPABASE_ANON_KEY=your-supabase-anon-key
 PORT=8787
@@ -48,6 +51,9 @@ http://localhost:8787
 ```text
 SILICONFLOW_API_KEY
 SILICONFLOW_MODEL
+DEEPSEEK_API_KEY
+OPENROUTER_API_KEY
+INVITE_CODE
 SUPABASE_URL
 SUPABASE_ANON_KEY
 SHEN_SKILL_PATH

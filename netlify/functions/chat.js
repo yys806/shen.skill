@@ -1,9 +1,7 @@
 import { getEnv } from "./_shared/env.js";
 import { json } from "./_shared/json.js";
 import { loadSkillPrompt } from "./_shared/skill.js";
-
-const SILICONFLOW_URL = "https://api.siliconflow.cn/v1/chat/completions";
-const UPSTREAM_TIMEOUT_MS = 25_000;
+import { getProviderConfig, modelExists, normalizeProvider } from "./_shared/providers.js";
 
 const sceneInstructions = {
   self: "当前语气场景是真我复盘：默认理性、短句、拆动机、拆情绪触发点、拆下一步，不要亲密关系口吻。",
@@ -30,14 +28,6 @@ async function handleChat(req) {
     return json({ error: "Method not allowed" }, 405);
   }
 
-  const apiKey = getEnv("SILICONFLOW_API_KEY");
-  if (!apiKey) {
-    return json({
-      error: "Missing SILICONFLOW_API_KEY",
-      detail: "请在 Netlify 环境变量里配置 SILICONFLOW_API_KEY。"
-    }, 500);
-  }
-
   const authResult = await verifySupabaseUser(req);
   if (!authResult.ok) {
     return json({ error: "Unauthorized", detail: authResult.detail }, 401);
@@ -48,8 +38,24 @@ async function handleChat(req) {
   const counterpart = cleanText(body.counterpart || "");
   const scene = cleanText(body.scene || "self");
   const skill = cleanText(body.skill || "shen.skill");
+  const provider = normalizeProvider(body.provider || "siliconflow");
   const temperature = clamp(Number(body.temperature ?? 0.72), 0, 1.5);
   const model = cleanText(body.model || getEnv("SILICONFLOW_MODEL", "Pro/moonshotai/Kimi-K2.6"));
+  const providerConfig = getProviderConfig(provider);
+
+  if (!providerConfig.apiKey) {
+    return json({
+      error: `Missing ${providerConfig.name} API key`,
+      detail: `请在 Netlify 环境变量里配置 ${provider.toUpperCase()}_API_KEY。`
+    }, 500);
+  }
+
+  if (!modelExists(provider, model)) {
+    return json({
+      error: "Unknown model",
+      detail: "当前提供商和模型不匹配，请在模型弹窗里重新选择。"
+    }, 400);
+  }
 
   if (!messages.length) {
     return json({ error: "messages is required" }, 400);
@@ -65,6 +71,8 @@ async function handleChat(req) {
     "- 回答要短，不要 AI 长篇；先像人一样接住，再给判断或建议。",
     "- 不要声称自己真的就是某个现实本人；你是基于 skill 的人格镜像。",
     `- 当前 skill：${skill}`,
+    `- 当前模型提供商：${providerConfig.name}`,
+    `- 当前模型：${model}`,
     `- 当前登录用户：${authResult.user?.email || authResult.user?.id || "unknown"}`,
     `- 当前对话对象关系：${counterpart || "未填写；如身份影响很大，先问对方是谁。"}`,
     `- 当前语气场景：${scene}`,
@@ -74,19 +82,21 @@ async function handleChat(req) {
 
   let response;
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), UPSTREAM_TIMEOUT_MS);
+  const timeout = setTimeout(() => controller.abort(), providerConfig.timeoutMs);
   try {
-    response = await fetch(SILICONFLOW_URL, {
+    response = await fetch(providerConfig.url, {
       method: "POST",
       signal: controller.signal,
       headers: {
-        "Authorization": `Bearer ${apiKey}`,
+        "Authorization": `Bearer ${providerConfig.apiKey}`,
         "Content-Type": "application/json",
-        "Accept": "application/json"
+        "Accept": "application/json",
+        ...providerConfig.headers
       },
       body: JSON.stringify({
         model,
         temperature,
+        max_tokens: 1200,
         stream: false,
         messages: [
           { role: "system", content: systemPrompt },
@@ -97,10 +107,10 @@ async function handleChat(req) {
   } catch (error) {
     const aborted = error?.name === "AbortError";
     return json({
-      error: aborted ? "SiliconFlow timeout" : "SiliconFlow network error",
+      error: aborted ? `${providerConfig.name} timeout` : `${providerConfig.name} network error`,
       detail: aborted
-        ? "模型响应超过 25 秒，已主动中断。可以换一个更快的模型，或稍后重试。"
-        : `无法连接 SiliconFlow：${error.message}`
+        ? `模型响应超过 ${Math.round(providerConfig.timeoutMs / 1000)} 秒，已主动中断。可以换一个更快的模型，或稍后重试。`
+        : `无法连接 ${providerConfig.name}：${error.message}`
     }, 502);
   } finally {
     clearTimeout(timeout);
@@ -109,7 +119,7 @@ async function handleChat(req) {
   const data = await readResponseBody(response);
   if (!response.ok) {
     return json({
-      error: "SiliconFlow request failed",
+      error: `${providerConfig.name} request failed`,
       detail: formatUpstreamDetail(data, response.status)
     }, response.status >= 500 ? 502 : response.status);
   }
@@ -118,7 +128,7 @@ async function handleChat(req) {
   if (!content) {
     return json({
       error: "Empty model response",
-      detail: "SiliconFlow 返回成功，但没有 choices[0].message.content。"
+      detail: `${providerConfig.name} 返回成功，但没有 choices[0].message.content。`
     }, 502);
   }
 

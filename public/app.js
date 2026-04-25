@@ -13,10 +13,15 @@ const sceneOptions = [
 ];
 
 const modelOptions = [
-  "Pro/moonshotai/Kimi-K2.6",
-  "Pro/zai-org/GLM-5.1",
-  "Pro/MiniMaxAI/MiniMax-M2.5",
-  "Pro/deepseek-ai/DeepSeek-V3.2"
+  { provider: "siliconflow", model: "Pro/moonshotai/Kimi-K2.6", label: "Kimi-K2.6", vendor: "SiliconFlow" },
+  { provider: "siliconflow", model: "Pro/zai-org/GLM-5.1", label: "GLM-5.1", vendor: "SiliconFlow" },
+  { provider: "siliconflow", model: "Pro/MiniMaxAI/MiniMax-M2.5", label: "MiniMax-M2.5", vendor: "SiliconFlow" },
+  { provider: "siliconflow", model: "Pro/deepseek-ai/DeepSeek-V3.2", label: "DeepSeek-V3.2", vendor: "SiliconFlow" },
+  { provider: "deepseek", model: "deepseek-v4-flash", label: "DeepSeek v4 Flash", vendor: "DeepSeek" },
+  { provider: "deepseek", model: "deepseek-v4-pro", label: "DeepSeek v4 Pro", vendor: "DeepSeek" },
+  { provider: "openrouter", model: "openai/gpt-5.5", label: "GPT-5.5", vendor: "OpenRouter" },
+  { provider: "openrouter", model: "anthropic/claude-opus-4.7", label: "Claude Opus 4.7", vendor: "OpenRouter" },
+  { provider: "openrouter", model: "qwen/qwen3.6-plus", label: "Qwen3.6 Plus", vendor: "OpenRouter" }
 ];
 
 const dom = {
@@ -61,7 +66,7 @@ async function boot() {
   try {
     const config = await fetchJson("/api/config");
     const settings = getActiveSettings();
-    if (config.model && modelOptions.includes(config.model) && !settings.model) {
+    if (config.model && modelOptions.some(item => item.model === config.model) && !settings.model) {
       applySetting("model", config.model, false);
     }
 
@@ -246,19 +251,87 @@ function renderSceneModal() {
 function renderModelModal() {
   setModalHead("model", "选择一个模型");
   const settings = getActiveSettings();
-  const options = modelOptions.map(value => ({
-    id: value,
-    name: value.replace(/^Pro\//, ""),
-    description: value
-  }));
-  dom.modalBody.innerHTML = optionList(options, settings.model);
-  dom.modalBody.querySelectorAll("[data-option]").forEach(button => {
+  const grouped = groupModelsByVendor();
+  dom.modalBody.innerHTML = `
+    <div class="model-test-hint" id="model-test-hint">测试只发一条极短请求，用来确认 key、网络和模型名是否可用。</div>
+    <div class="model-list">
+      ${Object.entries(grouped).map(([vendor, models]) => `
+        <section class="model-group">
+          <h3>${escapeHtml(vendor)}</h3>
+          ${models.map(item => `
+            <div class="model-row ${item.model === settings.model && item.provider === settings.provider ? "selected" : ""}">
+              <button class="model-pick" data-provider="${escapeHtml(item.provider)}" data-model="${escapeHtml(item.model)}" type="button">
+                <strong>${escapeHtml(item.label)}</strong>
+                <span>${escapeHtml(item.model)}</span>
+              </button>
+              <button class="model-test" data-provider="${escapeHtml(item.provider)}" data-model="${escapeHtml(item.model)}" type="button">测试</button>
+            </div>
+          `).join("")}
+        </section>
+      `).join("")}
+    </div>
+  `;
+  dom.modalBody.querySelectorAll(".model-pick").forEach(button => {
     button.addEventListener("click", () => {
-      applySetting("model", button.dataset.option);
+      applySetting("provider", button.dataset.provider);
+      applySetting("model", button.dataset.model);
       persistAndRender();
       closeModal();
     });
   });
+  dom.modalBody.querySelectorAll(".model-test").forEach(button => {
+    button.addEventListener("click", () => testSelectedModel(button));
+  });
+}
+
+function groupModelsByVendor() {
+  return modelOptions.reduce((groups, item) => {
+    groups[item.vendor] ||= [];
+    groups[item.vendor].push(item);
+    return groups;
+  }, {});
+}
+
+function findModel(provider, model) {
+  return modelOptions.find(item => item.provider === provider && item.model === model)
+    || modelOptions.find(item => item.model === model)
+    || null;
+}
+
+async function testSelectedModel(button) {
+  const hint = dom.modalBody.querySelector("#model-test-hint");
+  if (!session?.access_token) {
+    hint.textContent = "先登录后才能测试模型，避免公开消耗 API。";
+    return;
+  }
+  const original = button.textContent;
+  button.disabled = true;
+  button.textContent = "测试中";
+  hint.textContent = "正在测试模型连通性...";
+
+  try {
+    const response = await fetch("/api/test-model", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${session.access_token}`
+      },
+      body: JSON.stringify({
+        provider: button.dataset.provider,
+        model: button.dataset.model
+      })
+    });
+    const data = await parseResponse(response);
+    if (!response.ok || !data.ok) {
+      throw new Error(formatError(data));
+    }
+    hint.textContent = `可用，延迟约 ${data.latencyMs}ms。`;
+  } catch (error) {
+    hint.textContent = `不可用：${error.message}`;
+  } finally {
+    button.disabled = false;
+    button.textContent = original;
+  }
 }
 
 function renderTemperatureModal() {
@@ -317,6 +390,7 @@ function renderAuthModal() {
       <label for="password">密码</label>
       <input id="password" type="password" autocomplete="${isSignup ? "new-password" : "current-password"}" placeholder="大小写 + 数字 + 特殊符号" />
       ${isSignup ? '<label for="confirm-password">确认密码</label><input id="confirm-password" type="password" autocomplete="new-password" placeholder="再输入一次密码" />' : ""}
+      ${isSignup ? '<label for="invite-code">邀请码</label><input id="invite-code" type="text" inputmode="numeric" placeholder="请输入邀请码" />' : ""}
       <button id="auth-submit" class="modal-primary" type="button">${isSignup ? "注册" : "登录"}</button>
     `;
     dom.modalBody.querySelector("#auth-submit").addEventListener("click", () => submitAuth(mode));
@@ -363,11 +437,14 @@ async function submitAuth(mode) {
   const nickname = dom.modalBody.querySelector("#nickname").value.trim();
   const email = identifier;
   const confirmPassword = dom.modalBody.querySelector("#confirm-password").value;
+  const inviteCode = dom.modalBody.querySelector("#invite-code").value.trim();
   const passwordError = validatePassword(password, confirmPassword);
   if (!nickname) return setFeedback("昵称不能为空。");
   if (!email) return setFeedback("邮箱不能为空。");
   if (!isEmail(email)) return setFeedback("注册时请输入有效邮箱。");
   if (passwordError) return setFeedback(passwordError);
+  const inviteOk = await validateInviteCode(inviteCode);
+  if (!inviteOk) return;
 
   const duplicate = await checkProfileDuplicate(nickname, email);
   if (duplicate) return;
@@ -400,6 +477,25 @@ async function submitAuth(mode) {
     updateAuthState();
     closeModal();
   }
+}
+
+async function validateInviteCode(inviteCode) {
+  if (!inviteCode) {
+    setFeedback("邀请码不能为空。");
+    return false;
+  }
+
+  const response = await fetch("/api/validate-invite", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ inviteCode })
+  });
+  const data = await parseResponse(response);
+  if (!response.ok || !data.ok) {
+    setFeedback(formatError(data));
+    return false;
+  }
+  return true;
 }
 
 async function ensureCurrentUserProfile(preferredNickname = "") {
@@ -522,10 +618,11 @@ function renderDock() {
   const settings = getActiveSettings();
   const skill = skillOptions.find(item => item.id === settings.skill) || skillOptions[0];
   const scene = sceneOptions.find(item => item.id === settings.scene) || sceneOptions[0];
+  const model = findModel(settings.provider, settings.model);
   dom.skillLabel.textContent = skill.name;
   dom.counterpartLabel.textContent = settings.counterpart || "未填写";
   dom.sceneLabel.textContent = scene.name;
-  dom.modelLabel.textContent = settings.model.replace(/^Pro\/(?:moonshotai\/|zai-org\/|MiniMaxAI\/|deepseek-ai\/)/, "");
+  dom.modelLabel.textContent = model ? `${model.vendor} · ${model.label}` : settings.model;
   dom.temperatureLabel.textContent = settings.temperature.toFixed(1);
   dom.workspace.classList.toggle("history-collapsed", Boolean(appState.historyCollapsed));
   dom.historyPanel.classList.toggle("collapsed", Boolean(appState.historyCollapsed));
@@ -646,6 +743,7 @@ function loadState(storageKey = currentStateKey) {
     skill: "shen.skill",
     counterpart: "",
     scene: "self",
+    provider: "siliconflow",
     model: "Pro/moonshotai/Kimi-K2.6",
     temperature: 0.7,
     historyCollapsed: false,
@@ -704,6 +802,7 @@ function getCurrentGlobalSettings() {
     skill: appState?.skill || "shen.skill",
     counterpart: appState?.counterpart || "",
     scene: appState?.scene || "self",
+    provider: appState?.provider || "siliconflow",
     model: appState?.model || "Pro/moonshotai/Kimi-K2.6",
     temperature: Number(appState?.temperature ?? 0.7)
   };
@@ -714,6 +813,7 @@ function defaultSettings() {
     skill: "shen.skill",
     counterpart: "",
     scene: "self",
+    provider: "siliconflow",
     model: "Pro/moonshotai/Kimi-K2.6",
     temperature: 0.7
   };
@@ -732,6 +832,7 @@ function hydrateAppSettingsFromConversation() {
   appState.skill = settings.skill;
   appState.counterpart = settings.counterpart;
   appState.scene = settings.scene;
+  appState.provider = settings.provider;
   appState.model = settings.model;
   appState.temperature = settings.temperature;
 }

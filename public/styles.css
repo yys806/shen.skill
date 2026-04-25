@@ -537,6 +537,73 @@ textarea:disabled {
   gap: 12px;
 }
 
+.model-test-hint {
+  padding: 12px 14px;
+  border: 1px solid rgba(27, 23, 18, 0.12);
+  border-radius: 16px;
+  color: var(--muted);
+  background: rgba(255, 252, 244, 0.62);
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.model-list {
+  display: grid;
+  gap: 16px;
+}
+
+.model-group {
+  display: grid;
+  gap: 10px;
+}
+
+.model-group h3 {
+  margin: 0;
+  color: var(--green);
+  font: 700 12px/1 "Gill Sans", "Trebuchet MS", sans-serif;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.model-row {
+  display: grid;
+  grid-template-columns: 1fr 72px;
+  gap: 8px;
+  align-items: stretch;
+}
+
+.model-row.selected .model-pick {
+  border-color: rgba(143, 45, 28, 0.52);
+  background: rgba(143, 45, 28, 0.09);
+}
+
+.model-pick,
+.model-test {
+  border: 1px solid rgba(27, 23, 18, 0.14);
+  border-radius: 18px;
+  color: var(--ink);
+  background: rgba(255, 252, 244, 0.7);
+}
+
+.model-pick {
+  display: grid;
+  gap: 6px;
+  padding: 13px 14px;
+  text-align: left;
+}
+
+.model-pick span {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.model-test {
+  color: #fff8e8;
+  background: var(--night);
+  font-size: 13px;
+  font-weight: 800;
+}
+
 .option-card {
   display: grid;
   gap: 8px;
