@@ -11,8 +11,7 @@ loadDotEnv(path.join(__dirname, ".env"));
 
 const PORT = Number(process.env.PORT || 8787);
 const SILICONFLOW_URL = "https://api.siliconflow.cn/v1/chat/completions";
-const DEFAULT_SKILL_PATH =
-  "C:\\Users\\Lenovo\\.codex\\skills\\dot-skill\\skills\\shen.skill\\SKILL.md";
+const DEFAULT_SKILL_PATH = path.join(__dirname, "skills", "shen.skill", "SKILL.md");
 
 const mimeTypes = {
   ".html": "text/html; charset=utf-8",
@@ -127,7 +126,10 @@ async function handleChat(req, res) {
 }
 
 async function loadSkillPrompt() {
-  const skillPath = process.env.SHEN_SKILL_PATH || DEFAULT_SKILL_PATH;
+  const configuredPath = process.env.SHEN_SKILL_PATH || DEFAULT_SKILL_PATH;
+  const skillPath = path.isAbsolute(configuredPath)
+    ? configuredPath
+    : path.join(__dirname, configuredPath);
   try {
     return await readFile(skillPath, "utf8");
   } catch {
