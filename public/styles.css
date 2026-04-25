@@ -57,14 +57,18 @@ button {
   z-index: 1;
   width: min(1440px, calc(100vw - 28px));
   height: 100vh;
+  max-height: 100vh;
   margin: 0 auto;
   display: grid;
-  grid-template-rows: auto 1fr;
+  grid-template-rows: minmax(92px, auto) minmax(0, 1fr);
   gap: 12px;
   padding: 12px 0;
 }
 
 .top-zone {
+  position: sticky;
+  top: 8px;
+  z-index: 10;
   display: grid;
   grid-template-columns: minmax(260px, 0.78fr) minmax(600px, 1.5fr);
   gap: 12px;
@@ -172,6 +176,7 @@ button {
 
 .workspace {
   min-height: 0;
+  height: 100%;
   display: grid;
   grid-template-columns: minmax(260px, 330px) minmax(0, 1fr);
   gap: 12px;
@@ -706,6 +711,11 @@ input[type="range"] {
   .mirror-shell {
     height: auto;
     min-height: 100vh;
+    max-height: none;
+  }
+
+  .top-zone {
+    top: 6px;
   }
 
   .top-zone,

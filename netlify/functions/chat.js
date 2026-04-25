@@ -3,6 +3,7 @@ import { json } from "./_shared/json.js";
 import { loadSkillPrompt } from "./_shared/skill.js";
 
 const SILICONFLOW_URL = "https://api.siliconflow.cn/v1/chat/completions";
+const UPSTREAM_TIMEOUT_MS = 25_000;
 
 const sceneInstructions = {
   self: "当前语气场景是真我复盘：默认理性、短句、拆动机、拆情绪触发点、拆下一步，不要亲密关系口吻。",
@@ -72,9 +73,12 @@ async function handleChat(req) {
   ].join("\n");
 
   let response;
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), UPSTREAM_TIMEOUT_MS);
   try {
     response = await fetch(SILICONFLOW_URL, {
       method: "POST",
+      signal: controller.signal,
       headers: {
         "Authorization": `Bearer ${apiKey}`,
         "Content-Type": "application/json",
@@ -91,10 +95,15 @@ async function handleChat(req) {
       })
     });
   } catch (error) {
+    const aborted = error?.name === "AbortError";
     return json({
-      error: "SiliconFlow network error",
-      detail: `无法连接 SiliconFlow：${error.message}`
+      error: aborted ? "SiliconFlow timeout" : "SiliconFlow network error",
+      detail: aborted
+        ? "模型响应超过 25 秒，已主动中断。可以换一个更快的模型，或稍后重试。"
+        : `无法连接 SiliconFlow：${error.message}`
     }, 502);
+  } finally {
+    clearTimeout(timeout);
   }
 
   const data = await readResponseBody(response);
