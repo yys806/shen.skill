@@ -1,0 +1,400 @@
+:root {
+  --ink: #19150f;
+  --muted: #776d60;
+  --paper: #f3eadb;
+  --paper-deep: #dac7a8;
+  --lacquer: #8e2d1d;
+  --gold: #bd8a38;
+  --green: #1f5a4a;
+  --night: #10100e;
+  --line: rgba(25, 21, 15, 0.16);
+  --shadow: 0 28px 90px rgba(39, 25, 8, 0.24);
+  font-family: "Iowan Old Style", "Palatino Linotype", "Songti SC", serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  min-height: 100vh;
+  margin: 0;
+  color: var(--ink);
+  background:
+    radial-gradient(circle at 12% 8%, rgba(189, 138, 56, 0.34), transparent 28rem),
+    radial-gradient(circle at 86% 12%, rgba(31, 90, 74, 0.22), transparent 32rem),
+    linear-gradient(135deg, #f8f0e3 0%, #dfceb1 46%, #bba178 100%);
+  overflow-x: hidden;
+}
+
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.28;
+  background-image:
+    linear-gradient(rgba(25, 21, 15, 0.08) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(25, 21, 15, 0.06) 1px, transparent 1px);
+  background-size: 36px 36px;
+  mask-image: radial-gradient(circle at center, black, transparent 78%);
+}
+
+.shell {
+  width: min(1180px, calc(100vw - 32px));
+  min-height: 100vh;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: 0.9fr 1.1fr;
+  gap: 26px;
+  align-items: center;
+  padding: 34px 0;
+}
+
+.hero,
+.chat-panel {
+  position: relative;
+  border: 1px solid rgba(25, 21, 15, 0.18);
+  background: rgba(248, 240, 227, 0.72);
+  box-shadow: var(--shadow);
+  backdrop-filter: blur(22px);
+}
+
+.hero {
+  min-height: 700px;
+  padding: 38px;
+  border-radius: 42px 16px 42px 16px;
+  overflow: hidden;
+  animation: rise 700ms ease both;
+}
+
+.hero::after {
+  content: "";
+  position: absolute;
+  right: -90px;
+  bottom: -110px;
+  width: 310px;
+  height: 310px;
+  border: 1px solid rgba(142, 45, 29, 0.36);
+  border-radius: 50%;
+  box-shadow: inset 0 0 0 34px rgba(142, 45, 29, 0.06);
+}
+
+.brand-mark {
+  width: 86px;
+  height: 86px;
+  display: grid;
+  place-items: center;
+  margin-bottom: 34px;
+  border-radius: 28px;
+  background: var(--lacquer);
+  color: #f9ead2;
+  font-size: 46px;
+  font-weight: 800;
+  letter-spacing: -0.1em;
+  box-shadow: 0 18px 40px rgba(142, 45, 29, 0.32);
+}
+
+.eyebrow,
+.status-dot {
+  margin: 0;
+  color: var(--green);
+  font: 700 12px/1.2 "Gill Sans", "Trebuchet MS", sans-serif;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+
+h1 {
+  max-width: 8em;
+  margin: 10px 0 18px;
+  font-size: clamp(48px, 7vw, 86px);
+  line-height: 0.92;
+  letter-spacing: -0.08em;
+}
+
+.lead {
+  max-width: 34em;
+  margin: 0 0 28px;
+  color: #4c443a;
+  font-size: 17px;
+  line-height: 1.8;
+}
+
+.identity-card {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  gap: 11px;
+  margin-top: 26px;
+  padding: 20px;
+  border: 1px solid var(--line);
+  border-radius: 24px;
+  background: rgba(255, 248, 235, 0.68);
+}
+
+label {
+  color: #675946;
+  font: 700 12px/1 "Gill Sans", "Trebuchet MS", sans-serif;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+input,
+select,
+textarea {
+  width: 100%;
+  border: 1px solid rgba(25, 21, 15, 0.18);
+  border-radius: 16px;
+  color: var(--ink);
+  background: rgba(255, 252, 244, 0.78);
+  font: 16px/1.5 "LXGW WenKai", "Kaiti SC", "Songti SC", serif;
+  outline: none;
+  transition: border-color 180ms ease, box-shadow 180ms ease, transform 180ms ease;
+}
+
+input,
+select {
+  min-height: 48px;
+  padding: 0 14px;
+}
+
+textarea {
+  resize: none;
+  padding: 14px 16px;
+}
+
+input:focus,
+select:focus,
+textarea:focus {
+  border-color: rgba(142, 45, 29, 0.58);
+  box-shadow: 0 0 0 4px rgba(142, 45, 29, 0.1);
+}
+
+.model-grid {
+  display: grid;
+  grid-template-columns: 1fr 110px;
+  gap: 12px;
+}
+
+.signals {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 28px;
+}
+
+.signals span {
+  padding: 9px 12px;
+  border: 1px solid rgba(25, 21, 15, 0.14);
+  border-radius: 999px;
+  background: rgba(255, 248, 235, 0.55);
+  color: #564838;
+  font-size: 13px;
+}
+
+.chat-panel {
+  height: min(820px, calc(100vh - 68px));
+  min-height: 620px;
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  border-radius: 18px 48px 18px 48px;
+  overflow: hidden;
+  animation: rise 700ms 120ms ease both;
+}
+
+.chat-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 24px 26px;
+  border-bottom: 1px solid var(--line);
+  background: rgba(20, 18, 15, 0.04);
+}
+
+.chat-header h2 {
+  margin: 5px 0 0;
+  font-size: 34px;
+  letter-spacing: -0.06em;
+}
+
+.status-dot {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.status-dot span {
+  width: 9px;
+  height: 9px;
+  border-radius: 999px;
+  background: #2fa56c;
+  box-shadow: 0 0 0 5px rgba(47, 165, 108, 0.14);
+}
+
+button {
+  border: 0;
+  border-radius: 999px;
+  color: #fff7e6;
+  background: var(--night);
+  cursor: pointer;
+  font: 700 14px/1 "Gill Sans", "Trebuchet MS", sans-serif;
+  letter-spacing: 0.08em;
+  transition: transform 180ms ease, box-shadow 180ms ease, background 180ms ease;
+}
+
+button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 14px 30px rgba(25, 21, 15, 0.22);
+  background: var(--lacquer);
+}
+
+#clear {
+  padding: 11px 16px;
+}
+
+.messages {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  padding: 24px;
+  overflow-y: auto;
+  scroll-behavior: smooth;
+}
+
+.message {
+  display: grid;
+  grid-template-columns: 42px minmax(0, 1fr);
+  gap: 12px;
+  align-items: start;
+  animation: messageIn 260ms ease both;
+}
+
+.message.user {
+  grid-template-columns: minmax(0, 1fr) 42px;
+}
+
+.message.user .avatar {
+  grid-column: 2;
+  background: var(--green);
+}
+
+.message.user .bubble {
+  grid-row: 1;
+  border-radius: 24px 8px 24px 24px;
+  background: rgba(31, 90, 74, 0.11);
+}
+
+.avatar {
+  width: 42px;
+  height: 42px;
+  display: grid;
+  place-items: center;
+  border-radius: 15px;
+  background: var(--lacquer);
+  color: #fff2db;
+  font-weight: 800;
+}
+
+.avatar::before {
+  content: "珅";
+}
+
+.message.user .avatar::before {
+  content: "你";
+}
+
+.bubble {
+  padding: 15px 17px;
+  border: 1px solid rgba(25, 21, 15, 0.12);
+  border-radius: 8px 24px 24px 24px;
+  background: rgba(255, 252, 244, 0.72);
+}
+
+.role {
+  margin-bottom: 7px;
+  color: var(--muted);
+  font: 700 11px/1 "Gill Sans", "Trebuchet MS", sans-serif;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.content {
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-size: 16px;
+  line-height: 1.75;
+}
+
+.composer {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 12px;
+  padding: 18px;
+  border-top: 1px solid var(--line);
+  background: rgba(248, 240, 227, 0.82);
+}
+
+.composer button {
+  min-width: 94px;
+  padding: 0 22px;
+}
+
+.thinking .content::after {
+  content: "▋";
+  margin-left: 2px;
+  animation: blink 900ms steps(2, start) infinite;
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(20px) scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes messageIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes blink {
+  50% {
+    opacity: 0;
+  }
+}
+
+@media (max-width: 860px) {
+  .shell {
+    grid-template-columns: 1fr;
+    padding: 16px 0;
+  }
+
+  .hero {
+    min-height: auto;
+    padding: 26px;
+  }
+
+  .chat-panel {
+    height: 78vh;
+    min-height: 560px;
+  }
+
+  .model-grid,
+  .composer {
+    grid-template-columns: 1fr;
+  }
+
+  .composer button {
+    min-height: 48px;
+  }
+}

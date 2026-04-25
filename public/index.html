@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>shen.skill mirror</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <main class="shell">
+      <section class="hero" aria-label="应用介绍">
+        <div class="brand-mark">珅</div>
+        <p class="eyebrow">private mirror / shen.skill</p>
+        <h1>和另一个“禹尧珅”对话。</h1>
+        <p class="lead">
+          一个先识别“你是谁”，再切换语气的网页人格镜像。适合复盘自己、让别人理解你，
+          也可以切到工作、朋友、亲密关系场景。
+        </p>
+
+        <div class="identity-card">
+          <label for="counterpart">对方是谁</label>
+          <input id="counterpart" placeholder="比如：我本人 / 老师 / 学姐 / 女朋友 / 朋友" />
+
+          <label for="scene">语气场景</label>
+          <select id="scene">
+            <option value="self">真我复盘：理性、短句、拆动机</option>
+            <option value="work">工作科研：严谨、清楚、可执行</option>
+            <option value="friend">朋友室友：松弛、接梗、嘴碎一点</option>
+            <option value="family">家人：简短、报备、让人放心</option>
+            <option value="relationship">亲密关系：软一点、会哄人</option>
+          </select>
+
+          <div class="model-grid">
+            <div>
+              <label for="model">模型</label>
+              <input id="model" value="Qwen/Qwen2.5-72B-Instruct" />
+            </div>
+            <div>
+              <label for="temperature">温度</label>
+              <input id="temperature" type="number" min="0" max="1.5" step="0.1" value="0.7" />
+            </div>
+          </div>
+        </div>
+
+        <div class="signals">
+          <span>生日 2005.08.06</span>
+          <span>同济 AI</span>
+          <span>项目驱动</span>
+          <span>先陪骂，再解决</span>
+        </div>
+      </section>
+
+      <section class="chat-panel" aria-label="聊天窗口">
+        <header class="chat-header">
+          <div>
+            <p class="status-dot"><span></span> skill loaded locally</p>
+            <h2>镜室</h2>
+          </div>
+          <button id="clear" type="button">清空</button>
+        </header>
+
+        <div id="messages" class="messages" aria-live="polite"></div>
+
+        <form id="composer" class="composer">
+          <textarea
+            id="prompt"
+            rows="2"
+            placeholder="先说一句：你是谁，或者直接把你想复盘的事丢进来。"
+          ></textarea>
+          <button type="submit">发送</button>
+        </form>
+      </section>
+    </main>
+
+    <template id="message-template">
+      <article class="message">
+        <div class="avatar"></div>
+        <div class="bubble">
+          <div class="role"></div>
+          <div class="content"></div>
+        </div>
+      </article>
+    </template>
+
+    <script src="/app.js" type="module"></script>
+  </body>
+</html>
