@@ -3,94 +3,92 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>shen.skill mirror</title>
+    <title>镜室 Mirror Room</title>
     <link rel="stylesheet" href="/styles.css" />
   </head>
   <body>
-    <main class="shell">
-      <section class="hero" aria-label="应用介绍">
-        <div class="brand-mark">珅</div>
-        <p class="eyebrow">private mirror / shen.skill</p>
-        <h1>和另一个“禹尧珅”对话。</h1>
-        <p class="lead">
-          先登录，再进入镜室。这个网页会读取项目内的 shen.skill，
-          用 SiliconFlow 模型回答；聊天前会先判断“你是谁”，再切换语气。
-        </p>
+    <main class="mirror-shell">
+      <header class="top-zone">
+        <section class="intro-card" aria-label="镜室介绍">
+          <p class="eyebrow">mirror room / skill console</p>
+          <h1>镜室</h1>
+          <p>
+            一个可扩展的人格 skill 对话台。先选择人物，再说明你的关系、语气场景与模型；
+            后续新增 skill 后，也会统一进入这个控制台。
+          </p>
+        </section>
 
-        <div class="auth-card" id="auth-card">
-          <div class="auth-topline">
-            <span id="auth-state">checking auth</span>
-            <button id="logout" type="button" class="ghost hidden">退出</button>
-          </div>
-          <div id="auth-form" class="auth-form">
-            <label for="email">邮箱</label>
-            <input id="email" type="email" autocomplete="email" placeholder="you@example.com" />
+        <nav class="dock" aria-label="对话控制台">
+          <button class="dock-item" data-modal="skill">
+            <span>对话对象</span>
+            <strong id="skill-label">禹尧珅</strong>
+          </button>
+          <button class="dock-item" data-modal="counterpart">
+            <span>你是谁</span>
+            <strong id="counterpart-label">未填写</strong>
+          </button>
+          <button class="dock-item" data-modal="scene">
+            <span>语气场景</span>
+            <strong id="scene-label">真我复盘</strong>
+          </button>
+          <button class="dock-item wide" data-modal="model">
+            <span>模型</span>
+            <strong id="model-label">Kimi-K2.6</strong>
+          </button>
+          <button class="dock-item compact" data-modal="temperature">
+            <span>温度</span>
+            <strong id="temperature-label">0.7</strong>
+          </button>
+          <button class="dock-item auth" data-modal="auth">
+            <span>账户</span>
+            <strong id="auth-label">登录 / 注册</strong>
+          </button>
+        </nav>
+      </header>
 
-            <label for="password">密码</label>
-            <input id="password" type="password" autocomplete="current-password" placeholder="至少 6 位" />
-
-            <div class="auth-actions">
-              <button id="login" type="button">登录</button>
-              <button id="signup" type="button" class="secondary">注册</button>
-            </div>
-            <p id="auth-hint" class="auth-hint">注册登录由 Supabase 托管，聊天 API 只接受已登录用户。</p>
-          </div>
-        </div>
-
-        <div class="identity-card">
-          <label for="counterpart">对方是谁</label>
-          <input id="counterpart" placeholder="比如：我本人 / 老师 / 学姐 / 女朋友 / 朋友" />
-
-          <label for="scene">语气场景</label>
-          <select id="scene">
-            <option value="self">真我复盘：理性、短句、拆动机</option>
-            <option value="work">工作科研：严谨、清楚、可执行</option>
-            <option value="friend">朋友室友：松弛、接梗、嘴碎一点</option>
-            <option value="family">家人：简短、报备、让人放心</option>
-            <option value="relationship">亲密关系：软一点、会哄人</option>
-          </select>
-
-          <div class="model-grid">
+      <section class="workspace">
+        <aside class="history-panel" aria-label="历史对话">
+          <div class="panel-head">
             <div>
-              <label for="model">模型</label>
-              <input id="model" value="Qwen/Qwen2.5-72B-Instruct" />
+              <p class="eyebrow">history</p>
+              <h2>历史对话</h2>
             </div>
+            <button id="new-chat" class="icon-button" type="button">新建</button>
+          </div>
+          <div id="conversation-list" class="conversation-list"></div>
+        </aside>
+
+        <section class="chat-panel" aria-label="对话详情">
+          <header class="chat-header">
             <div>
-              <label for="temperature">温度</label>
-              <input id="temperature" type="number" min="0" max="1.5" step="0.1" value="0.7" />
+              <p class="status-dot"><span></span> protected skill channel</p>
+              <h2 id="chat-title">新的镜室对话</h2>
             </div>
-          </div>
-        </div>
+            <button id="clear" type="button" class="ghost-button">清空当前</button>
+          </header>
 
-        <div class="signals">
-          <span>Supabase Auth</span>
-          <span>Netlify Functions</span>
-          <span>API key 后端隐藏</span>
-          <span>skills 可扩展</span>
-        </div>
-      </section>
+          <div id="messages" class="messages" aria-live="polite"></div>
 
-      <section class="chat-panel" aria-label="聊天窗口">
-        <header class="chat-header">
-          <div>
-            <p class="status-dot"><span></span> protected mirror</p>
-            <h2>镜室</h2>
-          </div>
-          <button id="clear" type="button">清空</button>
-        </header>
-
-        <div id="messages" class="messages" aria-live="polite"></div>
-
-        <form id="composer" class="composer">
-          <textarea
-            id="prompt"
-            rows="2"
-            placeholder="登录后开始。先说一句：你是谁，或者直接把想复盘的事丢进来。"
-          ></textarea>
-          <button type="submit">发送</button>
-        </form>
+          <form id="composer" class="composer">
+            <textarea
+              id="prompt"
+              rows="2"
+              placeholder="登录后开始。可以先说：我是你本人，想复盘一件事。"
+            ></textarea>
+            <button type="submit">发送</button>
+          </form>
+        </section>
       </section>
     </main>
+
+    <div id="modal-backdrop" class="modal-backdrop hidden" aria-hidden="true">
+      <section class="modal-card" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+        <button id="modal-close" class="modal-close" type="button" aria-label="关闭">×</button>
+        <p id="modal-kicker" class="eyebrow">setting</p>
+        <h2 id="modal-title">设置</h2>
+        <div id="modal-body" class="modal-body"></div>
+      </section>
+    </div>
 
     <template id="message-template">
       <article class="message">
