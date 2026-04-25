@@ -745,13 +745,18 @@ function splitAssistantReply(content) {
   const text = String(content || "").trim();
   if (text.length <= 260) return [text || ""];
 
-  const paragraphs = text
-    .split(/\n{2,}/)
+  const lineChunks = text
+    .split(/\n+/)
     .map(part => part.trim())
     .filter(Boolean);
-  const units = paragraphs.length > 1
-    ? paragraphs
-    : text.split(/(?<=[。！？!?；;])\s*/).map(part => part.trim()).filter(Boolean);
+
+  if (lineChunks.length > 1) {
+    return lineChunks.flatMap(chunk => splitLongChunk(chunk));
+  }
+
+  const units = text
+    ? text.split(/(?<=[。！？!?；;])\s*/).map(part => part.trim()).filter(Boolean)
+    : [];
 
   const chunks = [];
   let current = "";
@@ -767,14 +772,16 @@ function splitAssistantReply(content) {
   }
   if (current) chunks.push(current);
 
-  return chunks.flatMap(chunk => {
-    if (chunk.length <= 360) return [chunk];
-    const result = [];
-    for (let i = 0; i < chunk.length; i += 320) {
-      result.push(chunk.slice(i, i + 320));
-    }
-    return result;
-  });
+  return chunks.flatMap(splitLongChunk);
+}
+
+function splitLongChunk(chunk) {
+  if (chunk.length <= 360) return [chunk];
+  const result = [];
+  for (let i = 0; i < chunk.length; i += 320) {
+    result.push(chunk.slice(i, i + 320));
+  }
+  return result;
 }
 
 function openFeedbackModal(message, index, feedback) {
