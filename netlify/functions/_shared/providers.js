@@ -7,8 +7,6 @@ export const modelCatalog = [
   { provider: "siliconflow", model: "Pro/deepseek-ai/DeepSeek-V3.2", label: "DeepSeek-V3.2" },
   { provider: "deepseek", model: "deepseek-v4-flash", label: "DeepSeek v4 Flash" },
   { provider: "deepseek", model: "deepseek-v4-pro", label: "DeepSeek v4 Pro" },
-  { provider: "openrouter", model: "openai/gpt-5.5", label: "GPT-5.5" },
-  { provider: "openrouter", model: "anthropic/claude-opus-4.7", label: "Claude Opus 4.7" },
   { provider: "openrouter", model: "qwen/qwen3.6-plus", label: "Qwen3.6 Plus" }
 ];
 

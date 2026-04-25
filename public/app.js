@@ -25,8 +25,6 @@ const modelOptions = [
   { provider: "siliconflow", model: "Pro/deepseek-ai/DeepSeek-V3.2", label: "DeepSeek-V3.2", vendor: "SiliconFlow" },
   { provider: "deepseek", model: "deepseek-v4-flash", label: "DeepSeek v4 Flash", vendor: "DeepSeek" },
   { provider: "deepseek", model: "deepseek-v4-pro", label: "DeepSeek v4 Pro", vendor: "DeepSeek" },
-  { provider: "openrouter", model: "openai/gpt-5.5", label: "GPT-5.5", vendor: "OpenRouter" },
-  { provider: "openrouter", model: "anthropic/claude-opus-4.7", label: "Claude Opus 4.7", vendor: "OpenRouter" },
   { provider: "openrouter", model: "qwen/qwen3.6-plus", label: "Qwen3.6 Plus", vendor: "OpenRouter" }
 ];
 
@@ -710,12 +708,27 @@ function renderMessages() {
       if (message.pending) node.classList.add("thinking");
       if (chunkIndex > 0) node.classList.add("continued");
       node.querySelector(".role").textContent = message.role === "user" ? "you" : "mirror";
-      node.querySelector(".content").textContent = chunk;
+      renderMessageContent(node.querySelector(".content"), message.role, chunk);
       node.appendChild(renderMessageTools(message, index, chunk));
       dom.messages.appendChild(node);
     });
   });
   dom.messages.scrollTop = dom.messages.scrollHeight;
+}
+
+function renderMessageContent(target, role, content) {
+  if (role !== "assistant" || !window.marked || !window.DOMPurify) {
+    target.textContent = content;
+    return;
+  }
+
+  const rawHtml = window.marked.parse(content || "", {
+    breaks: true,
+    gfm: true
+  });
+  target.innerHTML = window.DOMPurify.sanitize(rawHtml, {
+    USE_PROFILES: { html: true }
+  });
 }
 
 function renderMessageTools(message, index, visibleContent = message.content) {
@@ -977,6 +990,10 @@ function normalizeSettingsForSkill(settings) {
   if (!skill.needsContext) {
     settings.counterpart = "";
     settings.scene = "self";
+  }
+  if (!findModel(settings.provider, settings.model)) {
+    settings.provider = "siliconflow";
+    settings.model = "Pro/moonshotai/Kimi-K2.6";
   }
   return settings;
 }

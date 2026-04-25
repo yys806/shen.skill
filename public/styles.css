@@ -17,6 +17,40 @@
   box-sizing: border-box;
 }
 
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(86, 24, 15, 0.42) rgba(255, 249, 237, 0.34);
+}
+
+*::-webkit-scrollbar {
+  width: 9px;
+  height: 9px;
+}
+
+*::-webkit-scrollbar-track {
+  background: rgba(255, 249, 237, 0.34);
+  border-radius: 999px;
+}
+
+*::-webkit-scrollbar-thumb {
+  min-height: 42px;
+  border: 2px solid rgba(255, 249, 237, 0.68);
+  border-radius: 999px;
+  background:
+    linear-gradient(180deg, rgba(143, 45, 28, 0.42), rgba(35, 93, 76, 0.36)),
+    rgba(86, 24, 15, 0.38);
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background:
+    linear-gradient(180deg, rgba(143, 45, 28, 0.66), rgba(35, 93, 76, 0.52)),
+    rgba(86, 24, 15, 0.56);
+}
+
+*::-webkit-scrollbar-button {
+  display: none;
+}
+
 body {
   min-height: 100vh;
   margin: 0;
@@ -423,6 +457,92 @@ button {
   word-break: break-word;
   font-size: 16px;
   line-height: 1.75;
+}
+
+.message.assistant .content {
+  white-space: normal;
+}
+
+.content > :first-child {
+  margin-top: 0;
+}
+
+.content > :last-child {
+  margin-bottom: 0;
+}
+
+.content p,
+.content ul,
+.content ol,
+.content blockquote,
+.content pre {
+  margin: 0 0 0.85em;
+}
+
+.content ul,
+.content ol {
+  padding-left: 1.35em;
+}
+
+.content li + li {
+  margin-top: 0.25em;
+}
+
+.content code {
+  padding: 0.12em 0.36em;
+  border: 1px solid rgba(27, 23, 18, 0.12);
+  border-radius: 7px;
+  background: rgba(255, 249, 237, 0.8);
+  color: var(--lacquer-dark);
+  font-family: "Cascadia Code", "SFMono-Regular", Consolas, monospace;
+  font-size: 0.9em;
+}
+
+.content pre {
+  overflow-x: auto;
+  padding: 13px 14px;
+  border: 1px solid rgba(27, 23, 18, 0.12);
+  border-radius: 14px;
+  background: rgba(25, 22, 17, 0.88);
+  color: #fff2db;
+}
+
+.content pre code {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+}
+
+.content blockquote {
+  padding: 0.2em 0 0.2em 0.9em;
+  border-left: 3px solid rgba(143, 45, 28, 0.46);
+  color: #4e4639;
+}
+
+.content a {
+  color: var(--green);
+  font-weight: 800;
+  text-decoration-color: rgba(35, 93, 76, 0.32);
+  text-underline-offset: 3px;
+}
+
+.content table {
+  width: 100%;
+  margin: 0 0 0.85em;
+  border-collapse: collapse;
+  overflow: hidden;
+  border-radius: 12px;
+}
+
+.content th,
+.content td {
+  padding: 8px 10px;
+  border: 1px solid rgba(27, 23, 18, 0.13);
+}
+
+.content th {
+  background: rgba(143, 45, 28, 0.1);
 }
 
 .message-tools {
