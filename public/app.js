@@ -387,8 +387,7 @@ function renderAuthModal() {
       <button id="logout-button" class="modal-primary danger" type="button">退出登录</button>
     `;
     dom.modalBody.querySelector("#logout-button").addEventListener("click", async () => {
-      await supabase.auth.signOut();
-      closeModal();
+      await performLogout();
     });
     return;
   }
@@ -831,6 +830,42 @@ async function saveFeedback(message, index, feedback) {
   message.absorbedAt = Date.now();
   persistAndRender();
   closeModal();
+}
+
+async function performLogout() {
+  const button = dom.modalBody.querySelector("#logout-button");
+  if (button) {
+    button.disabled = true;
+    button.textContent = "正在退出...";
+  }
+
+  session = null;
+  await switchUserState(null);
+  updateAuthState();
+  closeModal();
+
+  try {
+    await supabase?.auth.signOut({ scope: "global" });
+  } catch (error) {
+    console.warn("Global signOut failed, falling back to local cleanup.", error);
+  }
+
+  try {
+    await supabase?.auth.signOut({ scope: "local" });
+  } catch (error) {
+    console.warn("Local signOut failed, clearing auth storage directly.", error);
+  }
+
+  clearSupabaseAuthStorage();
+}
+
+function clearSupabaseAuthStorage() {
+  const keys = [];
+  for (let i = 0; i < localStorage.length; i += 1) {
+    const key = localStorage.key(i);
+    if (key && /^sb-.+-auth-token$/.test(key)) keys.push(key);
+  }
+  keys.forEach(key => localStorage.removeItem(key));
 }
 
 function updateAuthState() {
