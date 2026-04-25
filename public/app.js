@@ -325,12 +325,20 @@ async function testSelectedModel(button) {
     if (!response.ok || !data.ok) {
       throw new Error(formatError(data));
     }
+    button.classList.remove("failed");
+    button.classList.add("ok");
+    button.textContent = "可用";
     hint.textContent = `可用，延迟约 ${data.latencyMs}ms。`;
   } catch (error) {
+    button.classList.remove("ok");
+    button.classList.add("failed");
+    button.textContent = "失败";
     hint.textContent = `不可用：${error.message}`;
   } finally {
     button.disabled = false;
-    button.textContent = original;
+    if (!button.classList.contains("ok") && !button.classList.contains("failed")) {
+      button.textContent = original;
+    }
   }
 }
 

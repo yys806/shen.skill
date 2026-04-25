@@ -604,6 +604,14 @@ textarea:disabled {
   font-weight: 800;
 }
 
+.model-test.ok {
+  background: #1f8f5f;
+}
+
+.model-test.failed {
+  background: var(--lacquer);
+}
+
 .option-card {
   display: grid;
   gap: 8px;
