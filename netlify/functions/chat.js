@@ -62,8 +62,14 @@ async function handleChat(req) {
   }
 
   const skillPrompt = await loadSkillPrompt(skill);
+  const memories = await loadRecentMemories(req, authResult.user.id, skill);
   const systemPrompt = [
     skillPrompt,
+    "",
+    "## 已吸收的用户反馈记忆",
+    memories.length
+      ? memories.map((memory, index) => `${index + 1}. [${memory.feedback}] ${memory.comment}`).join("\n")
+      : "- 暂无。",
     "",
     "## 网页封装运行规则",
     "- 你正在作为所选 skill 的网页聊天人格运行。",
@@ -136,6 +142,35 @@ async function handleChat(req) {
     content,
     user: authResult.user?.email || authResult.user?.id || null
   });
+}
+
+async function loadRecentMemories(req, userId, skill) {
+  const supabaseUrl = getEnv("SUPABASE_URL", "https://gqhzwngzfoigzqndlbsq.supabase.co").replace(/\/$/, "");
+  const supabaseAnonKey = getEnv("SUPABASE_ANON_KEY");
+  const authorization = req.headers.get("authorization") || "";
+  const query = new URLSearchParams({
+    select: "feedback,comment,created_at",
+    user_id: `eq.${userId}`,
+    skill: `eq.${skill}`,
+    absorbed: "eq.true",
+    order: "created_at.desc",
+    limit: "8"
+  });
+
+  try {
+    const response = await fetch(`${supabaseUrl}/rest/v1/skill_memories?${query}`, {
+      headers: {
+        "apikey": supabaseAnonKey,
+        "Authorization": authorization,
+        "Accept": "application/json"
+      }
+    });
+    if (!response.ok) return [];
+    const data = await response.json().catch(() => []);
+    return Array.isArray(data) ? data : [];
+  } catch {
+    return [];
+  }
 }
 
 export const config = {

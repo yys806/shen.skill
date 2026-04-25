@@ -82,3 +82,33 @@ select
 from auth.users as users
 where nullif(trim(users.raw_user_meta_data ->> 'nickname'), '') is not null
 on conflict (id) do nothing;
+
+create table if not exists public.skill_memories (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users(id) on delete cascade,
+  skill text not null default 'shen.skill',
+  conversation_id text,
+  message_id text,
+  feedback text not null check (feedback in ('like', 'dislike')),
+  comment text,
+  user_message text,
+  assistant_message text,
+  settings jsonb not null default '{}'::jsonb,
+  absorbed boolean not null default false,
+  created_at timestamptz not null default now()
+);
+
+alter table public.skill_memories enable row level security;
+
+drop policy if exists "users can read own skill memories" on public.skill_memories;
+create policy "users can read own skill memories"
+on public.skill_memories for select
+using (auth.uid() = user_id);
+
+drop policy if exists "users can insert own skill memories" on public.skill_memories;
+create policy "users can insert own skill memories"
+on public.skill_memories for insert
+with check (auth.uid() = user_id);
+
+create index if not exists skill_memories_user_skill_created_idx
+on public.skill_memories (user_id, skill, created_at desc);

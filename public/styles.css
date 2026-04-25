@@ -421,6 +421,47 @@ button {
   line-height: 1.75;
 }
 
+.message-tools {
+  grid-column: 2;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: -4px;
+  color: var(--muted);
+  font-size: 12px;
+  opacity: 1;
+}
+
+.message.user .message-tools {
+  grid-column: 1;
+  justify-content: flex-end;
+  opacity: 0;
+  transition: opacity 160ms ease;
+}
+
+.message.user:hover .message-tools {
+  opacity: 1;
+}
+
+.message-tools button {
+  padding: 5px 9px;
+  border-radius: 999px;
+  color: var(--ink);
+  background: rgba(255, 252, 244, 0.7);
+  border: 1px solid rgba(27, 23, 18, 0.12);
+  font-size: 12px;
+}
+
+.message-tools button:hover {
+  color: #fff8e8;
+  background: var(--night);
+}
+
+.message-tools .absorbed {
+  color: var(--green);
+  font-weight: 800;
+}
+
 .composer {
   display: grid;
   grid-template-columns: 1fr auto;

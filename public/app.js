@@ -143,11 +143,11 @@ dom.form.addEventListener("submit", async event => {
 
   const conversation = getActiveConversation();
   dom.prompt.value = "";
-  conversation.messages.push({ role: "user", content });
+  conversation.messages.push(createMessage("user", content));
   if (conversation.title === "新的镜室对话") {
     conversation.title = content.slice(0, 18);
   }
-  const thinking = { role: "assistant", content: "我想一下。", pending: true };
+  const thinking = createMessage("assistant", "我想一下。", { pending: true });
   conversation.messages.push(thinking);
   persistAndRender();
 
@@ -169,11 +169,13 @@ dom.form.addEventListener("submit", async event => {
 
     thinking.pending = false;
     thinking.content = data.content || "我这边没拿到模型回复，可能是模型名或 API key 配置的问题。";
+    thinking.createdAt = Date.now();
     conversation.updatedAt = Date.now();
     persistAndRender();
   } catch (error) {
     thinking.pending = false;
     thinking.content = `这下卡住了：${error.message}\n\n先检查 Netlify 环境变量、Supabase 登录状态和模型名。`;
+    thinking.createdAt = Date.now();
     conversation.updatedAt = Date.now();
     persistAndRender();
   }
@@ -673,15 +675,116 @@ function renderMessages() {
   const conversation = getActiveConversation();
   dom.chatTitle.textContent = conversation.title || "新的镜室对话";
   dom.messages.innerHTML = "";
-  for (const message of conversation.messages) {
+  conversation.messages.forEach((message, index) => {
+    if (!message.id) message.id = crypto.randomUUID();
+    if (!message.createdAt) message.createdAt = Date.now();
     const node = dom.template.content.firstElementChild.cloneNode(true);
     node.classList.add(message.role);
     if (message.pending) node.classList.add("thinking");
     node.querySelector(".role").textContent = message.role === "user" ? "you" : "mirror";
     node.querySelector(".content").textContent = message.content;
+    node.appendChild(renderMessageTools(message, index));
     dom.messages.appendChild(node);
-  }
+  });
   dom.messages.scrollTop = dom.messages.scrollHeight;
+}
+
+function renderMessageTools(message, index) {
+  const tools = document.createElement("div");
+  tools.className = "message-tools";
+
+  if (message.role === "user") {
+    tools.innerHTML = `
+      <span>${formatTime(message.createdAt)}</span>
+      <button type="button" data-action="copy">复制</button>
+      <button type="button" data-action="edit">编辑</button>
+    `;
+  } else {
+    tools.innerHTML = `
+      <button type="button" data-action="copy">复制</button>
+      <button type="button" data-action="like">赞</button>
+      <button type="button" data-action="dislike">踩</button>
+      ${message.feedbackComment ? `<span class="absorbed">已吸收</span>` : ""}
+    `;
+  }
+
+  tools.querySelectorAll("button").forEach(button => {
+    button.addEventListener("click", () => handleMessageAction(message, index, button.dataset.action));
+  });
+
+  return tools;
+}
+
+function handleMessageAction(message, index, action) {
+  if (action === "copy") {
+    navigator.clipboard?.writeText(message.content);
+    return;
+  }
+
+  if (action === "edit") {
+    dom.prompt.value = message.content;
+    dom.prompt.focus();
+    return;
+  }
+
+  if (action === "like" || action === "dislike") {
+    openFeedbackModal(message, index, action);
+  }
+}
+
+function openFeedbackModal(message, index, feedback) {
+  setModalHead(feedback === "like" ? "positive feedback" : "negative feedback", feedback === "like" ? "这句哪里好" : "这句哪里不像");
+  dom.modalBody.innerHTML = `
+    <label for="feedback-comment">评论</label>
+    <textarea id="feedback-comment" rows="4" placeholder="写清楚你希望它吸收什么：语气、事实、边界、表达方式……"></textarea>
+    <button id="feedback-save" class="modal-primary" type="button">评论并吸收进 skill</button>
+  `;
+  dom.modalBackdrop.classList.remove("hidden");
+  dom.modalBackdrop.setAttribute("aria-hidden", "false");
+  dom.modalBody.querySelector("#feedback-save").addEventListener("click", () => saveFeedback(message, index, feedback));
+}
+
+async function saveFeedback(message, index, feedback) {
+  const textarea = dom.modalBody.querySelector("#feedback-comment");
+  const comment = textarea.value.trim();
+  if (!comment) {
+    textarea.placeholder = "要写评论才会吸收进 skill。";
+    textarea.focus();
+    return;
+  }
+
+  const conversation = getActiveConversation();
+  const previousUserMessage = findPreviousUserMessage(conversation.messages, index);
+
+  const response = await fetch("/api/memory", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization": `Bearer ${session.access_token}`
+    },
+    body: JSON.stringify({
+      skill: getActiveSettings().skill,
+      conversationId: conversation.id,
+      messageId: message.id,
+      feedback,
+      comment,
+      userMessage: previousUserMessage?.content || "",
+      assistantMessage: message.content,
+      settings: getActiveSettings()
+    })
+  });
+  const data = await parseResponse(response);
+  if (!response.ok || !data.ok) {
+    textarea.value = "";
+    textarea.placeholder = `吸收失败：${formatError(data)}`;
+    return;
+  }
+
+  message.feedback = feedback;
+  message.feedbackComment = comment;
+  message.absorbedAt = Date.now();
+  persistAndRender();
+  closeModal();
 }
 
 function updateAuthState() {
@@ -846,17 +949,40 @@ function hydrateAppSettingsFromConversation() {
 }
 
 function welcomeMessage() {
-  return {
-    role: "assistant",
-    content: "先登录，然后告诉我：你是谁？如果你是本人，我会按真我复盘来，不装、不长篇，直接帮你拆清楚。"
-  };
+  return createMessage("assistant", "先登录，然后告诉我：你是谁？如果你是本人，我会按真我复盘来，不装、不长篇，直接帮你拆清楚。");
 }
 
 function addSystemMessage(content) {
   const conversation = getActiveConversation();
-  conversation.messages.push({ role: "assistant", content });
+  conversation.messages.push(createMessage("assistant", content));
   conversation.updatedAt = Date.now();
   persistAndRender();
+}
+
+function createMessage(role, content, extra = {}) {
+  return {
+    id: crypto.randomUUID(),
+    role,
+    content,
+    createdAt: Date.now(),
+    ...extra
+  };
+}
+
+function formatTime(value) {
+  return new Date(value || Date.now()).toLocaleString("zh-CN", {
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit"
+  });
+}
+
+function findPreviousUserMessage(messages, index) {
+  for (let i = index - 1; i >= 0; i -= 1) {
+    if (messages[i]?.role === "user") return messages[i];
+  }
+  return null;
 }
 
 async function fetchJson(url) {
