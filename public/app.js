@@ -307,8 +307,8 @@ function renderAuthModal() {
     const isSignup = mode === "signup";
     dom.modalBody.querySelector("#auth-fields").innerHTML = `
       ${isSignup ? '<label for="nickname">昵称</label><input id="nickname" autocomplete="nickname" placeholder="你希望别人怎么叫你" />' : ""}
-      <label for="email">邮箱</label>
-      <input id="email" type="email" autocomplete="email" placeholder="you@example.com" />
+      <label for="email">${isSignup ? "邮箱" : "邮箱 / 昵称"}</label>
+      <input id="email" type="text" autocomplete="${isSignup ? "email" : "username"}" placeholder="${isSignup ? "you@example.com" : "you@example.com 或昵称"}" />
       <label for="password">密码</label>
       <input id="password" type="password" autocomplete="${isSignup ? "new-password" : "current-password"}" placeholder="大小写 + 数字 + 特殊符号" />
       ${isSignup ? '<label for="confirm-password">确认密码</label><input id="confirm-password" type="password" autocomplete="new-password" placeholder="再输入一次密码" />' : ""}
@@ -336,11 +336,13 @@ async function submitAuth(mode) {
     return;
   }
 
-  const email = dom.modalBody.querySelector("#email").value.trim();
+  const identifier = dom.modalBody.querySelector("#email").value.trim();
   const password = dom.modalBody.querySelector("#password").value;
 
   if (mode === "login") {
     setFeedback("登录中...");
+    const email = await resolveLoginEmail(identifier);
+    if (!email) return;
     const { error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) setFeedback(error.message);
     else closeModal();
@@ -348,11 +350,16 @@ async function submitAuth(mode) {
   }
 
   const nickname = dom.modalBody.querySelector("#nickname").value.trim();
+  const email = identifier;
   const confirmPassword = dom.modalBody.querySelector("#confirm-password").value;
   const passwordError = validatePassword(password, confirmPassword);
   if (!nickname) return setFeedback("昵称不能为空。");
   if (!email) return setFeedback("邮箱不能为空。");
+  if (!isEmail(email)) return setFeedback("注册时请输入有效邮箱。");
   if (passwordError) return setFeedback(passwordError);
+
+  const duplicate = await checkProfileDuplicate(nickname, email);
+  if (duplicate) return;
 
   setFeedback("注册中，成功后会自动登录...");
   const { data, error } = await supabase.auth.signUp({
@@ -363,7 +370,7 @@ async function submitAuth(mode) {
     }
   });
   if (error) {
-    setFeedback(error.message);
+    setFeedback(explainSignupError(error.message));
   } else if (data.session) {
     session = data.session;
     updateAuthState();
@@ -378,6 +385,73 @@ async function submitAuth(mode) {
     updateAuthState();
     closeModal();
   }
+}
+
+async function resolveLoginEmail(identifier) {
+  if (!identifier) {
+    setFeedback("邮箱或昵称不能为空。");
+    return "";
+  }
+  if (isEmail(identifier)) return identifier;
+
+  const { data, error } = await supabase
+    .from("profiles")
+    .select("email")
+    .eq("nickname_key", normalizeNickname(identifier))
+    .maybeSingle();
+
+  if (error) {
+    setFeedback(`昵称登录暂不可用：${error.message}`);
+    return "";
+  }
+  if (!data?.email) {
+    setFeedback("没有找到这个昵称。");
+    return "";
+  }
+  return data.email;
+}
+
+async function checkProfileDuplicate(nickname, email) {
+  const nicknameKey = normalizeNickname(nickname);
+  const { data, error } = await supabase
+    .from("profiles")
+    .select("nickname_key,email")
+    .or(`nickname_key.eq.${escapePostgrestValue(nicknameKey)},email.eq.${escapePostgrestValue(email)}`);
+
+  if (error) {
+    setFeedback(`无法检查昵称/邮箱是否重复：${error.message}`);
+    return true;
+  }
+
+  if (data?.some(profile => profile.nickname_key === nicknameKey)) {
+    setFeedback("这个昵称已经被注册了，换一个吧。");
+    return true;
+  }
+  if (data?.some(profile => String(profile.email).toLowerCase() === email.toLowerCase())) {
+    setFeedback("这个邮箱已经被注册了，直接登录就行。");
+    return true;
+  }
+  return false;
+}
+
+function normalizeNickname(nickname) {
+  return String(nickname || "").trim().toLowerCase();
+}
+
+function isEmail(value) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
+}
+
+function escapePostgrestValue(value) {
+  return String(value).replace(/["'(),]/g, "");
+}
+
+function explainSignupError(message) {
+  const lower = String(message || "").toLowerCase();
+  if (lower.includes("duplicate") || lower.includes("unique") || lower.includes("database")) {
+    return "注册失败：昵称或邮箱已经存在。";
+  }
+  return message;
 }
 
 function switchAuthTab(mode) {

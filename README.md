@@ -58,3 +58,18 @@ SHEN_SKILL_PATH
 ```text
 https://gqhzwngzfoigzqndlbsq.supabase.co
 ```
+
+## Supabase 用户资料表
+
+为了支持昵称唯一、邮箱唯一、昵称登录，需要在 Supabase SQL Editor 里执行：
+
+```text
+supabase/schema.sql
+```
+
+执行后：
+
+- 注册时 `nickname` 会自动写入 `public.profiles`。
+- `profiles.nickname_key` 唯一，避免昵称重复。
+- `profiles.email` 唯一，避免邮箱重复。
+- 登录框可以输入邮箱，也可以输入昵称。
