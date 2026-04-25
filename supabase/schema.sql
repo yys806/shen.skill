@@ -71,3 +71,14 @@ drop trigger if exists on_auth_user_created on auth.users;
 create trigger on_auth_user_created
 after insert on auth.users
 for each row execute function public.handle_new_user();
+
+-- Backfill existing users that were created before this trigger existed.
+insert into public.profiles (id, email, nickname, nickname_key)
+select
+  users.id,
+  users.email,
+  trim(users.raw_user_meta_data ->> 'nickname') as nickname,
+  lower(trim(users.raw_user_meta_data ->> 'nickname')) as nickname_key
+from auth.users as users
+where nullif(trim(users.raw_user_meta_data ->> 'nickname'), '') is not null
+on conflict (id) do nothing;

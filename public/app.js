@@ -48,10 +48,11 @@ const contextMenu = document.createElement("div");
 contextMenu.className = "context-menu hidden";
 document.body.appendChild(contextMenu);
 
-const stateKey = "mirror.room.state.v2";
+const stateKeyPrefix = "mirror.room.state.v2";
+let currentStateKey = `${stateKeyPrefix}:anon`;
 let supabase = null;
 let session = null;
-let appState = loadState();
+let appState = loadState(currentStateKey);
 
 renderAll();
 boot();
@@ -73,10 +74,14 @@ async function boot() {
     supabase = createClient(config.supabaseUrl, config.supabaseAnonKey);
     const { data } = await supabase.auth.getSession();
     session = data.session;
+    await switchUserState(session?.user || null);
+    await ensureCurrentUserProfile();
     updateAuthState();
 
-    supabase.auth.onAuthStateChange((_event, nextSession) => {
+    supabase.auth.onAuthStateChange(async (_event, nextSession) => {
       session = nextSession;
+      await switchUserState(session?.user || null);
+      await ensureCurrentUserProfile();
       updateAuthState();
     });
   } catch (error) {
@@ -343,9 +348,15 @@ async function submitAuth(mode) {
     setFeedback("登录中...");
     const email = await resolveLoginEmail(identifier);
     if (!email) return;
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) setFeedback(error.message);
-    else closeModal();
+    else {
+      session = data.session;
+      await switchUserState(session?.user || null);
+      await ensureCurrentUserProfile();
+      updateAuthState();
+      closeModal();
+    }
     return;
   }
 
@@ -373,6 +384,8 @@ async function submitAuth(mode) {
     setFeedback(explainSignupError(error.message));
   } else if (data.session) {
     session = data.session;
+    await switchUserState(session?.user || null);
+    await ensureCurrentUserProfile(nickname);
     updateAuthState();
     closeModal();
   } else {
@@ -382,8 +395,32 @@ async function submitAuth(mode) {
       return;
     }
     session = loginData.session;
+    await switchUserState(session?.user || null);
+    await ensureCurrentUserProfile(nickname);
     updateAuthState();
     closeModal();
+  }
+}
+
+async function ensureCurrentUserProfile(preferredNickname = "") {
+  if (!supabase || !session?.user) return;
+  const user = session.user;
+  const nickname = (preferredNickname || user.user_metadata?.nickname || "").trim();
+  if (!nickname || !user.email) return;
+
+  const profile = {
+    id: user.id,
+    email: user.email,
+    nickname,
+    nickname_key: normalizeNickname(nickname)
+  };
+
+  const { error } = await supabase
+    .from("profiles")
+    .upsert(profile, { onConflict: "id" });
+
+  if (error) {
+    console.warn("Failed to ensure profile", error);
   }
 }
 
@@ -588,9 +625,18 @@ function persistAndRender() {
   renderAll();
 }
 
-function loadState() {
+async function switchUserState(user) {
+  const nextKey = user?.id ? `${stateKeyPrefix}:user:${user.id}` : `${stateKeyPrefix}:anon`;
+  if (nextKey === currentStateKey) return;
+  saveState();
+  currentStateKey = nextKey;
+  appState = loadState(currentStateKey);
+  renderAll();
+}
+
+function loadState(storageKey = currentStateKey) {
   try {
-    const stored = JSON.parse(localStorage.getItem(stateKey) || "null");
+    const stored = JSON.parse(localStorage.getItem(storageKey) || "null");
     if (stored?.conversations?.length) return stored;
   } catch {
     // Ignore corrupted local state.
@@ -609,7 +655,7 @@ function loadState() {
 }
 
 function saveState() {
-  localStorage.setItem(stateKey, JSON.stringify(appState));
+  localStorage.setItem(currentStateKey, JSON.stringify(appState));
 }
 
 function ensureActiveConversation() {
