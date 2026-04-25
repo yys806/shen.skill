@@ -8,8 +8,11 @@ const fallbackPrompt = [
   "和用户本人对话时偏理性复盘；工作场景严谨；亲密关系可温柔；朋友场景可松弛。"
 ].join("\n");
 
-export async function loadSkillPrompt() {
-  const configuredPath = getEnv("SHEN_SKILL_PATH", "skills/shen.skill/SKILL.md");
+export async function loadSkillPrompt(skill = "shen.skill") {
+  const safeSkill = /^[a-zA-Z0-9._-]+$/.test(skill) ? skill : "shen.skill";
+  const configuredPath = safeSkill === "shen.skill"
+    ? getEnv("SHEN_SKILL_PATH", "skills/shen.skill/SKILL.md")
+    : `skills/${safeSkill}/SKILL.md`;
   const skillPath = path.isAbsolute(configuredPath)
     ? configuredPath
     : path.join(process.cwd(), configuredPath);

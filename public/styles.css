@@ -60,14 +60,14 @@ button {
   margin: 0 auto;
   display: grid;
   grid-template-rows: auto 1fr;
-  gap: 16px;
-  padding: 18px 0;
+  gap: 12px;
+  padding: 12px 0;
 }
 
 .top-zone {
   display: grid;
   grid-template-columns: minmax(260px, 0.78fr) minmax(600px, 1.5fr);
-  gap: 16px;
+  gap: 12px;
   align-items: stretch;
   animation: rise 600ms ease both;
 }
@@ -83,8 +83,8 @@ button {
 }
 
 .intro-card {
-  min-height: 134px;
-  padding: 20px 24px;
+  min-height: 96px;
+  padding: 14px 20px;
   border-radius: 30px 12px 30px 12px;
   overflow: hidden;
 }
@@ -98,8 +98,8 @@ button {
 }
 
 .intro-card h1 {
-  margin: 8px 0 6px;
-  font-size: clamp(42px, 5vw, 68px);
+  margin: 5px 0 4px;
+  font-size: clamp(34px, 4vw, 52px);
   line-height: 0.92;
   letter-spacing: -0.1em;
 }
@@ -108,16 +108,16 @@ button {
   max-width: 38em;
   margin: 0;
   color: #4e4639;
-  font-size: 15px;
-  line-height: 1.75;
+  font-size: 14px;
+  line-height: 1.55;
 }
 
 .dock {
-  min-height: 134px;
+  min-height: 96px;
   display: grid;
   grid-template-columns: repeat(6, minmax(0, 1fr));
-  gap: 10px;
-  padding: 12px;
+  gap: 8px;
+  padding: 8px;
   border-radius: 18px 36px 18px 36px;
 }
 
@@ -126,10 +126,10 @@ button {
   min-width: 0;
   flex-direction: column;
   justify-content: space-between;
-  gap: 18px;
-  padding: 16px;
+  gap: 8px;
+  padding: 12px 13px;
   border: 1px solid rgba(27, 23, 18, 0.12);
-  border-radius: 22px;
+  border-radius: 18px;
   color: var(--ink);
   background:
     linear-gradient(135deg, rgba(255, 253, 246, 0.88), rgba(234, 213, 177, 0.52)),
@@ -146,7 +146,7 @@ button {
 
 .dock-item span {
   color: var(--muted);
-  font: 700 11px/1 "Gill Sans", "Trebuchet MS", sans-serif;
+  font: 700 10px/1 "Gill Sans", "Trebuchet MS", sans-serif;
   letter-spacing: 0.15em;
   text-transform: uppercase;
 }
@@ -155,7 +155,7 @@ button {
   min-width: 0;
   overflow: hidden;
   color: var(--lacquer-dark);
-  font-size: 18px;
+  font-size: 15px;
   line-height: 1.15;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -174,8 +174,12 @@ button {
   min-height: 0;
   display: grid;
   grid-template-columns: minmax(260px, 330px) minmax(0, 1fr);
-  gap: 16px;
+  gap: 12px;
   animation: rise 600ms 90ms ease both;
+}
+
+.workspace.history-collapsed {
+  grid-template-columns: 88px minmax(0, 1fr);
 }
 
 .history-panel,
@@ -188,6 +192,27 @@ button {
   display: grid;
   grid-template-rows: auto 1fr;
   border-radius: 18px 18px 18px 34px;
+  transition: max-width 200ms ease, opacity 200ms ease;
+}
+
+.history-panel.collapsed .panel-head {
+  height: 100%;
+  align-content: start;
+  flex-direction: column;
+  justify-content: flex-start;
+  padding: 14px 10px;
+}
+
+.history-panel.collapsed .panel-head h2,
+.history-panel.collapsed .panel-head .eyebrow,
+.history-panel.collapsed #new-chat,
+.history-panel.collapsed .conversation-list {
+  display: none;
+}
+
+.history-panel.collapsed .history-actions {
+  display: grid;
+  width: 100%;
 }
 
 .panel-head,
@@ -196,7 +221,7 @@ button {
   align-items: center;
   justify-content: space-between;
   gap: 14px;
-  padding: 18px 20px;
+  padding: 15px 18px;
   border-bottom: 1px solid var(--line);
   background: rgba(20, 18, 15, 0.04);
 }
@@ -206,6 +231,12 @@ button {
   margin: 5px 0 0;
   font-size: 26px;
   letter-spacing: -0.05em;
+}
+
+.history-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
 }
 
 .icon-button,
@@ -222,6 +253,12 @@ button {
 .icon-button,
 .ghost-button {
   padding: 11px 15px;
+}
+
+.icon-button.subtle {
+  color: var(--ink);
+  background: rgba(255, 252, 244, 0.72);
+  border: 1px solid rgba(27, 23, 18, 0.12);
 }
 
 .icon-button:hover,
@@ -268,6 +305,14 @@ button {
   color: var(--muted);
   font-size: 13px;
   line-height: 1.5;
+}
+
+.conversation-item em {
+  color: var(--green);
+  font: 700 11px/1.2 "Gill Sans", "Trebuchet MS", sans-serif;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-style: normal;
 }
 
 .chat-panel {

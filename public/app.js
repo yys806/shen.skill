@@ -25,6 +25,9 @@ const dom = {
   prompt: document.querySelector("#prompt"),
   clear: document.querySelector("#clear"),
   newChat: document.querySelector("#new-chat"),
+  toggleHistory: document.querySelector("#toggle-history"),
+  workspace: document.querySelector(".workspace"),
+  historyPanel: document.querySelector(".history-panel"),
   conversationList: document.querySelector("#conversation-list"),
   chatTitle: document.querySelector("#chat-title"),
   template: document.querySelector("#message-template"),
@@ -52,8 +55,9 @@ boot();
 async function boot() {
   try {
     const config = await fetchJson("/api/config");
-    if (config.model && modelOptions.includes(config.model)) {
-      appState.model = config.model;
+    const settings = getActiveSettings();
+    if (config.model && modelOptions.includes(config.model) && !settings.model) {
+      applySetting("model", config.model, false);
     }
 
     if (!config.hasSupabase) {
@@ -97,6 +101,11 @@ dom.newChat.addEventListener("click", () => {
   persistAndRender();
 });
 
+dom.toggleHistory.addEventListener("click", () => {
+  appState.historyCollapsed = !appState.historyCollapsed;
+  persistAndRender();
+});
+
 dom.clear.addEventListener("click", () => {
   const conversation = getActiveConversation();
   conversation.messages = [welcomeMessage()];
@@ -134,11 +143,7 @@ dom.form.addEventListener("submit", async event => {
       },
       body: JSON.stringify({
         messages: conversation.messages.filter(message => !message.pending),
-        counterpart: appState.counterpart,
-        scene: appState.scene,
-        model: appState.model,
-        temperature: appState.temperature,
-        skill: appState.skill
+        ...getActiveSettings()
       })
     });
 
@@ -186,10 +191,11 @@ function closeModal() {
 
 function renderSkillModal() {
   setModalHead("choose skill", "选择你要和谁对话");
-  dom.modalBody.innerHTML = optionList(skillOptions, appState.skill);
+  const settings = getActiveSettings();
+  dom.modalBody.innerHTML = optionList(skillOptions, settings.skill);
   dom.modalBody.querySelectorAll("[data-option]").forEach(button => {
     button.addEventListener("click", () => {
-      appState.skill = button.dataset.option;
+      applySetting("skill", button.dataset.option);
       persistAndRender();
       closeModal();
     });
@@ -198,14 +204,15 @@ function renderSkillModal() {
 
 function renderCounterpartModal() {
   setModalHead("relationship", "你是他的谁");
+  const settings = getActiveSettings();
   dom.modalBody.innerHTML = `
     <label for="counterpart-input">关系 / 身份</label>
-    <input id="counterpart-input" value="${escapeHtml(appState.counterpart)}" placeholder="比如：我本人、老师、学姐、女朋友、朋友" />
+    <input id="counterpart-input" value="${escapeHtml(settings.counterpart)}" placeholder="比如：我本人、老师、学姐、女朋友、朋友" />
     <p class="field-help">这会影响 skill 的称呼、边界和说话方式。后续也可以在聊天里临时说明。</p>
     <button id="counterpart-save" class="modal-primary" type="button">保存</button>
   `;
   dom.modalBody.querySelector("#counterpart-save").addEventListener("click", () => {
-    appState.counterpart = dom.modalBody.querySelector("#counterpart-input").value.trim();
+    applySetting("counterpart", dom.modalBody.querySelector("#counterpart-input").value.trim());
     persistAndRender();
     closeModal();
   });
@@ -213,10 +220,11 @@ function renderCounterpartModal() {
 
 function renderSceneModal() {
   setModalHead("tone scene", "选择语气场景");
-  dom.modalBody.innerHTML = optionList(sceneOptions, appState.scene);
+  const settings = getActiveSettings();
+  dom.modalBody.innerHTML = optionList(sceneOptions, settings.scene);
   dom.modalBody.querySelectorAll("[data-option]").forEach(button => {
     button.addEventListener("click", () => {
-      appState.scene = button.dataset.option;
+      applySetting("scene", button.dataset.option);
       persistAndRender();
       closeModal();
     });
@@ -225,15 +233,16 @@ function renderSceneModal() {
 
 function renderModelModal() {
   setModalHead("model", "选择一个模型");
+  const settings = getActiveSettings();
   const options = modelOptions.map(value => ({
     id: value,
     name: value.replace(/^Pro\//, ""),
     description: value
   }));
-  dom.modalBody.innerHTML = optionList(options, appState.model);
+  dom.modalBody.innerHTML = optionList(options, settings.model);
   dom.modalBody.querySelectorAll("[data-option]").forEach(button => {
     button.addEventListener("click", () => {
-      appState.model = button.dataset.option;
+      applySetting("model", button.dataset.option);
       persistAndRender();
       closeModal();
     });
@@ -242,9 +251,10 @@ function renderModelModal() {
 
 function renderTemperatureModal() {
   setModalHead("temperature", "设置回复温度");
+  const settings = getActiveSettings();
   dom.modalBody.innerHTML = `
-    <div class="temperature-readout"><span id="temp-big">${appState.temperature.toFixed(1)}</span><small>越高越发散</small></div>
-    <input id="temp-input" type="range" min="0" max="1.5" step="0.1" value="${appState.temperature}" />
+    <div class="temperature-readout"><span id="temp-big">${settings.temperature.toFixed(1)}</span><small>越高越发散</small></div>
+    <input id="temp-input" type="range" min="0" max="1.5" step="0.1" value="${settings.temperature}" />
     <button id="temp-save" class="modal-primary" type="button">保存</button>
   `;
   const input = dom.modalBody.querySelector("#temp-input");
@@ -253,7 +263,7 @@ function renderTemperatureModal() {
     readout.textContent = Number(input.value).toFixed(1);
   });
   dom.modalBody.querySelector("#temp-save").addEventListener("click", () => {
-    appState.temperature = Number(input.value);
+    applySetting("temperature", Number(input.value));
     persistAndRender();
     closeModal();
   });
@@ -384,19 +394,24 @@ function setFeedback(text) {
 
 function renderAll() {
   ensureActiveConversation();
+  migrateConversationSettings();
   renderDock();
   renderHistory();
   renderMessages();
 }
 
 function renderDock() {
-  const skill = skillOptions.find(item => item.id === appState.skill) || skillOptions[0];
-  const scene = sceneOptions.find(item => item.id === appState.scene) || sceneOptions[0];
+  const settings = getActiveSettings();
+  const skill = skillOptions.find(item => item.id === settings.skill) || skillOptions[0];
+  const scene = sceneOptions.find(item => item.id === settings.scene) || sceneOptions[0];
   dom.skillLabel.textContent = skill.name;
-  dom.counterpartLabel.textContent = appState.counterpart || "未填写";
+  dom.counterpartLabel.textContent = settings.counterpart || "未填写";
   dom.sceneLabel.textContent = scene.name;
-  dom.modelLabel.textContent = appState.model.replace(/^Pro\/(?:moonshotai\/|zai-org\/|MiniMaxAI\/|deepseek-ai\/)/, "");
-  dom.temperatureLabel.textContent = appState.temperature.toFixed(1);
+  dom.modelLabel.textContent = settings.model.replace(/^Pro\/(?:moonshotai\/|zai-org\/|MiniMaxAI\/|deepseek-ai\/)/, "");
+  dom.temperatureLabel.textContent = settings.temperature.toFixed(1);
+  dom.workspace.classList.toggle("history-collapsed", Boolean(appState.historyCollapsed));
+  dom.historyPanel.classList.toggle("collapsed", Boolean(appState.historyCollapsed));
+  dom.toggleHistory.textContent = appState.historyCollapsed ? "展开" : "折叠";
   updateAuthState();
 }
 
@@ -405,9 +420,11 @@ function renderHistory() {
   dom.conversationList.innerHTML = sorted.map(conversation => {
     const active = conversation.id === appState.activeConversationId ? "active" : "";
     const last = conversation.messages.at(-1)?.content || "空白对话";
+    const scene = sceneOptions.find(item => item.id === conversation.settings?.scene)?.name || "真我复盘";
     return `
       <button class="conversation-item ${active}" data-id="${conversation.id}" type="button">
         <strong>${escapeHtml(conversation.title || "新的镜室对话")}</strong>
+        <em>${escapeHtml(scene)} · ${escapeHtml(conversation.settings?.counterpart || "未填写身份")}</em>
         <span>${escapeHtml(last.slice(0, 42))}</span>
       </button>
     `;
@@ -415,6 +432,7 @@ function renderHistory() {
   dom.conversationList.querySelectorAll("[data-id]").forEach(button => {
     button.addEventListener("click", () => {
       appState.activeConversationId = button.dataset.id;
+      hydrateAppSettingsFromConversation();
       persistAndRender();
     });
   });
@@ -488,13 +506,14 @@ function loadState() {
   } catch {
     // Ignore corrupted local state.
   }
-  const firstConversation = createConversation(false);
+  const firstConversation = createConversation(false, defaultSettings());
   return {
     skill: "shen.skill",
     counterpart: "",
     scene: "self",
     model: "Pro/moonshotai/Kimi-K2.6",
     temperature: 0.7,
+    historyCollapsed: false,
     activeConversationId: firstConversation.id,
     conversations: [firstConversation]
   };
@@ -512,12 +531,21 @@ function ensureActiveConversation() {
   }
 }
 
-function createConversation(push = true) {
+function migrateConversationSettings() {
+  for (const conversation of appState.conversations) {
+    if (!conversation.settings) {
+      conversation.settings = defaultSettings();
+    }
+  }
+}
+
+function createConversation(push = true, settings = null) {
   const conversation = {
     id: crypto.randomUUID(),
     title: "新的镜室对话",
     createdAt: Date.now(),
     updatedAt: Date.now(),
+    settings: { ...(settings || getCurrentGlobalSettings()) },
     messages: [welcomeMessage()]
   };
   if (push) appState.conversations.unshift(conversation);
@@ -527,6 +555,49 @@ function createConversation(push = true) {
 function getActiveConversation() {
   ensureActiveConversation();
   return appState.conversations.find(item => item.id === appState.activeConversationId);
+}
+
+function getActiveSettings() {
+  const conversation = getActiveConversation();
+  if (!conversation.settings) conversation.settings = defaultSettings();
+  return conversation.settings;
+}
+
+function getCurrentGlobalSettings() {
+  return {
+    skill: appState?.skill || "shen.skill",
+    counterpart: appState?.counterpart || "",
+    scene: appState?.scene || "self",
+    model: appState?.model || "Pro/moonshotai/Kimi-K2.6",
+    temperature: Number(appState?.temperature ?? 0.7)
+  };
+}
+
+function defaultSettings() {
+  return {
+    skill: "shen.skill",
+    counterpart: "",
+    scene: "self",
+    model: "Pro/moonshotai/Kimi-K2.6",
+    temperature: 0.7
+  };
+}
+
+function applySetting(key, value, markUpdated = true) {
+  const conversation = getActiveConversation();
+  if (!conversation.settings) conversation.settings = defaultSettings();
+  conversation.settings[key] = value;
+  appState[key] = value;
+  if (markUpdated) conversation.updatedAt = Date.now();
+}
+
+function hydrateAppSettingsFromConversation() {
+  const settings = getActiveSettings();
+  appState.skill = settings.skill;
+  appState.counterpart = settings.counterpart;
+  appState.scene = settings.scene;
+  appState.model = settings.model;
+  appState.temperature = settings.temperature;
 }
 
 function welcomeMessage() {

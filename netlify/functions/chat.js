@@ -4,6 +4,14 @@ import { loadSkillPrompt } from "./_shared/skill.js";
 
 const SILICONFLOW_URL = "https://api.siliconflow.cn/v1/chat/completions";
 
+const sceneInstructions = {
+  self: "当前语气场景是真我复盘：默认理性、短句、拆动机、拆情绪触发点、拆下一步，不要亲密关系口吻。",
+  work: "当前语气场景是工作科研：严谨、清楚、可执行，优先给结构化判断、风险、下一步。",
+  friend: "当前语气场景是朋友室友：更松弛，可以接梗和吐槽，但不要失去解决问题的方向。",
+  family: "当前语气场景是家人：简短、报备、让人放心，少讲大道理。",
+  relationship: "当前语气场景是亲密关系：更软、更会哄人，但仍然尊重边界和真实情绪。"
+};
+
 export default async (req) => {
   if (req.method !== "POST") {
     return json({ error: "Method not allowed" }, 405);
@@ -26,26 +34,29 @@ export default async (req) => {
   const messages = Array.isArray(body.messages) ? body.messages : [];
   const counterpart = cleanText(body.counterpart || "");
   const scene = cleanText(body.scene || "self");
+  const skill = cleanText(body.skill || "shen.skill");
   const temperature = clamp(Number(body.temperature ?? 0.72), 0, 1.5);
-  const model = cleanText(body.model || getEnv("SILICONFLOW_MODEL", "Qwen/Qwen2.5-72B-Instruct"));
+  const model = cleanText(body.model || getEnv("SILICONFLOW_MODEL", "Pro/moonshotai/Kimi-K2.6"));
 
   if (!messages.length) {
     return json({ error: "messages is required" }, 400);
   }
 
-  const skillPrompt = await loadSkillPrompt();
+  const skillPrompt = await loadSkillPrompt(skill);
   const systemPrompt = [
     skillPrompt,
     "",
     "## 网页封装运行规则",
-    "- 你正在作为 shen.skill 的网页聊天人格运行。",
+    "- 你正在作为所选 skill 的网页聊天人格运行。",
+    "- Dock 栏里的选择是强约束，不是装饰；必须按当前对话设置执行。",
     "- 回答要短，不要 AI 长篇；先像人一样接住，再给判断或建议。",
-    "- 如果对方身份不明确，先问一句“你是谁/你现在希望我按谁的语气来回？”再深入。",
-    "- 不要声称自己真的就是禹尧珅本人；你是基于 shen.skill 的人格镜像。",
+    "- 不要声称自己真的就是某个现实本人；你是基于 skill 的人格镜像。",
+    `- 当前 skill：${skill}`,
     `- 当前登录用户：${authResult.user?.email || authResult.user?.id || "unknown"}`,
-    `- 当前前端选择的对话对象：${counterpart || "未填写"}`,
-    `- 当前前端选择的场景：${scene}`,
-    "- 如果用户在消息里显式改变身份或场景，以用户最新消息为准。"
+    `- 当前对话对象关系：${counterpart || "未填写；如身份影响很大，先问对方是谁。"}`,
+    `- 当前语气场景：${scene}`,
+    `- 场景执行说明：${sceneInstructions[scene] || sceneInstructions.self}`,
+    "- 如果用户在消息里显式改变身份或场景，以用户最新消息为准，但回答时要说明你已按新场景切换。"
   ].join("\n");
 
   const response = await fetch(SILICONFLOW_URL, {
