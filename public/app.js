@@ -128,7 +128,7 @@ dom.toggleHistory.addEventListener("click", () => {
 
 dom.clear.addEventListener("click", () => {
   const conversation = getActiveConversation();
-  conversation.messages = [welcomeMessage()];
+  conversation.messages = [];
   conversation.title = "新的镜室对话";
   persistAndRender();
 });
@@ -686,6 +686,15 @@ function renderMessages() {
   const conversation = getActiveConversation();
   dom.chatTitle.textContent = conversation.title || "新的镜室对话";
   dom.messages.innerHTML = "";
+  if (!conversation.messages.length) {
+    dom.messages.innerHTML = `
+      <section class="empty-state" aria-label="镜室介绍">
+        <h2>镜室</h2>
+        <p>一个可扩展的 skill 对话台。先选择要启用的 skill，再选择模型与温度；</p>
+      </section>
+    `;
+    return;
+  }
   conversation.messages.forEach((message, index) => {
     if (!message.id) message.id = crypto.randomUUID();
     if (!message.createdAt) message.createdAt = Date.now();
@@ -911,7 +920,7 @@ function createConversation(push = true, settings = null) {
     createdAt: Date.now(),
     updatedAt: Date.now(),
     settings: { ...(settings || getCurrentGlobalSettings()) },
-    messages: [welcomeMessage()]
+    messages: []
   };
   if (push) appState.conversations.unshift(conversation);
   return conversation;
@@ -996,14 +1005,6 @@ function hydrateAppSettingsFromConversation() {
   appState.provider = settings.provider;
   appState.model = settings.model;
   appState.temperature = settings.temperature;
-}
-
-function welcomeMessage() {
-  const skill = findSkill(appState?.skill || "shen.skill");
-  if (!skill.needsContext) {
-    return createMessage("assistant", `已切到${skill.name}。选好模型和温度后，直接把问题丢过来。`);
-  }
-  return createMessage("assistant", "先登录，然后告诉我：你是谁？如果你是本人，我会按真我复盘来，不装、不长篇，直接帮你拆清楚。");
 }
 
 function addSystemMessage(content) {
