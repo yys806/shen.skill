@@ -19,9 +19,9 @@
           <strong>镜室</strong>
         </a>
         <div class="home-nav-links">
-          <a href="#skills">Skill</a>
-          <a href="#memory">Memory</a>
-          <a href="#use">Use</a>
+          <a href="#skills" data-section="skills">Skill</a>
+          <a href="#memory" data-section="memory">Memory</a>
+          <a href="#use" data-section="use">Use</a>
         </div>
         <a class="home-nav-action" href="/chat">进入 /chat</a>
       </nav>
@@ -73,6 +73,22 @@
         <span>用户隔离</span>
       </section>
 
+      <section class="home-section" id="skills">
+        <div class="section-head">
+          <p class="home-kicker">skill library</p>
+          <h2>一间镜室，很多种脑子。</h2>
+        </div>
+        <div class="home-skill-grid">
+          <article><strong>禹尧珅</strong><span>真我复盘 / 协作 / 关系理解</span></article>
+          <article><strong>毛选</strong><span>矛盾分析 / 战略判断</span></article>
+          <article><strong>八字</strong><span>四柱命理 / 结构化推演</span></article>
+          <article><strong>乔布斯</strong><span>产品审美 / 极致取舍</span></article>
+          <article><strong>马斯克</strong><span>第一性原理 / 工程压强</span></article>
+          <article><strong>芒格</strong><span>多元模型 / 反向思考</span></article>
+          <article><strong>峰哥亡命天涯</strong><span>现实去魅 / 黑色幽默</span></article>
+        </div>
+      </section>
+
       <section class="home-section split" id="memory">
         <div>
           <p class="home-kicker">why mirror room</p>
@@ -94,22 +110,6 @@
             <h3>反馈能沉淀</h3>
             <p>点赞、反赞、评论会变成记忆，让 skill 逐渐贴近你要的判断和表达。</p>
           </article>
-        </div>
-      </section>
-
-      <section class="home-section" id="skills">
-        <div class="section-head">
-          <p class="home-kicker">skill library</p>
-          <h2>一间镜室，很多种脑子。</h2>
-        </div>
-        <div class="home-skill-grid">
-          <article><strong>禹尧珅</strong><span>真我复盘 / 协作 / 关系理解</span></article>
-          <article><strong>毛选</strong><span>矛盾分析 / 战略判断</span></article>
-          <article><strong>八字</strong><span>四柱命理 / 结构化推演</span></article>
-          <article><strong>乔布斯</strong><span>产品审美 / 极致取舍</span></article>
-          <article><strong>马斯克</strong><span>第一性原理 / 工程压强</span></article>
-          <article><strong>芒格</strong><span>多元模型 / 反向思考</span></article>
-          <article><strong>峰哥亡命天涯</strong><span>现实去魅 / 黑色幽默</span></article>
         </div>
       </section>
 
@@ -145,15 +145,44 @@
       </section>
     </main>
     <script>
+      const sectionLinks = [...document.querySelectorAll(".home-nav-links a[data-section]")];
+      const sections = sectionLinks
+        .map(link => document.getElementById(link.dataset.section))
+        .filter(Boolean);
+
+      function setActiveSection(id) {
+        sectionLinks.forEach(link => {
+          link.classList.toggle("active", link.dataset.section === id);
+        });
+      }
+
       document.querySelectorAll('a[href^="#"]').forEach(link => {
         link.addEventListener("click", event => {
           const target = document.querySelector(link.getAttribute("href"));
           if (!target) return;
           event.preventDefault();
+          if (link.dataset.section) setActiveSection(link.dataset.section);
           target.scrollIntoView({ behavior: "smooth", block: "start" });
           history.pushState(null, "", link.getAttribute("href"));
         });
       });
+
+      const observer = new IntersectionObserver(entries => {
+        const visible = entries
+          .filter(entry => entry.isIntersecting)
+          .sort((a, b) => b.intersectionRatio - a.intersectionRatio)[0];
+        if (visible?.target?.id) setActiveSection(visible.target.id);
+      }, {
+        rootMargin: "-32% 0px -52% 0px",
+        threshold: [0.12, 0.28, 0.48]
+      });
+
+      sections.forEach(section => observer.observe(section));
+      if (location.hash && document.querySelector(location.hash)) {
+        setActiveSection(location.hash.slice(1));
+      } else {
+        setActiveSection("skills");
+      }
     </script>
   </body>
 </html>

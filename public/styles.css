@@ -115,6 +115,12 @@ body.home-page::after {
   background: rgba(255, 252, 244, 0.72);
 }
 
+.home-nav-links a.active {
+  color: #fff8e8;
+  background: linear-gradient(135deg, var(--night), var(--lacquer-dark));
+  box-shadow: 0 10px 22px rgba(86, 24, 15, 0.18);
+}
+
 .home-nav-action {
   justify-self: end;
   padding: 13px 18px;
