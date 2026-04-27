@@ -212,15 +212,18 @@ Stay hungry. Stay foolish.`]
         if (!target) return;
         const dialogue = terminalDialogues[Math.floor(Math.random() * terminalDialogues.length)];
         target.innerHTML = "";
-        dialogue.forEach(([role, content]) => {
-          const article = document.createElement("article");
-          article.className = `terminal-line ${role === "YOU" ? "user-line" : "mirror-line"}`;
-          const label = document.createElement("small");
-          label.textContent = role;
-          const text = document.createElement("p");
-          text.textContent = content;
-          article.append(label, text);
-          target.appendChild(article);
+        dialogue.forEach(([role, content], index) => {
+          window.setTimeout(() => {
+            const article = document.createElement("article");
+            article.className = `terminal-line ${role === "YOU" ? "user-line" : "mirror-line"}`;
+            const label = document.createElement("small");
+            label.textContent = role;
+            const text = document.createElement("p");
+            text.textContent = content;
+            article.append(label, text);
+            target.appendChild(article);
+            target.scrollTop = target.scrollHeight;
+          }, index * 900);
         });
       }
 

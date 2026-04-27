@@ -334,6 +334,16 @@ body.home-page::after {
   scroll-behavior: smooth;
 }
 
+.terminal-dialogue {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.terminal-dialogue::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+}
+
 .terminal-line {
   width: min(94%, 560px);
   padding: 14px 16px;
