@@ -976,6 +976,28 @@ body.home-page::after {
   background: var(--night);
 }
 
+.admin-tools {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 18px;
+}
+
+.admin-tools.hidden {
+  display: none;
+}
+
+.admin-tools select,
+.admin-tools input {
+  width: min(360px, 100%);
+  border: 1px solid rgba(27, 23, 18, 0.12);
+  border-radius: 999px;
+  padding: 13px 16px;
+  color: var(--ink);
+  background: rgba(255, 252, 244, 0.72);
+  font: inherit;
+  font-weight: 800;
+}
+
 .submission-item,
 .submission-empty,
 .user-admin-item {
@@ -1017,6 +1039,18 @@ body.home-page::after {
   background: #0f1110;
 }
 
+.submission-item .status-running {
+  background: #bf8a35;
+}
+
+.submission-item .status-done {
+  background: #235d4c;
+}
+
+.submission-item .status-failed {
+  background: #8f2d1c;
+}
+
 .submission-item h2 {
   margin: 0 0 8px;
   font-size: 30px;
@@ -1027,6 +1061,52 @@ body.home-page::after {
   margin: 0;
   color: var(--muted);
   line-height: 1.65;
+}
+
+.submission-item details {
+  margin-top: 12px;
+}
+
+.submission-item summary {
+  color: var(--lacquer);
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.submission-meta {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 8px 14px;
+  margin: 14px 0 0;
+  color: var(--muted);
+}
+
+.submission-meta dt {
+  color: var(--green);
+  font-weight: 900;
+}
+
+.submission-meta dd {
+  margin: 0;
+  word-break: break-all;
+}
+
+.review-note {
+  display: grid;
+  gap: 8px;
+  margin-top: 16px;
+  font-weight: 900;
+}
+
+.review-note textarea {
+  width: 100%;
+  border: 1px solid rgba(27, 23, 18, 0.12);
+  border-radius: 18px;
+  padding: 12px 14px;
+  color: var(--ink);
+  background: rgba(255, 252, 244, 0.62);
+  font: inherit;
+  resize: vertical;
 }
 
 .submission-item aside {
@@ -1196,6 +1276,49 @@ body.home-page::after {
   width: 100%;
   border-radius: 18px;
   border: 1px solid rgba(27, 23, 18, 0.1);
+}
+
+.legal-panel,
+.error-panel {
+  display: grid;
+  gap: 20px;
+  padding: clamp(28px, 6vw, 68px);
+  border: 1px solid rgba(27, 23, 18, 0.12);
+  border-radius: 38px;
+  background:
+    radial-gradient(circle at 84% 12%, rgba(35, 93, 76, 0.2), transparent 18rem),
+    rgba(255, 249, 237, 0.68);
+  box-shadow: 0 30px 90px rgba(45, 29, 9, 0.16);
+}
+
+.legal-panel h1,
+.error-panel h1 {
+  max-width: 820px;
+  margin: 0;
+  font-size: clamp(46px, 8vw, 96px);
+  line-height: 0.92;
+  letter-spacing: -0.12em;
+}
+
+.legal-panel article {
+  padding: 22px;
+  border: 1px solid rgba(27, 23, 18, 0.1);
+  border-radius: 24px;
+  background: rgba(255, 252, 244, 0.56);
+}
+
+.legal-panel h2 {
+  margin: 0 0 10px;
+  font-size: 28px;
+  letter-spacing: -0.06em;
+}
+
+.legal-panel p,
+.error-panel p {
+  max-width: 760px;
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.75;
 }
 
 @media (max-width: 1040px) {

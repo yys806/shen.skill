@@ -28,9 +28,23 @@
         <div class="admin-tabs" role="tablist" aria-label="后台功能">
           <button class="active" data-admin-tab="submissions" type="button">Skill 审批</button>
           <button data-admin-tab="users" type="button">用户管理</button>
+          <button data-admin-tab="publish" type="button">发布任务</button>
+        </div>
+        <div id="submission-tools" class="admin-tools">
+          <select id="status-filter" aria-label="按审核状态筛选">
+            <option value="all">全部状态</option>
+            <option value="pending">待审核</option>
+            <option value="approved">已通过</option>
+            <option value="rejected">已拒绝</option>
+            <option value="published">已发布</option>
+          </select>
+        </div>
+        <div id="user-tools" class="admin-tools hidden">
+          <input id="user-search" type="search" placeholder="搜索邮箱或昵称" />
         </div>
         <div id="submission-list" class="submission-list"></div>
         <div id="user-list" class="submission-list hidden"></div>
+        <div id="publish-list" class="submission-list hidden"></div>
       </section>
     </main>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>

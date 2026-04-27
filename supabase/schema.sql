@@ -121,9 +121,13 @@ create table if not exists public.skill_submissions (
   repo_url text not null,
   description text not null,
   status text not null default 'pending' check (status in ('pending', 'approved', 'rejected', 'published')),
+  review_note text,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
+
+alter table public.skill_submissions
+add column if not exists review_note text;
 
 alter table public.skill_submissions enable row level security;
 
@@ -156,3 +160,70 @@ with check (
 
 create index if not exists skill_submissions_created_idx
 on public.skill_submissions (created_at desc);
+
+create table if not exists public.skill_publish_tasks (
+  id uuid primary key default gen_random_uuid(),
+  submission_id uuid not null references public.skill_submissions(id) on delete cascade,
+  repo_url text not null,
+  skill_name text not null,
+  status text not null default 'pending' check (status in ('pending', 'running', 'done', 'failed')),
+  created_by_email citext not null,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+alter table public.skill_publish_tasks enable row level security;
+
+drop trigger if exists skill_publish_tasks_set_updated_at on public.skill_publish_tasks;
+create trigger skill_publish_tasks_set_updated_at
+before update on public.skill_publish_tasks
+for each row execute function public.set_updated_at();
+
+drop policy if exists "admins can read skill publish tasks" on public.skill_publish_tasks;
+create policy "admins can read skill publish tasks"
+on public.skill_publish_tasks for select
+using (
+  lower(coalesce((auth.jwt() ->> 'email'), '')) = '3492675568@qq.com'
+);
+
+drop policy if exists "admins can insert skill publish tasks" on public.skill_publish_tasks;
+create policy "admins can insert skill publish tasks"
+on public.skill_publish_tasks for insert
+with check (
+  lower(coalesce((auth.jwt() ->> 'email'), '')) = '3492675568@qq.com'
+);
+
+drop policy if exists "admins can update skill publish tasks" on public.skill_publish_tasks;
+create policy "admins can update skill publish tasks"
+on public.skill_publish_tasks for update
+using (
+  lower(coalesce((auth.jwt() ->> 'email'), '')) = '3492675568@qq.com'
+)
+with check (
+  lower(coalesce((auth.jwt() ->> 'email'), '')) = '3492675568@qq.com'
+);
+
+create index if not exists skill_publish_tasks_created_idx
+on public.skill_publish_tasks (created_at desc);
+
+create table if not exists public.request_events (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users(id) on delete cascade,
+  event_type text not null,
+  created_at timestamptz not null default now()
+);
+
+alter table public.request_events enable row level security;
+
+drop policy if exists "users can insert own request events" on public.request_events;
+create policy "users can insert own request events"
+on public.request_events for insert
+with check (auth.uid() = user_id);
+
+drop policy if exists "users can read own request events" on public.request_events;
+create policy "users can read own request events"
+on public.request_events for select
+using (auth.uid() = user_id);
+
+create index if not exists request_events_user_type_created_idx
+on public.request_events (user_id, event_type, created_at desc);

@@ -20,6 +20,7 @@ export default async (req) => {
     const body = await req.json().catch(() => ({}));
     const id = String(body.id || "").trim();
     const status = String(body.status || "").trim();
+    const reviewNote = String(body.reviewNote || "").trim().slice(0, 2000);
     if (!/^[0-9a-f-]{36}$/i.test(id)) {
       return json({ error: "Invalid id", detail: "提交记录 ID 不正确。" }, 400);
     }
@@ -27,7 +28,7 @@ export default async (req) => {
       return json({ error: "Invalid status", detail: "状态只能是 pending / approved / rejected / published。" }, 400);
     }
 
-    const result = await updateSubmission(authResult.authorization, id, status);
+    const result = await updateSubmission(authResult.authorization, id, { status, review_note: reviewNote });
     if (!result.ok) {
       return json({ error: "Submission update failed", detail: result.detail }, 500);
     }
@@ -51,7 +52,7 @@ async function listSubmissions(authorization) {
   const supabaseUrl = getEnv("SUPABASE_URL", "https://gqhzwngzfoigzqndlbsq.supabase.co").replace(/\/$/, "");
   const supabaseAnonKey = getEnv("SUPABASE_ANON_KEY");
   const query = new URLSearchParams({
-    select: "id,user_id,submitter_email,name,repo_url,description,status,created_at",
+    select: "id,user_id,submitter_email,name,repo_url,description,status,review_note,created_at,updated_at",
     order: "created_at.desc"
   });
 
@@ -73,7 +74,7 @@ async function listSubmissions(authorization) {
   }
 }
 
-async function updateSubmission(authorization, id, status) {
+async function updateSubmission(authorization, id, payload) {
   const supabaseUrl = getEnv("SUPABASE_URL", "https://gqhzwngzfoigzqndlbsq.supabase.co").replace(/\/$/, "");
   const supabaseAnonKey = getEnv("SUPABASE_ANON_KEY");
   const query = new URLSearchParams({
@@ -89,7 +90,7 @@ async function updateSubmission(authorization, id, status) {
         "Content-Type": "application/json",
         "Prefer": "return=representation"
       },
-      body: JSON.stringify({ status })
+      body: JSON.stringify(payload)
     });
     const data = await response.json().catch(() => null);
     if (!response.ok) {

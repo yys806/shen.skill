@@ -1,6 +1,7 @@
 import { verifySupabaseUser } from "./_shared/auth.js";
 import { getEnv } from "./_shared/env.js";
 import { json } from "./_shared/json.js";
+import { checkRateLimit } from "./_shared/rate-limit.js";
 
 export default async (req) => {
   if (req.method !== "POST") {
@@ -10,6 +11,11 @@ export default async (req) => {
   const authResult = await verifySupabaseUser(req);
   if (!authResult.ok) {
     return json({ error: "Unauthorized", detail: authResult.detail }, 401);
+  }
+
+  const rateLimit = await checkRateLimit(req, authResult.user.id, "skill_submit", 5, 86_400_000);
+  if (!rateLimit.ok) {
+    return json({ error: "Rate limited", detail: rateLimit.detail }, 429);
   }
 
   const body = await req.json().catch(() => ({}));

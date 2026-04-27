@@ -1,5 +1,7 @@
 import { getEnv } from "./_shared/env.js";
 import { json } from "./_shared/json.js";
+import { verifySupabaseUser } from "./_shared/auth.js";
+import { checkRateLimit } from "./_shared/rate-limit.js";
 import { loadSkillPrompt, normalizeSkillId } from "./_shared/skill.js";
 import { getProviderConfig, modelExists, normalizeProvider } from "./_shared/providers.js";
 
@@ -31,6 +33,11 @@ async function handleChat(req) {
   const authResult = await verifySupabaseUser(req);
   if (!authResult.ok) {
     return json({ error: "Unauthorized", detail: authResult.detail }, 401);
+  }
+
+  const rateLimit = await checkRateLimit(req, authResult.user.id, "chat", 20, 60_000);
+  if (!rateLimit.ok) {
+    return json({ error: "Rate limited", detail: rateLimit.detail }, 429);
   }
 
   const body = await readRequestJson(req);
@@ -191,41 +198,6 @@ export const config = {
   path: "/api/chat",
   method: ["POST"]
 };
-
-async function verifySupabaseUser(req) {
-  const supabaseUrl = getEnv("SUPABASE_URL", "https://gqhzwngzfoigzqndlbsq.supabase.co");
-  const supabaseAnonKey = getEnv("SUPABASE_ANON_KEY");
-  const authorization = req.headers.get("authorization") || "";
-  const token = authorization.replace(/^Bearer\s+/i, "").trim();
-
-  if (!supabaseUrl || !supabaseAnonKey) {
-    return { ok: false, detail: "请先配置 SUPABASE_URL 和 SUPABASE_ANON_KEY。" };
-  }
-
-  if (!token) {
-    return { ok: false, detail: "请先登录。" };
-  }
-
-  let response;
-  try {
-    response = await fetch(`${supabaseUrl.replace(/\/$/, "")}/auth/v1/user`, {
-      headers: {
-        "apikey": supabaseAnonKey,
-        "Authorization": `Bearer ${token}`,
-        "Accept": "application/json"
-      }
-    });
-  } catch (error) {
-    return { ok: false, detail: `Supabase 网络错误：${error.message}` };
-  }
-
-  const user = await readResponseBody(response);
-  if (!response.ok) {
-    return { ok: false, detail: user?.msg || user?.message || "登录状态无效，请重新登录。" };
-  }
-
-  return { ok: true, user };
-}
 
 async function readRequestJson(req) {
   try {

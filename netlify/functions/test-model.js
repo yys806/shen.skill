@@ -1,5 +1,6 @@
 import { json } from "./_shared/json.js";
-import { getEnv } from "./_shared/env.js";
+import { verifySupabaseUser } from "./_shared/auth.js";
+import { checkRateLimit } from "./_shared/rate-limit.js";
 import { getProviderConfig, modelExists, normalizeProvider } from "./_shared/providers.js";
 
 export default async (req) => {
@@ -11,6 +12,11 @@ export default async (req) => {
   const authResult = await verifySupabaseUser(req);
   if (!authResult.ok) {
     return json({ ok: false, error: authResult.detail }, 401);
+  }
+
+  const rateLimit = await checkRateLimit(req, authResult.user.id, "test_model", 10, 60_000);
+  if (!rateLimit.ok) {
+    return json({ ok: false, error: rateLimit.detail }, 429);
   }
 
   const provider = normalizeProvider(body.provider);
@@ -106,29 +112,6 @@ async function testModel(provider, model) {
     };
   } finally {
     clearTimeout(timeout);
-  }
-}
-
-async function verifySupabaseUser(req) {
-  const supabaseUrl = getEnv("SUPABASE_URL", "https://gqhzwngzfoigzqndlbsq.supabase.co");
-  const supabaseAnonKey = getEnv("SUPABASE_ANON_KEY");
-  const authorization = req.headers.get("authorization") || "";
-  const token = authorization.replace(/^Bearer\s+/i, "").trim();
-
-  if (!token) return { ok: false, detail: "请先登录后再测试模型。" };
-
-  try {
-    const response = await fetch(`${supabaseUrl.replace(/\/$/, "")}/auth/v1/user`, {
-      headers: {
-        "apikey": supabaseAnonKey,
-        "Authorization": `Bearer ${token}`,
-        "Accept": "application/json"
-      }
-    });
-    if (!response.ok) return { ok: false, detail: "登录状态无效，请重新登录。" };
-    return { ok: true };
-  } catch (error) {
-    return { ok: false, detail: `Supabase 网络错误：${error.message}` };
   }
 }
 
