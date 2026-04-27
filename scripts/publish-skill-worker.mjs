@@ -21,20 +21,30 @@ if (args.help) {
   process.exit(0);
 }
 
-let client;
 try {
-  client = await connectWithRetry();
-  const tasks = await loadPendingTasks();
-  if (!tasks.length) {
-    console.log("没有待发布任务。");
-    process.exit(0);
-  }
+  if (args.repo) {
+    await processTask({
+      id: `manual-${Date.now()}`,
+      submission_id: "",
+      repo_url: args.repo,
+      skill_name: args.name || makeSkillId(args.repo, "community-skill"),
+      created_by_email: "local-worker",
+      description: args.description || ""
+    });
+  } else {
+    globalThis.client = await connectWithRetry();
+    const tasks = await loadPendingTasks();
+    if (!tasks.length) {
+      console.log("没有待发布任务。");
+      process.exit(0);
+    }
 
-  for (const task of tasks) {
-    await processTask(task);
+    for (const task of tasks) {
+      await processTask(task);
+    }
   }
 } finally {
-  await client?.end().catch(() => {});
+  await globalThis.client?.end().catch(() => {});
 }
 
 async function processTask(task) {
@@ -43,12 +53,12 @@ async function processTask(task) {
   console.log(`开始处理：${task.skill_name} <${task.repo_url}>`);
 
   try {
-    if (!args.dryRun) await updateTaskStatus(task.id, "running");
+    if (globalThis.client && !args.dryRun) await updateTaskStatus(task.id, "running");
     await rm(workspace, { recursive: true, force: true });
     await mkdir(workspace, { recursive: true });
 
     validateRepoUrl(task.repo_url);
-    runGit(["clone", "--depth", "1", task.repo_url, repoDir]);
+    await cloneRepoWithRetry(task.repo_url, repoDir);
     await validateSkillRepo(repoDir);
 
     const slug = makeSkillId(task.repo_url, task.skill_name);
@@ -57,13 +67,13 @@ async function processTask(task) {
     await ensureDetailPage(slug);
     await refreshHomeSkillGrid();
 
-    if (!args.dryRun) {
+    if (globalThis.client && !args.dryRun) {
       await updateTaskStatus(task.id, "done");
       await updateSubmissionStatus(task.submission_id, "published");
     }
     console.log(`已生成本地发布文件：${slug}`);
   } catch (error) {
-    if (!args.dryRun) await updateTaskStatus(task.id, "failed").catch(() => {});
+    if (globalThis.client && !args.dryRun) await updateTaskStatus(task.id, "failed").catch(() => {});
     console.error(`发布失败：${task.skill_name} - ${error.message}`);
   } finally {
     if (!args.keepTemp) await rm(workspace, { recursive: true, force: true }).catch(() => {});
@@ -71,14 +81,15 @@ async function processTask(task) {
 }
 
 async function loadPendingTasks() {
-  const params = [];
-  const where = ["t.status = 'pending'"];
+  const statuses = args.retryFailed ? ["pending", "failed"] : ["pending"];
+  const where = [`t.status = any($1)`];
+  const params = [statuses];
   if (args.taskId) {
     params.push(args.taskId);
     where.push(`t.id = $${params.length}`);
   }
   params.push(args.limit);
-  const result = await client.query(`
+  const result = await globalThis.client.query(`
     select
       t.id,
       t.submission_id,
@@ -115,14 +126,14 @@ async function connectWithRetry() {
 }
 
 async function updateTaskStatus(id, status) {
-  await client.query(
+  await globalThis.client.query(
     "update public.skill_publish_tasks set status = $1, updated_at = now() where id = $2",
     [status, id]
   );
 }
 
 async function updateSubmissionStatus(id, status) {
-  await client.query(
+  await globalThis.client.query(
     "update public.skill_submissions set status = $1, updated_at = now() where id = $2",
     [status, id]
   );
@@ -236,10 +247,28 @@ async function refreshHomeSkillGrid() {
 }
 
 function runGit(argsList) {
-  const result = spawnSync("git", argsList, { cwd: rootDir, stdio: "pipe", encoding: "utf8" });
+  const result = spawnSync("git", ["-c", "http.sslBackend=openssl", "-c", "http.version=HTTP/1.1", ...argsList], { cwd: rootDir, stdio: "pipe", encoding: "utf8" });
   if (result.status !== 0) {
     throw new Error((result.stderr || result.stdout || "git 执行失败").trim());
   }
+}
+
+async function cloneRepoWithRetry(repoUrl, repoDir) {
+  let lastError;
+  for (let attempt = 1; attempt <= 3; attempt += 1) {
+    try {
+      await rm(repoDir, { recursive: true, force: true });
+      runGit(["clone", "--depth", "1", repoUrl, repoDir]);
+      return;
+    } catch (error) {
+      lastError = error;
+      if (attempt < 3) {
+        console.warn(`git 操作失败，正在重试 ${attempt}/3：${error.message.split("\n").pop()}`);
+        await sleep(1800 * attempt);
+      }
+    }
+  }
+  throw lastError;
 }
 
 function getDbConfig() {
@@ -302,15 +331,19 @@ function escapeAttribute(value) {
 }
 
 function parseArgs(argv) {
-  const parsed = { limit: 1, keepTemp: false, overwrite: false, dryRun: false, help: false, taskId: "" };
+  const parsed = { limit: 1, keepTemp: false, overwrite: false, dryRun: false, retryFailed: false, help: false, taskId: "", repo: "", name: "", description: "" };
   for (let index = 0; index < argv.length; index += 1) {
     const arg = argv[index];
     if (arg === "--help" || arg === "-h") parsed.help = true;
     else if (arg === "--keep-temp") parsed.keepTemp = true;
     else if (arg === "--overwrite") parsed.overwrite = true;
     else if (arg === "--dry-run") parsed.dryRun = true;
+    else if (arg === "--retry-failed") parsed.retryFailed = true;
     else if (arg === "--task") parsed.taskId = argv[++index] || "";
     else if (arg === "--limit") parsed.limit = Math.max(1, Number(argv[++index] || 1));
+    else if (arg === "--repo") parsed.repo = argv[++index] || "";
+    else if (arg === "--name") parsed.name = argv[++index] || "";
+    else if (arg === "--description") parsed.description = argv[++index] || "";
   }
   return parsed;
 }
@@ -334,6 +367,7 @@ function printHelp() {
   npm run publish:skills
   npm run publish:skills -- --limit 3
   npm run publish:skills -- --task <task-id>
+  npm run publish:skills -- --repo https://github.com/owner/repo --name 名称
 
 环境变量：
   SUPABASE_DB_PASSWORD=你的 Supabase 数据库密码
@@ -345,6 +379,9 @@ function printHelp() {
   --overwrite     允许覆盖本地已存在的同名 skill
   --keep-temp     保留 .publish-tmp 临时克隆目录，方便排查
   --dry-run       只克隆和校验，不写入本地文件、不改任务状态
+  --retry-failed  同时重试 failed 状态的任务
+  --repo <url>    不读取数据库，直接发布指定 GitHub 仓库到本地
+  --name <name>   手动发布时使用的显示名称
 `);
 }
 
