@@ -22,7 +22,7 @@ export default async (req) => {
 
   const payload = {
     user_id: authResult.user.id,
-    skill: normalizeSkillId(String(body.skill || "maoxuan-skill").slice(0, 120)),
+    skill: await normalizeSkillId(String(body.skill || "maoxuan-skill").slice(0, 120)),
     conversation_id: String(body.conversationId || "").slice(0, 120),
     message_id: String(body.messageId || "").slice(0, 120),
     feedback,

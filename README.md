@@ -79,3 +79,32 @@ supabase/schema.sql
 - `profiles.nickname_key` 唯一，避免昵称重复。
 - `profiles.email` 唯一，避免邮箱重复。
 - 登录框可以输入邮箱，也可以输入昵称。
+
+## 本地 skill 发布 worker
+
+管理员在后台把用户提交的 skill 审核通过后，可以点“生成发布任务”。本地 worker 会读取 Supabase 里的 pending 发布任务，把 GitHub 仓库克隆到 `.publish-tmp/`，校验根目录 `SKILL.md`，再把通过校验的内容发布到本地 `skills/` 和 `public/skills/`。
+
+先在 `.env` 里补数据库连接信息，二选一：
+
+```env
+SUPABASE_DB_PASSWORD=your-database-password
+# 或
+SUPABASE_DB_URL=postgresql://...
+```
+
+然后运行：
+
+```powershell
+npm install
+npm run publish:skills
+```
+
+常用参数：
+
+```powershell
+npm run publish:skills -- --limit 3
+npm run publish:skills -- --task <task-id>
+npm run publish:skills -- --dry-run --keep-temp
+```
+
+worker 只更新本地文件和 Supabase 任务状态，不会自动部署。确认生成结果没问题后，再正常提交代码并部署到 Netlify。

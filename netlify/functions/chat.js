@@ -44,7 +44,7 @@ async function handleChat(req) {
   const messages = Array.isArray(body.messages) ? body.messages : [];
   const counterpart = cleanText(body.counterpart || "");
   const scene = cleanText(body.scene || "self");
-  const skill = normalizeSkillId(cleanText(body.skill || "maoxuan-skill"));
+  const skill = await normalizeSkillId(cleanText(body.skill || "maoxuan-skill"));
   const provider = normalizeProvider(body.provider || "siliconflow");
   const temperature = clamp(Number(body.temperature ?? 0.72), 0, 1.5);
   const model = cleanText(body.model || getEnv("SILICONFLOW_MODEL", "Pro/moonshotai/Kimi-K2.6"));

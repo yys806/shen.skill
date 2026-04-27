@@ -1,13 +1,6 @@
 import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm";
 
-const skillOptions = [
-  { id: "maoxuan-skill", name: "毛选", description: "毛选思维框架 skill，专注问题分析与战略判断。", needsContext: false },
-  { id: "bazi-skill", name: "八字", description: "四柱八字命理分析 skill，通过出生信息进行结构化推演。", needsContext: false },
-  { id: "steve-jobs-skill", name: "乔布斯", description: "Steve Jobs 视角，聚焦产品、审美、取舍和表达。", needsContext: false },
-  { id: "elon-musk-skill", name: "马斯克", description: "Elon Musk 视角，偏第一性原理、工程压强和目标拆解。", needsContext: false },
-  { id: "munger-skill", name: "芒格", description: "Charlie Munger 视角，偏多元思维模型、反向思考和理性判断。", needsContext: false },
-  { id: "fengge-wangmingtianya-perspective", name: "峰哥亡命天涯", description: "峰哥亡命天涯视角，漂泊江湖、现实去魅和黑色幽默。", needsContext: false }
-];
+const skillOptions = await loadSkillOptions();
 
 const sceneOptions = [
   { id: "self", name: "真我复盘", description: "理性、短句、拆动机，适合和本人对话。" },
@@ -1241,4 +1234,23 @@ function escapeHtml(value) {
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;");
+}
+
+async function loadSkillOptions() {
+  const fallback = [
+    { id: "maoxuan-skill", name: "毛选", description: "毛选思维框架 skill，专注问题分析与战略判断。", needsContext: false }
+  ];
+  try {
+    const response = await fetch("/skills/catalog.json", { cache: "no-store" });
+    const catalog = await response.json();
+    if (!response.ok || !Array.isArray(catalog) || !catalog.length) return fallback;
+    return catalog.map(item => ({
+      id: item.id,
+      name: item.name,
+      description: item.description || item.summary || "",
+      needsContext: Boolean(item.needsContext)
+    })).filter(item => item.id && item.name);
+  } catch {
+    return fallback;
+  }
 }

@@ -1,5 +1,6 @@
 .env
 node_modules/
+.publish-tmp/
 npm-debug.log*
 .DS_Store
 Thumbs.db
