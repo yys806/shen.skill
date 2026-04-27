@@ -1,6 +1,6 @@
 import { getEnv } from "./_shared/env.js";
 import { json } from "./_shared/json.js";
-import { loadSkillPrompt } from "./_shared/skill.js";
+import { loadSkillPrompt, normalizeSkillId } from "./_shared/skill.js";
 import { getProviderConfig, modelExists, normalizeProvider } from "./_shared/providers.js";
 
 const sceneInstructions = {
@@ -37,7 +37,7 @@ async function handleChat(req) {
   const messages = Array.isArray(body.messages) ? body.messages : [];
   const counterpart = cleanText(body.counterpart || "");
   const scene = cleanText(body.scene || "self");
-  const skill = cleanText(body.skill || "shen.skill");
+  const skill = normalizeSkillId(cleanText(body.skill || "maoxuan-skill"));
   const provider = normalizeProvider(body.provider || "siliconflow");
   const temperature = clamp(Number(body.temperature ?? 0.72), 0, 1.5);
   const model = cleanText(body.model || getEnv("SILICONFLOW_MODEL", "Pro/moonshotai/Kimi-K2.6"));
@@ -63,8 +63,8 @@ async function handleChat(req) {
 
   const skillPrompt = await loadSkillPrompt(skill);
   const memories = await loadRecentMemories(req, authResult.user.id, skill);
-  const needsShenContext = skill === "shen.skill";
-  const contextRules = needsShenContext
+  const needsSceneContext = false;
+  const contextRules = needsSceneContext
     ? [
         `- 当前对话对象关系：${counterpart || "未填写；如身份影响很大，先问对方是谁。"}`,
         `- 当前语气场景：${scene}`,

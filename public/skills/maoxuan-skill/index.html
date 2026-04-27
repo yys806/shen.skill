@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Skill | 镜室</title>
+    <link rel="icon" href="/icon.png" type="image/png" />
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body class="home-page skill-detail-page">
+    <main class="skill-detail-shell">
+      <nav class="skill-detail-nav">
+        <a class="home-brand" href="/"><span></span><strong>镜室</strong></a>
+        <div>
+          <a href="/#skills">Skill 库</a>
+          <a href="/chat">进入 /chat</a>
+        </div>
+      </nav>
+      <section class="skill-detail-hero">
+        <p class="home-kicker" data-skill-label></p>
+        <h1 data-skill-name></h1>
+        <p data-skill-summary></p>
+        <div class="skill-detail-actions">
+          <a class="home-primary" data-chat-link href="/chat">用这个 skill 对话</a>
+          <a class="home-secondary" data-skill-source href="#" target="_blank" rel="noreferrer">GitHub</a>
+        </div>
+      </section>
+      <section class="skill-detail-grid">
+        <article><span>适合拿来做什么</span><ul data-best-for></ul></article>
+        <article><span>使用时的味道</span><ul data-notes></ul></article>
+      </section>
+    </main>
+    <script src="/skills/detail.js"></script>
+  </body>
+</html>

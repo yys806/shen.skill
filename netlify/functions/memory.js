@@ -1,5 +1,6 @@
 import { getEnv } from "./_shared/env.js";
 import { json } from "./_shared/json.js";
+import { normalizeSkillId } from "./_shared/skill.js";
 
 export default async (req) => {
   if (req.method !== "POST") {
@@ -21,7 +22,7 @@ export default async (req) => {
 
   const payload = {
     user_id: authResult.user.id,
-    skill: String(body.skill || "shen.skill").slice(0, 120),
+    skill: normalizeSkillId(String(body.skill || "maoxuan-skill").slice(0, 120)),
     conversation_id: String(body.conversationId || "").slice(0, 120),
     message_id: String(body.messageId || "").slice(0, 120),
     feedback,

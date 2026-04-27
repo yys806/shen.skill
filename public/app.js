@@ -1,7 +1,6 @@
 import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm";
 
 const skillOptions = [
-  { id: "shen.skill", name: "禹尧珅", description: "综合人格 skill，默认先识别对方是谁。", needsContext: true },
   { id: "maoxuan-skill", name: "毛选", description: "毛选思维框架 skill，专注问题分析与战略判断。", needsContext: false },
   { id: "bazi-skill", name: "八字", description: "四柱八字命理分析 skill，通过出生信息进行结构化推演。", needsContext: false },
   { id: "steve-jobs-skill", name: "乔布斯", description: "Steve Jobs 视角，聚焦产品、审美、取舍和表达。", needsContext: false },
@@ -65,6 +64,7 @@ let supabase = null;
 let session = null;
 let appState = loadState(currentStateKey);
 
+applyInitialSkillFromUrl();
 renderAll();
 boot();
 
@@ -932,7 +932,7 @@ function loadState(storageKey = currentStateKey) {
   }
   const firstConversation = createConversation(false, defaultSettings());
   return {
-    skill: "shen.skill",
+    skill: skillOptions[0].id,
     counterpart: "",
     scene: "self",
     provider: "siliconflow",
@@ -965,6 +965,18 @@ function migrateConversationSettings() {
   }
 }
 
+function applyInitialSkillFromUrl() {
+  const skillId = new URLSearchParams(window.location.search).get("skill");
+  if (!skillId) return;
+  const skill = findSkill(skillId);
+  if (skill.id !== skillId) return;
+  const conversation = createConversation(false, { ...defaultSettings(), skill: skill.id });
+  appState.conversations.unshift(conversation);
+  appState.activeConversationId = conversation.id;
+  appState.skill = skill.id;
+  window.history.replaceState(null, "", window.location.pathname);
+}
+
 function createConversation(push = true, settings = null) {
   const conversation = {
     id: crypto.randomUUID(),
@@ -992,7 +1004,7 @@ function getActiveSettings() {
 
 function getCurrentGlobalSettings() {
   return {
-    skill: appState?.skill || "shen.skill",
+    skill: appState?.skill || skillOptions[0].id,
     counterpart: appState?.counterpart || "",
     scene: appState?.scene || "self",
     provider: appState?.provider || "siliconflow",
@@ -1003,7 +1015,7 @@ function getCurrentGlobalSettings() {
 
 function defaultSettings() {
   return {
-    skill: "shen.skill",
+    skill: skillOptions[0].id,
     counterpart: "",
     scene: "self",
     provider: "siliconflow",
@@ -1022,6 +1034,9 @@ function activeSkillNeedsContext() {
 
 function normalizeSettingsForSkill(settings) {
   const skill = findSkill(settings.skill);
+  if (settings.skill !== skill.id) {
+    settings.skill = skill.id;
+  }
   if (!skill.needsContext) {
     settings.counterpart = "";
     settings.scene = "self";
