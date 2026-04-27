@@ -931,7 +931,7 @@ function loadState(storageKey = currentStateKey) {
     provider: "siliconflow",
     model: "Pro/moonshotai/Kimi-K2.6",
     temperature: 0.7,
-    historyCollapsed: false,
+    historyCollapsed: isMobileViewport(),
     activeConversationId: firstConversation.id,
     conversations: [firstConversation]
   };
@@ -939,6 +939,10 @@ function loadState(storageKey = currentStateKey) {
 
 function saveState() {
   localStorage.setItem(currentStateKey, JSON.stringify(appState));
+}
+
+function isMobileViewport() {
+  return typeof window !== "undefined" && window.matchMedia("(max-width: 620px)").matches;
 }
 
 function ensureActiveConversation() {
