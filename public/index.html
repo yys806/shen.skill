@@ -19,6 +19,7 @@
           <strong>镜室</strong>
         </a>
         <div class="home-nav-links">
+          <a href="#top" data-section="top">Home</a>
           <a href="#skills" data-section="skills">Skill</a>
           <a href="#memory" data-section="memory">Memory</a>
           <a href="#use" data-section="use">Use</a>
@@ -26,7 +27,7 @@
         <a class="home-nav-action" href="/chat">进入 /chat</a>
       </nav>
 
-      <section class="home-hero">
+      <section class="home-hero" id="top">
         <div class="hero-text">
           <p class="home-kicker">mirror room / private skill console</p>
           <h1>镜室</h1>
@@ -147,6 +148,7 @@
     <script>
       const sectionLinks = [...document.querySelectorAll(".home-nav-links a[data-section]")];
       const sections = sectionLinks
+        .filter(link => link.dataset.section !== "top")
         .map(link => document.getElementById(link.dataset.section))
         .filter(Boolean);
 
@@ -161,7 +163,7 @@
         if (!firstSection) return;
         const navOffset = 120;
         if (window.scrollY < firstSection.offsetTop - navOffset) {
-          setActiveSection("");
+          setActiveSection("top");
         }
       }
 
@@ -192,7 +194,7 @@
       });
 
       sections.forEach(section => observer.observe(section));
-      setActiveSection("");
+      setActiveSection("top");
       clearActiveInHero();
       window.addEventListener("scroll", clearActiveInHero, { passive: true });
       window.addEventListener("pageshow", clearActiveInHero);
