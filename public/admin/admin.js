@@ -1,10 +1,19 @@
 const ADMIN_EMAIL = "3492675568@qq.com";
+const statusLabels = {
+  pending: "待审核",
+  approved: "已通过",
+  rejected: "已拒绝",
+  published: "已发布"
+};
 
 let supabaseClient = null;
 let currentSession = null;
+let activeTab = "submissions";
 
 const authBox = document.querySelector("#admin-auth");
-const list = document.querySelector("#submission-list");
+const submissionList = document.querySelector("#submission-list");
+const userList = document.querySelector("#user-list");
+const tabButtons = [...document.querySelectorAll("[data-admin-tab]")];
 
 bootAdminPage();
 
@@ -12,7 +21,7 @@ async function bootAdminPage() {
   try {
     const config = await getJson("/api/config");
     if (!config.hasSupabase) {
-      renderNotice("Supabase 未配置，后台暂不可用。");
+      renderNotice(submissionList, "Supabase 未配置，后台暂不可用。");
       return;
     }
 
@@ -26,9 +35,17 @@ async function bootAdminPage() {
       renderAuthState();
     });
   } catch (error) {
-    renderNotice(`后台初始化失败：${error.message}`);
+    renderNotice(submissionList, `后台初始化失败：${error.message}`);
   }
 }
+
+tabButtons.forEach(button => {
+  button.addEventListener("click", () => {
+    activeTab = button.dataset.adminTab;
+    renderTabs();
+    if (isAdminSession()) loadActiveTab();
+  });
+});
 
 async function renderAuthState() {
   if (!currentSession?.user) {
@@ -37,7 +54,8 @@ async function renderAuthState() {
       <strong>请先用管理员账号在 /chat 登录。</strong>
       <a href="/chat">去登录</a>
     `;
-    renderNotice("等待管理员登录。");
+    renderNotice(submissionList, "等待管理员登录。");
+    renderNotice(userList, "等待管理员登录。");
     return;
   }
 
@@ -46,39 +64,61 @@ async function renderAuthState() {
     <strong>${escapeHtml(currentSession.user.email || "unknown")}</strong>
   `;
 
-  if ((currentSession.user.email || "").toLowerCase() !== ADMIN_EMAIL) {
-    renderNotice("当前账号不是管理员，无法查看提交。");
+  if (!isAdminSession()) {
+    renderNotice(submissionList, "当前账号不是管理员，无法查看后台。");
+    renderNotice(userList, "当前账号不是管理员，无法查看后台。");
     return;
   }
 
-  await loadSubmissions();
+  await loadActiveTab();
+}
+
+function renderTabs() {
+  tabButtons.forEach(button => {
+    button.classList.toggle("active", button.dataset.adminTab === activeTab);
+  });
+  submissionList.classList.toggle("hidden", activeTab !== "submissions");
+  userList.classList.toggle("hidden", activeTab !== "users");
+}
+
+async function loadActiveTab() {
+  renderTabs();
+  if (activeTab === "users") {
+    await loadUsers();
+  } else {
+    await loadSubmissions();
+  }
 }
 
 async function loadSubmissions() {
-  renderNotice("正在读取提交列表...");
+  renderNotice(submissionList, "正在读取提交列表...");
   const response = await fetch("/api/admin/skill-submissions", {
-    headers: {
-      "Authorization": `Bearer ${currentSession.access_token}`
-    }
+    headers: authHeaders()
   });
   const data = await response.json().catch(() => ({}));
   if (!response.ok) {
-    renderNotice(data.detail || data.error || "读取失败。");
+    renderNotice(submissionList, data.detail || data.error || "读取失败。");
     return;
   }
 
   const submissions = data.submissions || [];
   if (!submissions.length) {
-    renderNotice("目前还没有提交。");
+    renderNotice(submissionList, "目前还没有提交。");
     return;
   }
 
-  list.innerHTML = submissions.map(item => `
-    <article class="submission-item">
+  submissionList.innerHTML = submissions.map(item => `
+    <article class="submission-item" data-submission-id="${escapeAttribute(item.id)}">
       <div>
-        <span>${escapeHtml(item.status || "pending")}</span>
+        <span class="status-pill status-${escapeAttribute(item.status || "pending")}">${escapeHtml(statusLabels[item.status] || item.status || "待审核")}</span>
         <h2>${escapeHtml(item.name)}</h2>
         <p>${escapeHtml(item.description)}</p>
+        <div class="review-actions">
+          ${reviewButton(item, "approved", "通过")}
+          ${reviewButton(item, "rejected", "拒绝")}
+          ${reviewButton(item, "published", "标记已发布")}
+          ${reviewButton(item, "pending", "退回待审")}
+        </div>
       </div>
       <aside>
         <a href="${escapeAttribute(item.repo_url)}" target="_blank" rel="noreferrer">打开 GitHub</a>
@@ -87,10 +127,76 @@ async function loadSubmissions() {
       </aside>
     </article>
   `).join("");
+
+  submissionList.querySelectorAll("[data-review-status]").forEach(button => {
+    button.addEventListener("click", () => updateSubmissionStatus(button.dataset.id, button.dataset.reviewStatus));
+  });
 }
 
-function renderNotice(message) {
-  list.innerHTML = `<article class="submission-empty">${escapeHtml(message)}</article>`;
+async function updateSubmissionStatus(id, status) {
+  const button = submissionList.querySelector(`[data-id="${CSS.escape(id)}"][data-review-status="${CSS.escape(status)}"]`);
+  if (button) button.textContent = "处理中...";
+  const response = await fetch("/api/admin/skill-submissions", {
+    method: "PATCH",
+    headers: {
+      ...authHeaders(),
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({ id, status })
+  });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    renderNotice(submissionList, data.detail || data.error || "更新失败。");
+    return;
+  }
+  await loadSubmissions();
+}
+
+async function loadUsers() {
+  renderNotice(userList, "正在读取用户列表...");
+  const response = await fetch("/api/admin/users", {
+    headers: authHeaders()
+  });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    renderNotice(userList, data.detail || data.error || "读取用户失败。");
+    return;
+  }
+
+  const users = data.users || [];
+  if (!users.length) {
+    renderNotice(userList, "目前还没有用户。");
+    return;
+  }
+
+  userList.innerHTML = users.map(user => `
+    <article class="user-admin-item">
+      <div>
+        <span>${escapeHtml(user.nickname || "未设置昵称")}</span>
+        <strong>${escapeHtml(user.email || "unknown")}</strong>
+      </div>
+      <time>注册：${new Date(user.created_at).toLocaleString("zh-CN")}</time>
+    </article>
+  `).join("");
+}
+
+function reviewButton(item, status, label) {
+  const disabled = item.status === status ? "disabled" : "";
+  return `<button ${disabled} data-id="${escapeAttribute(item.id)}" data-review-status="${status}" type="button">${label}</button>`;
+}
+
+function renderNotice(target, message) {
+  target.innerHTML = `<article class="submission-empty">${escapeHtml(message)}</article>`;
+}
+
+function authHeaders() {
+  return {
+    "Authorization": `Bearer ${currentSession.access_token}`
+  };
+}
+
+function isAdminSession() {
+  return (currentSession?.user?.email || "").toLowerCase() === ADMIN_EMAIL;
 }
 
 async function getJson(url) {

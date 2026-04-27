@@ -943,8 +943,42 @@ body.home-page::after {
   gap: 14px;
 }
 
+.submission-list.hidden {
+  display: none;
+}
+
+.admin-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 18px;
+  padding: 8px;
+  border: 1px solid rgba(27, 23, 18, 0.1);
+  border-radius: 22px;
+  background: rgba(255, 252, 244, 0.46);
+}
+
+.admin-tabs button,
+.review-actions button {
+  border: 1px solid rgba(27, 23, 18, 0.1);
+  border-radius: 999px;
+  color: var(--ink);
+  background: rgba(255, 252, 244, 0.72);
+  font-weight: 900;
+}
+
+.admin-tabs button {
+  padding: 12px 18px;
+}
+
+.admin-tabs button.active {
+  color: #fff8e8;
+  background: var(--night);
+}
+
 .submission-item,
-.submission-empty {
+.submission-empty,
+.user-admin-item {
   padding: 22px;
   border: 1px solid rgba(27, 23, 18, 0.1);
   border-radius: 24px;
@@ -957,7 +991,8 @@ body.home-page::after {
   gap: 18px;
 }
 
-.submission-item span {
+.submission-item span,
+.user-admin-item span {
   display: inline-flex;
   width: fit-content;
   margin-bottom: 10px;
@@ -968,6 +1003,18 @@ body.home-page::after {
   font: 900 11px/1 "Gill Sans", "Trebuchet MS", sans-serif;
   letter-spacing: 0.14em;
   text-transform: uppercase;
+}
+
+.submission-item .status-approved {
+  background: #235d4c;
+}
+
+.submission-item .status-rejected {
+  background: #8f2d1c;
+}
+
+.submission-item .status-published {
+  background: #0f1110;
 }
 
 .submission-item h2 {
@@ -995,6 +1042,40 @@ body.home-page::after {
 .submission-item a {
   color: var(--lacquer);
   font-weight: 900;
+}
+
+.review-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+.review-actions button {
+  padding: 9px 12px;
+  font-size: 13px;
+}
+
+.review-actions button:disabled {
+  opacity: 0.42;
+  cursor: default;
+}
+
+.user-admin-item {
+  display: flex;
+  justify-content: space-between;
+  gap: 18px;
+  align-items: center;
+}
+
+.user-admin-item strong {
+  display: block;
+  font-size: 20px;
+}
+
+.user-admin-item time {
+  color: var(--muted);
+  white-space: nowrap;
 }
 
 .workflow-line {
@@ -1169,6 +1250,15 @@ body.home-page::after {
   .submission-item aside {
     justify-items: start;
     text-align: left;
+  }
+
+  .user-admin-item {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .user-admin-item time {
+    white-space: normal;
   }
 
   .mirror-dialogue article:last-child {

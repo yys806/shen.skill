@@ -144,5 +144,15 @@ using (
   lower(coalesce((auth.jwt() ->> 'email'), '')) = '3492675568@qq.com'
 );
 
+drop policy if exists "admins can update skill submissions" on public.skill_submissions;
+create policy "admins can update skill submissions"
+on public.skill_submissions for update
+using (
+  lower(coalesce((auth.jwt() ->> 'email'), '')) = '3492675568@qq.com'
+)
+with check (
+  lower(coalesce((auth.jwt() ->> 'email'), '')) = '3492675568@qq.com'
+);
+
 create index if not exists skill_submissions_created_idx
 on public.skill_submissions (created_at desc);
