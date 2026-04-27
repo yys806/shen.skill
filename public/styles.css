@@ -1198,69 +1198,6 @@ body.home-page::after {
   border: 1px solid rgba(27, 23, 18, 0.1);
 }
 
-.manual-hero {
-  min-height: 360px;
-  display: grid;
-  align-content: end;
-  gap: 16px;
-  padding: clamp(30px, 6vw, 68px);
-  border: 1px solid rgba(255, 248, 235, 0.46);
-  border-radius: 40px;
-  background:
-    radial-gradient(circle at 84% 14%, rgba(35, 93, 76, 0.24), transparent 18rem),
-    linear-gradient(135deg, rgba(255, 249, 237, 0.88), rgba(234, 213, 177, 0.48));
-  box-shadow: 0 34px 100px rgba(45, 29, 9, 0.16);
-}
-
-.manual-hero h1 {
-  margin: 0;
-  font-size: clamp(52px, 9vw, 112px);
-  line-height: 0.9;
-  letter-spacing: -0.12em;
-}
-
-.manual-hero p {
-  max-width: 720px;
-  margin: 0;
-  color: var(--muted);
-  font-size: 20px;
-  line-height: 1.75;
-}
-
-.manual-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 14px;
-  margin-top: 16px;
-}
-
-.manual-grid article {
-  min-height: 240px;
-  padding: 26px;
-  border: 1px solid rgba(27, 23, 18, 0.12);
-  border-radius: 28px;
-  background:
-    linear-gradient(145deg, rgba(255, 252, 244, 0.82), rgba(234, 213, 177, 0.28)),
-    rgba(255, 249, 237, 0.62);
-}
-
-.manual-grid span {
-  color: var(--lacquer);
-  font: 900 13px/1 "Gill Sans", "Trebuchet MS", sans-serif;
-}
-
-.manual-grid h2 {
-  margin: 52px 0 10px;
-  font-size: 30px;
-  letter-spacing: -0.06em;
-}
-
-.manual-grid p {
-  margin: 0;
-  color: var(--muted);
-  line-height: 1.72;
-}
-
 @media (max-width: 1040px) {
   .home-nav {
     grid-template-columns: 1fr auto;
@@ -1415,7 +1352,6 @@ body.home-page::after {
   .home-strip span,
   .home-skill-grid,
   .workflow-line,
-  .manual-grid,
   .skill-detail-grid {
     min-width: 100%;
     grid-template-columns: 1fr;
