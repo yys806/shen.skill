@@ -11,126 +11,162 @@
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
     <link rel="stylesheet" href="/styles.css" />
   </head>
-  <body class="landing-page">
-    <main class="product-shell">
-      <nav class="product-nav" aria-label="产品导航">
-        <a class="brand-mark" href="/">
-          <span></span>
+  <body class="landing-page launch-template">
+    <a class="skip-link" href="#main">Skip to main content</a>
+
+    <nav class="launch-nav" aria-label="产品导航">
+      <a class="launch-brand" href="/">镜室</a>
+      <a class="launch-cta" href="/chat">
+        <span>进入镜室</span>
+        <span class="phone-glyph" aria-hidden="true"></span>
+      </a>
+    </nav>
+
+    <header class="launch-hero">
+      <h1>Browse every mind.</h1>
+      <div class="launch-visual" aria-label="镜室产品预览">
+        <div class="visual-orbit visual-orbit-one"></div>
+        <div class="visual-orbit visual-orbit-two"></div>
+        <div class="visual-panel">
+          <p>Skill Console</p>
           <strong>镜室</strong>
-        </a>
-        <div class="nav-links">
-          <a href="#skills">Skills</a>
-          <a href="#workflow">Workflow</a>
-          <a href="#pricing">Access</a>
+          <span>Self / Mao / Bazi / Jobs / Musk / Munger / Fengge</span>
         </div>
-        <a class="nav-cta" href="/chat">进入镜室</a>
-      </nav>
+        <div class="visual-card card-a">真我复盘</div>
+        <div class="visual-card card-b">毛选拆局</div>
+        <div class="visual-card card-c">芒格反向清单</div>
+      </div>
+    </header>
 
-      <section class="product-hero">
-        <div class="hero-copy">
-          <p class="launch-label">mirror room / skill console</p>
-          <h1>把一种思维方式，变成可以反复对话的房间。</h1>
-          <p class="hero-lead">
-            镜室把人格 skill、知识框架和复盘方法封装成一个可扩展的对话台。
-            你可以和自己、毛选、八字、乔布斯、马斯克、芒格或峰哥视角对话。
-          </p>
-          <div class="hero-actions">
-            <a class="primary-action" href="/chat">开始使用</a>
-            <a class="secondary-action" href="#showcase">看看它能做什么</a>
-          </div>
-          <div class="hero-metrics" aria-label="产品能力">
-            <span><strong>8</strong> 个已接入 skill</span>
-            <span><strong>3</strong> 个模型提供商</span>
-            <span><strong>1</strong> 个可生长的记忆系统</span>
-          </div>
-        </div>
-
-        <div class="hero-device" id="showcase" aria-label="产品界面预览">
-          <div class="device-top">
-            <span>shen-skill.netlify.app/chat</span>
-            <i></i><i></i><i></i>
-          </div>
-          <div class="device-grid">
-            <aside>
-              <p>HISTORY</p>
-              <b>真我复盘</b>
-              <b>毛选拆局</b>
-              <b>芒格反向清单</b>
-            </aside>
-            <section>
-              <div class="chat-chip">Skill: 禹尧珅</div>
-              <article>
-                <small>MIRROR</small>
-                <p>先别急着解释，我们把这件事拆成动机、边界和下一步。</p>
-              </article>
-              <article class="user-preview">
-                <small>YOU</small>
-                <p>我想复盘一下最近这个选择。</p>
-              </article>
-            </section>
-          </div>
-        </div>
+    <main id="main" class="launch-main">
+      <section class="trusted-row" aria-label="已接入能力">
+        <p>Built with:</p>
+        <span>SiliconFlow</span>
+        <span>DeepSeek</span>
+        <span>OpenRouter</span>
+        <span>Supabase</span>
+        <span>Netlify</span>
+        <span>Skill Library</span>
       </section>
 
-      <section class="product-strip" aria-label="适用场景">
-        <span>自我复盘</span>
-        <span>工作决策</span>
-        <span>关系理解</span>
-        <span>知识框架</span>
-        <span>人格模拟</span>
-      </section>
-
-      <section class="section-block" id="workflow">
-        <div class="section-heading">
-          <p class="launch-label">workflow</p>
-          <h2>不是另一个聊天框，是一套可切换的思维接口。</h2>
-        </div>
-        <div class="feature-grid">
-          <article>
-            <span>01</span>
-            <h3>选择 skill</h3>
-            <p>每个 skill 都是一套不同的对话规则、知识边界和表达方式。</p>
-          </article>
-          <article>
-            <span>02</span>
-            <h3>选择模型</h3>
-            <p>在 SiliconFlow、DeepSeek、OpenRouter 之间切换，按速度和质量取舍。</p>
-          </article>
-          <article>
-            <span>03</span>
-            <h3>反馈吸收</h3>
-            <p>对回复点赞、反赞、评论，重要反馈会进入 skill 记忆，逐步变得更像你要的东西。</p>
-          </article>
-        </div>
-      </section>
-
-      <section class="skill-wall" id="skills">
-        <div class="section-heading">
-          <p class="launch-label">skill library</p>
-          <h2>一间镜室，很多种脑子。</h2>
-        </div>
-        <div class="skill-cards">
-          <article><strong>禹尧珅</strong><span>真我复盘 / 协作 / 关系理解</span></article>
-          <article><strong>毛选</strong><span>矛盾分析 / 战略判断</span></article>
-          <article><strong>八字</strong><span>四柱命理 / 结构化推演</span></article>
-          <article><strong>乔布斯</strong><span>产品审美 / 极致取舍</span></article>
-          <article><strong>马斯克</strong><span>第一性原理 / 工程压强</span></article>
-          <article><strong>芒格</strong><span>多元模型 / 反向思考</span></article>
-          <article><strong>峰哥亡命天涯</strong><span>现实去魅 / 黑色幽默</span></article>
-        </div>
-      </section>
-
-      <section class="access-panel" id="pricing">
-        <div>
-          <p class="launch-label">private beta</p>
-          <h2>先作为一个私人镜室，再慢慢长成产品。</h2>
+      <section class="launch-section" id="benefits">
+        <div class="section-title-row">
+          <h2>Benefits</h2>
           <p>
-            当前版本支持登录、邀请码注册、历史对话、模型测试、Markdown 回复和反馈记忆。
-            后续可以继续接入更多 skill、团队空间和公开分享页。
+            我们把“和谁对话”这件事拆清楚了。
+            镜室提供真实可切换的 skill，而不是只换一句 prompt。
           </p>
         </div>
-        <a class="primary-action" href="/chat">进入 /chat</a>
+        <div class="benefit-grid">
+          <article>
+            <span class="benefit-icon"></span>
+            <h3>Switch perspectives</h3>
+            <p>在自己、毛选、八字、乔布斯、马斯克、芒格和峰哥之间切换。</p>
+          </article>
+          <article>
+            <span class="benefit-icon"></span>
+            <h3>Keep context clean</h3>
+            <p>只有禹尧珅 skill 需要身份和语气；其他 skill 只关心模型与温度。</p>
+          </article>
+          <article>
+            <span class="benefit-icon"></span>
+            <h3>Learn from feedback</h3>
+            <p>点赞、反赞和评论会进入记忆，让 skill 慢慢贴近你要的表达。</p>
+          </article>
+          <article>
+            <span class="benefit-icon"></span>
+            <h3>Stay model-flexible</h3>
+            <p>按速度、稳定性和风格，在多个模型提供商之间快速切换。</p>
+          </article>
+        </div>
+      </section>
+
+      <section class="big-picture">
+        <div class="picture-frame" aria-hidden="true">
+          <div></div>
+        </div>
+        <div class="picture-copy">
+          <h2>See the whole conversation.</h2>
+          <p>
+            镜室把一次对话变成可复盘的结构：你问了什么、skill 如何回答、
+            哪些回答被你认可、哪些地方需要修正，都会在同一个工作台里沉淀。
+          </p>
+          <div class="value-list">
+            <article><b>01</b><span>从情绪里抽出问题结构。</span></article>
+            <article><b>02</b><span>把不同人格变成不同判断工具。</span></article>
+            <article><b>03</b><span>用反馈修正下一次回答。</span></article>
+            <article><b>04</b><span>把私人 skill 逐步产品化。</span></article>
+          </div>
+          <a class="text-link" href="/chat">Discover More</a>
+        </div>
+      </section>
+
+      <section class="specs-section" id="specs">
+        <div>
+          <h2>Specs</h2>
+          <p>Why choose Mirror Room?</p>
+          <span>你需要的不是一个更会说话的机器人，而是一个能持续承载不同思维方式的界面。</span>
+          <a class="text-link" href="/chat">Discover More</a>
+        </div>
+        <div class="spec-table" role="table" aria-label="镜室能力对比">
+          <div role="row" class="spec-head">
+            <span role="columnheader">Mirror Room</span>
+            <span role="columnheader">普通聊天</span>
+            <span role="columnheader">单一 Prompt</span>
+          </div>
+          <div role="row"><b>多 skill 切换</b><span>固定助手</span><span>手动复制</span></div>
+          <div role="row"><b>反馈记忆</b><span>上下文易丢</span><span>不可追踪</span></div>
+          <div role="row"><b>模型测试</b><span>不透明</span><span>依赖平台</span></div>
+          <div role="row"><b>Markdown 回复</b><span>不稳定</span><span>看实现</span></div>
+          <div role="row"><b>可继续扩展</b><span>较难沉淀</span><span>维护分散</span></div>
+        </div>
+      </section>
+
+      <section class="quote-section">
+        <div class="quote-image" aria-hidden="true"></div>
+        <blockquote>
+          “我不是想再做一个聊天框。我想要一间可以反复回来、能理解不同思维方式的房间。”
+          <cite>Mirror Room product note</cite>
+        </blockquote>
+      </section>
+
+      <section class="how-section" id="how-to">
+        <h2>Map your thinking.</h2>
+        <div class="how-grid">
+          <article>
+            <b>01</b>
+            <h3>Choose a skill</h3>
+            <p>选择你要进入的视角：自己、战略、命理、产品、工程或现实主义。</p>
+          </article>
+          <article>
+            <b>02</b>
+            <h3>Set the model</h3>
+            <p>选择模型、温度，并用测试按钮确认联通状态。</p>
+          </article>
+          <article>
+            <b>03</b>
+            <h3>Refine by feedback</h3>
+            <p>对回答做反馈，让下一次对话更像你真正需要的镜子。</p>
+          </article>
+        </div>
+      </section>
+
+      <section class="connect-section">
+        <div class="connect-image" aria-hidden="true"></div>
+        <h2>Connect with yourself.</h2>
+        <p>从产品首页进入 `/chat`，开始使用你的私人 skill 控制台。</p>
+        <a class="launch-cta large" href="/chat">
+          <span>进入镜室</span>
+          <span class="phone-glyph" aria-hidden="true"></span>
+        </a>
       </section>
     </main>
+
+    <footer class="launch-footer">
+      <a href="#benefits">Benefits</a>
+      <a href="#specs">Specifications</a>
+      <a href="#how-to">How-to</a>
+      <span>© 镜室. 2026 All Rights Reserved</span>
+    </footer>
   </body>
 </html>
