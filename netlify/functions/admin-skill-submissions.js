@@ -44,7 +44,7 @@ export default async (req) => {
 
 export const config = {
   path: "/api/admin/skill-submissions",
-  method: ["GET"]
+  method: ["GET", "PATCH"]
 };
 
 async function listSubmissions(authorization) {
