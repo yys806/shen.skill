@@ -29,10 +29,10 @@
       <section class="home-hero">
         <div class="hero-text">
           <p class="home-kicker">mirror room / private skill console</p>
-          <h1>给每一种思维方式，一间可以反复进入的房间。</h1>
-          <p>
-            镜室不是“再来一个聊天机器人”。它把人格、知识框架和复盘方法封装成 skill，
-            让你可以在不同视角之间切换、对话、修正，并把有价值的反馈沉淀下来。
+          <h1>镜室</h1>
+          <p class="hero-subtitle">点击即用的蒸馏skill对话平台</p>
+          <p class="hero-description">
+            把人格、知识框架和复盘方法封装成 skill，在不同视角之间切换、对话、修正，并沉淀反馈。
           </p>
           <div class="home-actions">
             <a class="home-primary" href="/chat">打开镜室</a>
@@ -181,7 +181,7 @@
       if (location.hash && document.querySelector(location.hash)) {
         setActiveSection(location.hash.slice(1));
       } else {
-        setActiveSection("skills");
+        setActiveSection("");
       }
     </script>
   </body>

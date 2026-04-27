@@ -167,7 +167,7 @@ body.home-page::after {
   font-size: clamp(42px, 5.8vw, 78px);
 }
 
-.hero-text > p:not(.home-kicker),
+.hero-description,
 .home-cta > p,
 .reason-grid p,
 .workflow-line p {
@@ -175,9 +175,17 @@ body.home-page::after {
   line-height: 1.75;
 }
 
-.hero-text > p:not(.home-kicker) {
+.hero-subtitle {
+  margin: 14px 0 0;
+  color: var(--lacquer-dark);
+  font-size: clamp(21px, 2.4vw, 32px);
+  font-weight: 900;
+  letter-spacing: -0.04em;
+}
+
+.hero-description {
   max-width: 34em;
-  margin: 20px 0 0;
+  margin: 16px 0 0;
   font-size: clamp(15px, 1.35vw, 18px);
 }
 
