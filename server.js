@@ -143,11 +143,15 @@ async function loadSkillPrompt() {
 
 async function serveStatic(pathname, res) {
   const safePath = pathname === "/" ? "/index.html" : decodeURIComponent(pathname);
-  const filePath = path.normalize(path.join(publicDir, safePath));
+  let filePath = path.normalize(path.join(publicDir, safePath));
 
   if (!filePath.startsWith(publicDir)) {
     sendJson(res, 403, { error: "Forbidden" });
     return;
+  }
+
+  if (existsSync(filePath) && !path.extname(filePath)) {
+    filePath = path.join(filePath, "index.html");
   }
 
   if (!existsSync(filePath)) {

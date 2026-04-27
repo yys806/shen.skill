@@ -3,100 +3,134 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>镜室 Mirror Room</title>
+    <title>镜室 Mirror Room | Skill 对话台</title>
+    <meta
+      name="description"
+      content="镜室是一个可扩展的 skill 对话台，把人格、知识框架和思维方式封装成可对话的工作空间。"
+    />
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
     <link rel="stylesheet" href="/styles.css" />
-    <script src="https://cdn.jsdelivr.net/npm/dompurify@3.2.4/dist/purify.min.js" defer></script>
-    <script src="https://cdn.jsdelivr.net/npm/marked@15.0.7/marked.min.js" defer></script>
   </head>
-  <body>
-    <main class="mirror-shell">
-      <header class="top-zone">
-        <nav class="dock" aria-label="对话控制台">
-          <button class="dock-item" data-modal="skill">
-            <span>对话对象</span>
-            <strong id="skill-label">禹尧珅</strong>
-          </button>
-          <button class="dock-item" data-modal="counterpart">
-            <span>你是谁</span>
-            <strong id="counterpart-label">未填写</strong>
-          </button>
-          <button class="dock-item" data-modal="scene">
-            <span>语气场景</span>
-            <strong id="scene-label">真我复盘</strong>
-          </button>
-          <button class="dock-item wide" data-modal="model">
-            <span>模型</span>
-            <strong id="model-label">Kimi-K2.6</strong>
-          </button>
-          <button class="dock-item compact" data-modal="temperature">
-            <span>温度</span>
-            <strong id="temperature-label">0.7</strong>
-          </button>
-          <button class="dock-item auth" data-modal="auth">
-            <span>账户</span>
-            <strong id="auth-label">登录 / 注册</strong>
-          </button>
-        </nav>
-      </header>
+  <body class="landing-page">
+    <main class="product-shell">
+      <nav class="product-nav" aria-label="产品导航">
+        <a class="brand-mark" href="/">
+          <span></span>
+          <strong>镜室</strong>
+        </a>
+        <div class="nav-links">
+          <a href="#skills">Skills</a>
+          <a href="#workflow">Workflow</a>
+          <a href="#pricing">Access</a>
+        </div>
+        <a class="nav-cta" href="/chat">进入镜室</a>
+      </nav>
 
-      <section class="workspace">
-        <aside class="history-panel" aria-label="历史对话">
-          <div class="panel-head">
-            <div>
-              <p class="eyebrow">history</p>
-              <h2>历史对话</h2>
-            </div>
-            <div class="history-actions">
-              <button id="toggle-history" class="icon-button subtle" type="button">折叠</button>
-              <button id="new-chat" class="icon-button" type="button">新建</button>
-            </div>
+      <section class="product-hero">
+        <div class="hero-copy">
+          <p class="launch-label">mirror room / skill console</p>
+          <h1>把一种思维方式，变成可以反复对话的房间。</h1>
+          <p class="hero-lead">
+            镜室把人格 skill、知识框架和复盘方法封装成一个可扩展的对话台。
+            你可以和自己、毛选、八字、乔布斯、马斯克、芒格或峰哥视角对话。
+          </p>
+          <div class="hero-actions">
+            <a class="primary-action" href="/chat">开始使用</a>
+            <a class="secondary-action" href="#showcase">看看它能做什么</a>
           </div>
-          <div id="conversation-list" class="conversation-list"></div>
-        </aside>
+          <div class="hero-metrics" aria-label="产品能力">
+            <span><strong>8</strong> 个已接入 skill</span>
+            <span><strong>3</strong> 个模型提供商</span>
+            <span><strong>1</strong> 个可生长的记忆系统</span>
+          </div>
+        </div>
 
-        <section class="chat-panel" aria-label="对话详情">
-          <header class="chat-header">
-            <div>
-              <p class="status-dot"><span></span> protected skill channel</p>
-              <h2 id="chat-title">新的镜室对话</h2>
-            </div>
-            <button id="clear" type="button" class="ghost-button">清空当前</button>
-          </header>
+        <div class="hero-device" id="showcase" aria-label="产品界面预览">
+          <div class="device-top">
+            <span>shen-skill.netlify.app/chat</span>
+            <i></i><i></i><i></i>
+          </div>
+          <div class="device-grid">
+            <aside>
+              <p>HISTORY</p>
+              <b>真我复盘</b>
+              <b>毛选拆局</b>
+              <b>芒格反向清单</b>
+            </aside>
+            <section>
+              <div class="chat-chip">Skill: 禹尧珅</div>
+              <article>
+                <small>MIRROR</small>
+                <p>先别急着解释，我们把这件事拆成动机、边界和下一步。</p>
+              </article>
+              <article class="user-preview">
+                <small>YOU</small>
+                <p>我想复盘一下最近这个选择。</p>
+              </article>
+            </section>
+          </div>
+        </div>
+      </section>
 
-          <div id="messages" class="messages" aria-live="polite"></div>
+      <section class="product-strip" aria-label="适用场景">
+        <span>自我复盘</span>
+        <span>工作决策</span>
+        <span>关系理解</span>
+        <span>知识框架</span>
+        <span>人格模拟</span>
+      </section>
 
-          <form id="composer" class="composer">
-            <textarea
-              id="prompt"
-              rows="2"
-              placeholder="登录后开始。可以先说：我是你本人，想复盘一件事。"
-            ></textarea>
-            <button type="submit">发送</button>
-          </form>
-        </section>
+      <section class="section-block" id="workflow">
+        <div class="section-heading">
+          <p class="launch-label">workflow</p>
+          <h2>不是另一个聊天框，是一套可切换的思维接口。</h2>
+        </div>
+        <div class="feature-grid">
+          <article>
+            <span>01</span>
+            <h3>选择 skill</h3>
+            <p>每个 skill 都是一套不同的对话规则、知识边界和表达方式。</p>
+          </article>
+          <article>
+            <span>02</span>
+            <h3>选择模型</h3>
+            <p>在 SiliconFlow、DeepSeek、OpenRouter 之间切换，按速度和质量取舍。</p>
+          </article>
+          <article>
+            <span>03</span>
+            <h3>反馈吸收</h3>
+            <p>对回复点赞、反赞、评论，重要反馈会进入 skill 记忆，逐步变得更像你要的东西。</p>
+          </article>
+        </div>
+      </section>
+
+      <section class="skill-wall" id="skills">
+        <div class="section-heading">
+          <p class="launch-label">skill library</p>
+          <h2>一间镜室，很多种脑子。</h2>
+        </div>
+        <div class="skill-cards">
+          <article><strong>禹尧珅</strong><span>真我复盘 / 协作 / 关系理解</span></article>
+          <article><strong>毛选</strong><span>矛盾分析 / 战略判断</span></article>
+          <article><strong>八字</strong><span>四柱命理 / 结构化推演</span></article>
+          <article><strong>乔布斯</strong><span>产品审美 / 极致取舍</span></article>
+          <article><strong>马斯克</strong><span>第一性原理 / 工程压强</span></article>
+          <article><strong>芒格</strong><span>多元模型 / 反向思考</span></article>
+          <article><strong>峰哥亡命天涯</strong><span>现实去魅 / 黑色幽默</span></article>
+        </div>
+      </section>
+
+      <section class="access-panel" id="pricing">
+        <div>
+          <p class="launch-label">private beta</p>
+          <h2>先作为一个私人镜室，再慢慢长成产品。</h2>
+          <p>
+            当前版本支持登录、邀请码注册、历史对话、模型测试、Markdown 回复和反馈记忆。
+            后续可以继续接入更多 skill、团队空间和公开分享页。
+          </p>
+        </div>
+        <a class="primary-action" href="/chat">进入 /chat</a>
       </section>
     </main>
-
-    <div id="modal-backdrop" class="modal-backdrop hidden" aria-hidden="true">
-      <section class="modal-card" role="dialog" aria-modal="true" aria-labelledby="modal-title">
-        <button id="modal-close" class="modal-close" type="button" aria-label="关闭">×</button>
-        <p id="modal-kicker" class="eyebrow">setting</p>
-        <h2 id="modal-title">设置</h2>
-        <div id="modal-body" class="modal-body"></div>
-      </section>
-    </div>
-
-    <template id="message-template">
-      <article class="message">
-        <div class="avatar"></div>
-        <div class="bubble">
-          <div class="role"></div>
-          <div class="content"></div>
-        </div>
-      </article>
-    </template>
-
-    <script src="/app.js" type="module"></script>
   </body>
 </html>
