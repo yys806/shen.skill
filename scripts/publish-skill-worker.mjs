@@ -63,7 +63,7 @@ async function processTask(task) {
 
     const slug = makeSkillId(task.repo_url, task.skill_name);
     await publishSkillFiles(repoDir, slug);
-    await updateCatalog(slug, task);
+    await updateCatalog(slug, task, repoDir);
     await ensureDetailPage(slug);
     await refreshHomeSkillGrid();
 
@@ -199,24 +199,120 @@ async function copySafeTree(fromDir, toDir, depth) {
   }
 }
 
-async function updateCatalog(slug, task) {
+async function updateCatalog(slug, task, repoDir) {
   const catalog = JSON.parse(await readFile(catalogPath, "utf8"));
+  const generated = await generateCatalogEntry(slug, task, repoDir);
   const entry = {
     id: slug,
     name: task.skill_name,
-    description: task.description || `${task.skill_name} 社区提交 skill。`,
+    description: generated.description,
     needsContext: false,
-    label: "community skill / reviewed submission",
+    label: generated.label,
     source: normalizeRepoUrl(task.repo_url),
-    summary: task.description || `${task.skill_name} 由社区提交，经管理员审核后进入镜室。`,
-    bestFor: ["按该 skill 的方法处理问题", "作为一种新的对话视角", "在镜室中快速试用"],
-    notes: ["社区提交，管理员审核后发布", "回复质量取决于原始 SKILL.md 的清晰度", "如果效果不稳定，可以继续迭代仓库后重新提交"]
+    summary: generated.summary,
+    bestFor: generated.bestFor,
+    notes: generated.notes
   };
   const nextCatalog = catalog.filter(item => item.id !== slug).concat(entry);
   if (args.dryRun) return;
   const serialized = `${JSON.stringify(nextCatalog, null, 2)}\n`;
   await writeFile(catalogPath, serialized, "utf8");
   await writeFile(publicCatalogPath, serialized, "utf8");
+}
+
+async function generateCatalogEntry(slug, task, repoDir) {
+  const skill = await readFile(path.join(repoDir, "SKILL.md"), "utf8");
+  const readme = existsSync(path.join(repoDir, "README.md"))
+    ? await readFile(path.join(repoDir, "README.md"), "utf8")
+    : "";
+  const frontmatter = parseFrontmatter(skill);
+  const combined = `${readme}\n\n${skill}`;
+  const inferred = inferCatalogFromText(combined);
+  const description = cleanSummary(inferred.description || frontmatter.description || task.description || `${task.skill_name} skill。`);
+  return {
+    description,
+    label: inferred.label || buildLabelFromSlug(slug),
+    summary: cleanSummary(inferred.summary || description),
+    bestFor: inferred.bestFor,
+    notes: inferred.notes
+  };
+}
+
+function parseFrontmatter(text) {
+  const match = text.match(/^---\s*([\s\S]*?)\s*---/);
+  if (!match) return {};
+  const block = match[1];
+  const name = block.match(/^name:\s*(.+)$/m)?.[1]?.trim();
+  const lines = block.split(/\r?\n/);
+  const descriptionStart = lines.findIndex(line => /^description:\s*\|/.test(line));
+  const descriptionLines = [];
+  if (descriptionStart !== -1) {
+    for (const line of lines.slice(descriptionStart + 1)) {
+      if (/^\S/.test(line)) break;
+      const trimmed = line.trim();
+      if (trimmed) descriptionLines.push(trimmed);
+    }
+  }
+  const description = descriptionLines.join(" ");
+  return { name, description };
+}
+
+function inferCatalogFromText(text) {
+  const lower = text.toLowerCase();
+  if (lower.includes("buffett") || text.includes("巴菲特") || lower.includes("economic moat")) {
+    return {
+      label: "moat / margin of safety / plain english",
+      description: "巴菲特思维操作系统，基于股东信、股东大会、采访和传记提炼投资判断框架。",
+      summary: "一个把 Warren Buffett 的核心心智模型、决策启发式和表达 DNA 封装起来的投资与决策视角。它适合用来审视企业、投资、合作伙伴和长期选择，而不是预测短期市场。",
+      bestFor: ["判断企业是否有经济护城河", "检查自己是否在能力圈内决策", "用安全边际审视价格与价值", "评估管理层诚信和所有者思维", "把复杂机会放进「太难」篮子"],
+      notes: ["先给结论，再用故事或类比解释", "语言朴素直接，避免华尔街术语", "对原则坚定，对预测谦逊", "常用护城河、棒球、农场、滚雪球等类比", "遇到不懂的问题会坦然说不知道"]
+    };
+  }
+
+  return {
+    label: extractHeading(text) || "community skill / reviewed submission",
+    description: "",
+    summary: extractParagraph(text),
+    bestFor: extractListAfter(text, ["What's Included", "核心心智模型", "用途", "适合"]),
+    notes: extractListAfter(text, ["表达DNA", "Expression DNA", "风格", "使用"])
+  };
+}
+
+function extractHeading(text) {
+  return text.match(/^#\s+(.+)$/m)?.[1]?.trim().slice(0, 80) || "";
+}
+
+function extractParagraph(text) {
+  return text
+    .split(/\r?\n/)
+    .map(line => line.trim())
+    .find(line => line.length > 40 && !line.startsWith("#") && !line.startsWith(">") && !line.startsWith("-"))
+    ?.slice(0, 180) || "";
+}
+
+function extractListAfter(text, headings) {
+  for (const heading of headings) {
+    const index = text.toLowerCase().indexOf(heading.toLowerCase());
+    if (index === -1) continue;
+    const section = text.slice(index, index + 1800);
+    const items = [...section.matchAll(/(?:^|\n)\s*(?:[-*]|\d+\.)\s+\*\*?([^*\n-][^*\n]*)\*\*?/g)]
+      .map(match => match[1].replace(/\s+-\s+.*$/, "").trim())
+      .filter(Boolean)
+      .slice(0, 5);
+    if (items.length >= 3) return items;
+  }
+  return ["围绕该 skill 的核心框架提问", "让它给出判断、拆解和反馈", "用对话测试这个视角是否适合当前问题"];
+}
+
+function cleanSummary(value) {
+  return String(value || "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, 220);
+}
+
+function buildLabelFromSlug(slug) {
+  return slug.replace(/[-_]+/g, " / ").slice(0, 80);
 }
 
 async function ensureDetailPage(slug) {
