@@ -43,7 +43,7 @@ body.home-page::after {
   z-index: 1;
   width: min(1220px, calc(100vw - 32px));
   margin: 0 auto;
-  padding: 18px 0 56px;
+  padding: 16px 0 46px;
 }
 
 .home-nav {
@@ -125,12 +125,12 @@ body.home-page::after {
 }
 
 .home-hero {
-  min-height: calc(100vh - 96px);
+  min-height: 0;
   display: grid;
-  grid-template-columns: minmax(0, 0.95fr) minmax(460px, 1.05fr);
-  gap: 44px;
+  grid-template-columns: minmax(0, 1fr) minmax(410px, 0.9fr);
+  gap: 34px;
   align-items: center;
-  padding: 64px 0 36px;
+  padding: 44px 0 26px;
 }
 
 .home-kicker {
@@ -157,8 +157,8 @@ body.home-page::after {
 }
 
 .hero-text h1 {
-  max-width: 9.8em;
-  font-size: clamp(58px, 8.2vw, 116px);
+  max-width: 11em;
+  font-size: clamp(42px, 5.8vw, 78px);
 }
 
 .hero-text > p:not(.home-kicker),
@@ -170,16 +170,16 @@ body.home-page::after {
 }
 
 .hero-text > p:not(.home-kicker) {
-  max-width: 35em;
-  margin: 24px 0 0;
-  font-size: clamp(17px, 1.7vw, 21px);
+  max-width: 34em;
+  margin: 20px 0 0;
+  font-size: clamp(15px, 1.35vw, 18px);
 }
 
 .home-actions {
   display: flex;
   flex-wrap: wrap;
   gap: 12px;
-  margin-top: 30px;
+  margin-top: 24px;
 }
 
 .home-primary,
@@ -212,11 +212,11 @@ body.home-page::after {
 
 .mirror-card {
   position: relative;
-  min-height: 650px;
+  min-height: 520px;
   overflow: hidden;
   padding: 16px;
   border: 1px solid rgba(255, 248, 235, 0.52);
-  border-radius: 38px;
+  border-radius: 32px;
   background:
     radial-gradient(circle at 18% 10%, rgba(255, 250, 240, 0.8), transparent 18rem),
     linear-gradient(135deg, rgba(86, 24, 15, 0.92), rgba(35, 93, 76, 0.82));
@@ -226,7 +226,7 @@ body.home-page::after {
 .mirror-card::after {
   content: "";
   position: absolute;
-  inset: 46px;
+  inset: 34px;
   border: 1px solid rgba(255, 248, 235, 0.24);
   border-radius: 999px;
 }
@@ -254,7 +254,7 @@ body.home-page::after {
 .mirror-stage {
   position: relative;
   z-index: 1;
-  min-height: 375px;
+  min-height: 285px;
   display: grid;
   place-items: center;
 }
@@ -273,14 +273,14 @@ body.home-page::after {
 .mirror-core {
   position: relative;
   z-index: 2;
-  width: 132px;
-  height: 132px;
+  width: 108px;
+  height: 108px;
   display: grid;
   place-items: center;
-  border-radius: 44px;
+  border-radius: 36px;
   color: #fff2db;
   background: linear-gradient(135deg, var(--lacquer), var(--lacquer-dark));
-  font-size: 58px;
+  font-size: 46px;
   font-weight: 900;
   box-shadow: 0 24px 70px rgba(45, 29, 9, 0.38);
 }
@@ -320,7 +320,7 @@ body.home-page::after {
 }
 
 .mirror-dialogue article {
-  padding: 18px;
+  padding: 15px;
   border: 1px solid rgba(27, 23, 18, 0.12);
   border-radius: 22px;
   background: rgba(255, 249, 237, 0.82);
@@ -340,7 +340,7 @@ body.home-page::after {
 
 .mirror-dialogue p {
   margin: 8px 0 0;
-  font-size: 18px;
+  font-size: 16px;
   line-height: 1.55;
 }
 
@@ -357,7 +357,7 @@ body.home-page::after {
 
 .home-strip span {
   flex: 1;
-  padding: 18px 12px;
+  padding: 14px 10px;
   border-radius: 17px;
   background: rgba(255, 252, 244, 0.62);
   text-align: center;
@@ -366,8 +366,8 @@ body.home-page::after {
 
 .home-section,
 .home-cta {
-  margin-top: 32px;
-  padding: clamp(26px, 4vw, 48px);
+  margin-top: 24px;
+  padding: clamp(22px, 3.2vw, 38px);
   border: 1px solid var(--line);
   border-radius: 34px;
   background: rgba(255, 249, 237, 0.68);
@@ -383,8 +383,13 @@ body.home-page::after {
 
 .home-section h2,
 .home-cta h2 {
-  max-width: 11em;
-  font-size: clamp(40px, 5.6vw, 74px);
+  max-width: 12em;
+  font-size: clamp(30px, 4vw, 52px);
+}
+
+.home-section,
+.home-cta {
+  scroll-margin-top: 104px;
 }
 
 .section-head {
@@ -432,7 +437,7 @@ body.home-page::after {
 }
 
 .home-skill-grid article {
-  min-height: 148px;
+  min-height: 122px;
   display: grid;
   align-content: space-between;
   padding: 22px;
@@ -440,7 +445,7 @@ body.home-page::after {
 }
 
 .home-skill-grid strong {
-  font-size: 25px;
+  font-size: 22px;
   letter-spacing: -0.06em;
 }
 
@@ -454,7 +459,7 @@ body.home-page::after {
 }
 
 .workflow-line article {
-  min-height: 210px;
+  min-height: 165px;
   padding: 22px;
   border-radius: 24px;
 }
@@ -574,6 +579,10 @@ body.home-page::after {
 
 * {
   box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
 }
 
 * {
