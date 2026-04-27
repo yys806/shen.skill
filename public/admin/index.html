@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Skill 后台 | 镜室</title>
+    <link rel="icon" href="/icon.png" type="image/png" />
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body class="home-page admin-page">
+    <main class="skill-detail-shell">
+      <nav class="skill-detail-nav">
+        <a class="home-brand" href="/"><span></span><strong>镜室后台</strong></a>
+        <div>
+          <a href="/submit-skill/">提交页</a>
+          <a href="/">回首页</a>
+        </div>
+      </nav>
+
+      <section class="admin-head">
+        <p class="home-kicker">admin review</p>
+        <h1>Skill 提交列表</h1>
+        <p>只有管理员邮箱可以查看。当前管理员：3492675568@qq.com</p>
+      </section>
+
+      <section class="admin-panel">
+        <div id="admin-auth" class="submission-auth"></div>
+        <div id="submission-list" class="submission-list"></div>
+      </section>
+    </main>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="/admin/admin.js"></script>
+  </body>
+</html>

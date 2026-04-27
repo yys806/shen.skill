@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>提交 Skill | 镜室</title>
+    <link rel="icon" href="/icon.png" type="image/png" />
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body class="home-page skill-submit-page">
+    <main class="skill-detail-shell">
+      <nav class="skill-detail-nav">
+        <a class="home-brand" href="/"><span></span><strong>镜室</strong></a>
+        <div>
+          <a href="/#skills">Skill 库</a>
+          <a href="/chat">进入 /chat</a>
+        </div>
+      </nav>
+
+      <section class="submission-layout">
+        <aside class="submission-copy">
+          <p class="home-kicker">submit a skill</p>
+          <h1>提交你自己的 skill</h1>
+          <p>
+            把你蒸馏好的 skill 仓库交给镜室。提交后我们会先审核可用性、来源和安全边界；
+            审核通过后，再发布到线上 Skill 库。
+          </p>
+          <div class="submission-steps">
+            <span>1. 登录账户</span>
+            <span>2. 填写仓库信息</span>
+            <span>3. 等待审核发布</span>
+          </div>
+        </aside>
+
+        <section class="submission-card">
+          <div id="submit-auth" class="submission-auth"></div>
+          <form id="skill-submit-form" class="submission-form">
+            <label for="skill-name">Skill 名称</label>
+            <input id="skill-name" name="name" maxlength="80" placeholder="比如：某某研究员.skill" required />
+
+            <label for="repo-url">GitHub 仓库地址</label>
+            <input id="repo-url" name="repoUrl" type="url" placeholder="https://github.com/you/your-skill" required />
+
+            <label for="description">简要说明</label>
+            <textarea id="description" name="description" rows="6" maxlength="1200" placeholder="它解决什么问题？适合什么场景？有什么边界？" required></textarea>
+
+            <button class="home-primary" type="submit">提交审核</button>
+          </form>
+          <p id="submit-feedback" class="submission-feedback"></p>
+        </section>
+      </section>
+    </main>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="/submit-skill/submit.js"></script>
+  </body>
+</html>

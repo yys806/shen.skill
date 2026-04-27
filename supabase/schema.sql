@@ -112,3 +112,37 @@ with check (auth.uid() = user_id);
 
 create index if not exists skill_memories_user_skill_created_idx
 on public.skill_memories (user_id, skill, created_at desc);
+
+create table if not exists public.skill_submissions (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users(id) on delete cascade,
+  submitter_email citext not null,
+  name text not null,
+  repo_url text not null,
+  description text not null,
+  status text not null default 'pending' check (status in ('pending', 'approved', 'rejected', 'published')),
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+alter table public.skill_submissions enable row level security;
+
+drop trigger if exists skill_submissions_set_updated_at on public.skill_submissions;
+create trigger skill_submissions_set_updated_at
+before update on public.skill_submissions
+for each row execute function public.set_updated_at();
+
+drop policy if exists "users can insert own skill submissions" on public.skill_submissions;
+create policy "users can insert own skill submissions"
+on public.skill_submissions for insert
+with check (auth.uid() = user_id);
+
+drop policy if exists "admins can read skill submissions" on public.skill_submissions;
+create policy "admins can read skill submissions"
+on public.skill_submissions for select
+using (
+  lower(coalesce((auth.jwt() ->> 'email'), '')) = '3492675568@qq.com'
+);
+
+create index if not exists skill_submissions_created_idx
+on public.skill_submissions (created_at desc);
