@@ -43,12 +43,15 @@ body.home-page::after {
   z-index: 1;
   width: min(1220px, calc(100vw - 32px));
   margin: 0 auto;
-  padding: 16px 0 46px;
+  padding: 96px 0 46px;
 }
 
 .home-nav {
-  position: sticky;
+  position: fixed;
   top: 14px;
+  left: 50%;
+  width: min(1220px, calc(100vw - 32px));
+  transform: translateX(-50%);
   z-index: 20;
   display: grid;
   grid-template-columns: 1fr auto 1fr;
@@ -539,11 +542,12 @@ body.home-page::after {
 @media (max-width: 620px) {
   .home-shell {
     width: min(100vw - 18px, 1220px);
-    padding-top: 10px;
+    padding-top: 84px;
   }
 
   .home-nav {
     top: 8px;
+    width: min(100vw - 18px, 1220px);
   }
 
   .home-brand strong {
