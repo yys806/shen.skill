@@ -323,34 +323,38 @@ body.home-page::after {
   line-height: 1;
 }
 
-.terminal-turn {
-  position: absolute;
-  inset: 30px;
+.terminal-dialogue {
+  position: relative;
   z-index: 2;
   display: grid;
-  align-content: center;
-  gap: 16px;
-  opacity: 0;
-  transform: translateY(18px);
-  animation: terminalCycle 13.5s infinite ease-in-out;
-}
-
-.turn-two {
-  animation-delay: 4.5s;
-}
-
-.turn-three {
-  animation-delay: 9s;
+  max-height: 472px;
+  gap: 14px;
+  overflow-y: auto;
+  padding-right: 6px;
+  scroll-behavior: smooth;
 }
 
 .terminal-line {
-  width: min(92%, 520px);
-  padding: 16px 18px;
+  width: min(94%, 560px);
+  padding: 14px 16px;
   border: 1px solid rgba(255, 248, 235, 0.14);
   border-radius: 18px;
   background: rgba(255, 248, 235, 0.08);
   box-shadow: 0 20px 50px rgba(0, 0, 0, 0.18);
   backdrop-filter: blur(12px);
+  animation: terminalMessageIn 520ms ease both;
+}
+
+.terminal-line:nth-child(2) {
+  animation-delay: 120ms;
+}
+
+.terminal-line:nth-child(3) {
+  animation-delay: 240ms;
+}
+
+.terminal-line:nth-child(4) {
+  animation-delay: 360ms;
 }
 
 .terminal-line small {
@@ -364,8 +368,9 @@ body.home-page::after {
 .terminal-line p {
   margin: 0;
   color: #fff6e5;
-  font-size: 17px;
-  line-height: 1.65;
+  white-space: pre-wrap;
+  font-size: 15px;
+  line-height: 1.62;
 }
 
 .user-line {
@@ -378,27 +383,21 @@ body.home-page::after {
   background: rgba(255, 249, 237, 0.12);
 }
 
-.mirror-line p::after {
+.terminal-line:last-child.mirror-line p::after {
   content: "▌";
   margin-left: 3px;
   color: #f4c36e;
   animation: blink 900ms steps(2, start) infinite;
 }
 
-@keyframes terminalCycle {
-  0% {
+@keyframes terminalMessageIn {
+  from {
     opacity: 0;
-    transform: translateY(18px);
+    transform: translateY(12px);
   }
-  8%,
-  27% {
+  to {
     opacity: 1;
     transform: translateY(0);
-  }
-  33%,
-  100% {
-    opacity: 0;
-    transform: translateY(-16px);
   }
 }
 
@@ -740,10 +739,6 @@ body.home-page::after {
   .terminal-body {
     min-height: 440px;
     padding: 18px;
-  }
-
-  .terminal-turn {
-    inset: 18px;
   }
 
   .terminal-line {

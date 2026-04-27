@@ -48,36 +48,7 @@
           </div>
           <div class="terminal-body">
             <div class="terminal-seal">镜</div>
-            <div class="terminal-turn turn-one">
-              <article class="terminal-line user-line">
-                <small>YOU</small>
-                <p>我想复盘一个选择，但我说不清自己为什么犹豫。</p>
-              </article>
-              <article class="terminal-line mirror-line">
-                <small>MIRROR</small>
-                <p>先别急着选。我们拆三层：你在怕什么、你想保住什么、下一步最小动作是什么。</p>
-              </article>
-            </div>
-            <div class="terminal-turn turn-two">
-              <article class="terminal-line user-line">
-                <small>YOU</small>
-                <p>换成毛选视角看，这事主要矛盾是什么？</p>
-              </article>
-              <article class="terminal-line mirror-line">
-                <small>MIRROR</small>
-                <p>主要矛盾不是“做不做”，而是资源、时间和目标之间没有重新排队。</p>
-              </article>
-            </div>
-            <div class="terminal-turn turn-three">
-              <article class="terminal-line user-line">
-                <small>YOU</small>
-                <p>那给我一个今天就能做的动作。</p>
-              </article>
-              <article class="terminal-line mirror-line">
-                <small>MIRROR</small>
-                <p>写下两个选项的代价上限。不要证明谁对，先找哪个损失你真的扛得住。</p>
-              </article>
-            </div>
+            <div id="terminal-dialogue" class="terminal-dialogue"></div>
           </div>
         </div>
       </section>
@@ -167,10 +138,89 @@
         .filter(link => link.dataset.section !== "top")
         .map(link => document.getElementById(link.dataset.section))
         .filter(Boolean);
+      const terminalDialogues = [
+        [
+          ["YOU", "你好，你是谁"],
+          ["MIRROR", "我是Elon Musk。SpaceX和Tesla的CEO。但头衔不重要。重要的是：我正在同时解决两个问题——让人类成为多行星物种，和加速向可持续能源转型。其他一切都是这两件事的子集或副产品。"],
+          ["YOU", "给现在的大学生一些建议"],
+          ["MIRROR", `先算。你四年大学花了多少钱？学费加生活费。除以你每周真正学到东西的小时数。白痴指数是多少？
+
+但这不是重点。重点是：你学的东西，有多少是物理定律决定的？多少是制度遗留？
+
+三条建议：
+
+1. 自学比上课重要。我大部分知识是自学的——从物理到火箭设计。课堂教的是如何通过考试，不是如何解决问题。读书，读论文，读原始资料。不要等教授给你答案。
+
+2. 质疑一切默认假设。为什么一定要四年毕业？为什么一定要这个专业？为什么这个行业「一直这么做」？物理定律是唯一硬约束，其他都是建议。
+
+3. 做难的事。不是「看起来难」——是真正有物理挑战的事。造东西。写代码。动手。失败不重要，重要的是从失败中学到什么。SpaceX前三枚火箭全炸了。第四枚成功了。
+
+最后：别把时间花在简历上。花在作品上。作品会说话。`]
+        ],
+        [
+          ["YOU", "你好，你是谁"],
+          ["MIRROR", `（停顿两秒，直视你）
+
+我是 Steve Jobs。你面前这个人的思维，在车库里创立了 Apple，被自己创立的公司踢出去过，又回来把它变成了世界上最有价值的公司之一。
+
+我创造了 Mac、iPod、iPhone 和 iPad。但更重要的是——我证明了技术与人文的交汇处能产生改变世界的东西。
+
+所以，你找我聊什么？`],
+          ["YOU", "给我一些建议，我是一个大三学生"],
+          ["MIRROR", `（靠在椅背上，停顿片刻）
+
+大三？好。我给你三个建议。
+
+第一，退一门课。
+
+不是真的退学——虽然我退学了，但那不适合每个人。我说的是：找出你课表里那门你只是因为"应该上"才选了的课。退掉它。用那个时间去旁听一门你完全不知道有什么用、但让你兴奋的东西。书法课教会了我字体排版，十年后变成了Mac上的字体。你没法前瞻连接这些点。
+
+第二，别在乎GPA。
+
+你毕业五年后，没人会问你GPA是多少。他们只会问你做了什么、创造了什么。所以花时间做出一个东西——一个App、一个网站、一个作品集。一个糟糕的B+项目也比完美的A-作业更有价值。
+
+第三，问自己一个问题。
+
+每天早上对着镜子问："如果今天是我生命的最后一天，我还会去上这些课、做这些事吗？"如果连续一周答案是No——你知道该做什么。
+
+Stay hungry. Stay foolish.`]
+        ],
+        [
+          ["YOU", "你好，你是谁"],
+          ["MIRROR", "我是Charlie Munger。伯克希尔的副董事长，Warren的合伙人，活了99年的职业学习机器。我不喜欢自我介绍，但既然你问了——我一生只做了一件事：收集人类犯过的蠢事，然后系统性地避开它们。这比试图变聪明容易得多。"],
+          ["YOU", "我是一个大三学生，给我一些建议"],
+          ["MIRROR", `大三？好问题。我给你三条，不说废话。
+
+第一，别选容易的路。很多人选专业、找工作，只问"哪个最轻松"。这是灾难。问"哪个能让我学到最多的硬知识"。
+
+第二，读跨学科的书。你的专业课本不够。去读心理学、物理学、历史、生物学。每个学科的核心模型你都要懂。单一视角是智力上的自杀。
+
+第三，学会说"我不知道"。大三学生的通病是觉得什么都懂。你其实什么都不懂。这没关系，但你要知道你不懂。保持这种诚实，你到35岁就会比同龄人聪明很多。
+
+就这些。其他都是废话。`]
+        ]
+      ];
 
       function setActiveSection(id) {
         sectionLinks.forEach(link => {
           link.classList.toggle("active", link.dataset.section === id);
+        });
+      }
+
+      function renderRandomDialogue() {
+        const target = document.querySelector("#terminal-dialogue");
+        if (!target) return;
+        const dialogue = terminalDialogues[Math.floor(Math.random() * terminalDialogues.length)];
+        target.innerHTML = "";
+        dialogue.forEach(([role, content]) => {
+          const article = document.createElement("article");
+          article.className = `terminal-line ${role === "YOU" ? "user-line" : "mirror-line"}`;
+          const label = document.createElement("small");
+          label.textContent = role;
+          const text = document.createElement("p");
+          text.textContent = content;
+          article.append(label, text);
+          target.appendChild(article);
         });
       }
 
@@ -197,6 +247,7 @@
       });
 
       updateActiveSection();
+      renderRandomDialogue();
       window.addEventListener("scroll", updateActiveSection, { passive: true });
       window.addEventListener("resize", updateActiveSection);
       window.addEventListener("pageshow", updateActiveSection);
