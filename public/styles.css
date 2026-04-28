@@ -3072,13 +3072,14 @@ textarea:disabled {
 }
 
 .modal-card:hover {
-  scrollbar-width: thin;
-  scrollbar-color: rgba(86, 24, 15, 0.48) transparent;
+  scrollbar-width: none;
+  scrollbar-color: transparent transparent;
 }
 
 .modal-card::-webkit-scrollbar {
-  width: 7px;
-  height: 7px;
+  display: none;
+  width: 0;
+  height: 0;
 }
 
 .modal-card::-webkit-scrollbar-track {
@@ -3094,11 +3095,11 @@ textarea:disabled {
 }
 
 .modal-card:hover::-webkit-scrollbar-thumb {
-  background: rgba(86, 24, 15, 0.42);
+  background: transparent;
 }
 
 .modal-card:hover::-webkit-scrollbar-thumb:hover {
-  background: rgba(143, 45, 28, 0.62);
+  background: transparent;
 }
 
 .modal-close {
@@ -3847,20 +3848,32 @@ input[type="range"] {
   }
 
   .modal-backdrop {
-    padding: 12px;
-    align-items: end;
+    padding: max(10px, env(safe-area-inset-top)) 10px max(10px, env(safe-area-inset-bottom));
+    align-items: center;
   }
 
   .modal-card {
     width: 100%;
-    max-height: min(82dvh, 680px);
+    max-height: calc(100dvh - 20px - env(safe-area-inset-top) - env(safe-area-inset-bottom));
     overflow-y: auto;
-    border-radius: 24px 24px 18px 18px;
-    padding: 20px 16px 16px;
+    border-radius: 24px;
+    padding: 20px 16px calc(18px + env(safe-area-inset-bottom));
+    -webkit-overflow-scrolling: touch;
   }
 
   .modal-card h2 {
     font-size: 26px;
+  }
+
+  .modal-body {
+    padding-bottom: 4px;
+  }
+
+  .modal-body > .modal-primary:last-child {
+    position: sticky;
+    bottom: 0;
+    z-index: 2;
+    box-shadow: 0 -10px 24px rgba(250, 240, 220, 0.76);
   }
 
   .product-shell {
@@ -4664,7 +4677,16 @@ blockquote cite {
     gap: 7px;
   }
 
+  .chat-page .dock-left {
+    order: 1;
+  }
+
+  .chat-page .dock-right {
+    order: 2;
+  }
+
   .chat-page .dock-center {
+    order: 3;
     justify-content: flex-start;
     padding: 0;
   }
