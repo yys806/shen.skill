@@ -36,6 +36,7 @@ const dom = {
   sceneLabel: document.querySelector("#scene-label"),
   modelLabel: document.querySelector("#model-label"),
   temperatureLabel: document.querySelector("#temperature-label"),
+  authDock: document.querySelector('[data-modal="auth"]'),
   authLabel: document.querySelector("#auth-label"),
   modalBackdrop: document.querySelector("#modal-backdrop"),
   modalClose: document.querySelector("#modal-close"),
@@ -953,6 +954,7 @@ function clearSupabaseAuthStorage() {
 }
 
 function updateAuthState() {
+  updateAuthPlanClass();
   if (session?.user) {
     const nickname = session.user.user_metadata?.nickname || session.user.email || "已登录";
     setAuthLabel(`${planBadge()} · ${nickname}`);
@@ -965,6 +967,12 @@ function updateAuthState() {
 
 function setAuthLabel(text) {
   dom.authLabel.textContent = text;
+}
+
+function updateAuthPlanClass() {
+  if (!dom.authDock) return;
+  dom.authDock.classList.remove("free", "plus", "pro", "admin");
+  dom.authDock.classList.add(session?.user ? accountPlan : "free");
 }
 
 async function refreshAccountPlan() {

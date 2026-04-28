@@ -2094,15 +2094,53 @@ button {
 }
 
 .dock-item.auth {
-  border-color: rgba(255, 248, 232, 0.22);
+  border-color: rgba(255, 248, 232, 0.44);
   background:
-    radial-gradient(circle at 14% 18%, rgba(255, 230, 168, 0.24), transparent 4rem),
-    linear-gradient(135deg, var(--night), #3d2418);
+    radial-gradient(circle at 14% 18%, rgba(255, 255, 255, 0.5), transparent 4rem),
+    linear-gradient(135deg, #fffdf7, #efe5d1);
 }
 
 .dock-item.auth span,
 .dock-item.auth strong {
-  color: #fff3db;
+  color: var(--lacquer-dark);
+}
+
+.dock-item.auth.free {
+  border-color: rgba(35, 93, 76, 0.14);
+  background:
+    radial-gradient(circle at 14% 18%, rgba(255, 255, 255, 0.74), transparent 4rem),
+    linear-gradient(135deg, #fffdf8, #f1eadb);
+}
+
+.dock-item.auth.plus {
+  border-color: rgba(35, 93, 76, 0.32);
+  background:
+    radial-gradient(circle at 15% 12%, rgba(216, 244, 212, 0.46), transparent 4rem),
+    linear-gradient(135deg, #f4fff5, #9fbf91);
+}
+
+.dock-item.auth.pro {
+  border-color: rgba(143, 45, 28, 0.34);
+  background:
+    radial-gradient(circle at 20% 14%, rgba(255, 217, 190, 0.42), transparent 4rem),
+    linear-gradient(135deg, #fff3e7, #b84e37);
+}
+
+.dock-item.auth.admin {
+  border-color: rgba(197, 146, 47, 0.42);
+  background:
+    radial-gradient(circle at 18% 12%, rgba(255, 240, 177, 0.52), transparent 4rem),
+    linear-gradient(135deg, #fff8dc, #c99532);
+}
+
+.dock-item.auth.pro span,
+.dock-item.auth.pro strong {
+  color: #fff7e8;
+}
+
+.dock-item.auth.admin span,
+.dock-item.auth.admin strong {
+  color: #33210a;
 }
 
 .workspace {
@@ -3019,6 +3057,9 @@ textarea:disabled {
   width: min(540px, calc(100vw - 32px));
   max-height: min(720px, calc(100vh - 42px));
   overflow-y: auto;
+  scrollbar-gutter: stable;
+  scrollbar-width: none;
+  scrollbar-color: transparent transparent;
   position: relative;
   padding: 26px;
   border: 1px solid rgba(255, 248, 235, 0.42);
@@ -3028,6 +3069,36 @@ textarea:disabled {
     rgba(250, 240, 220, 0.92);
   box-shadow: 0 34px 120px rgba(16, 12, 8, 0.38);
   animation: modalIn 220ms ease both;
+}
+
+.modal-card:hover {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(86, 24, 15, 0.48) transparent;
+}
+
+.modal-card::-webkit-scrollbar {
+  width: 7px;
+  height: 7px;
+}
+
+.modal-card::-webkit-scrollbar-track {
+  background: transparent;
+  border: 0;
+}
+
+.modal-card::-webkit-scrollbar-thumb {
+  min-height: 34px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+}
+
+.modal-card:hover::-webkit-scrollbar-thumb {
+  background: rgba(86, 24, 15, 0.42);
+}
+
+.modal-card:hover::-webkit-scrollbar-thumb:hover {
+  background: rgba(143, 45, 28, 0.62);
 }
 
 .modal-close {
