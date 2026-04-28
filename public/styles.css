@@ -1893,16 +1893,40 @@ button {
 
 .dock {
   min-height: 62px;
-  display: grid;
-  grid-template-columns: 0.72fr repeat(5, minmax(0, 1fr)) 1.08fr 0.82fr;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
   gap: 7px;
   padding: 7px;
   border-radius: 16px 28px 16px 28px;
 }
 
+.dock-zone {
+  display: flex;
+  align-items: stretch;
+  gap: 7px;
+  min-width: 0;
+}
+
+.dock-left {
+  flex: 0 0 150px;
+  justify-content: flex-start;
+}
+
+.dock-center {
+  flex: 1 1 auto;
+  justify-content: center;
+  padding: 0 18px;
+}
+
+.dock-right {
+  flex: 0 0 360px;
+  justify-content: flex-end;
+}
+
 .dock-item {
   display: flex;
-  min-width: 0;
+  min-width: 132px;
   flex-direction: column;
   align-items: center;
   justify-content: center;
@@ -1916,6 +1940,28 @@ button {
     rgba(255, 249, 237, 0.62);
   text-align: center;
   transition: transform 180ms ease, border-color 180ms ease, box-shadow 180ms ease;
+}
+
+.dock-center .dock-item {
+  flex: 0 1 170px;
+}
+
+.dock-center .dock-item.wide {
+  flex-basis: 250px;
+}
+
+.dock-center .dock-item.compact {
+  min-width: 105px;
+  flex-basis: 110px;
+}
+
+.dock-left .dock-item {
+  min-width: 136px;
+}
+
+.dock-right .dock-item {
+  min-width: 156px;
+  flex: 0 0 170px;
 }
 
 .dock-link {
@@ -3231,7 +3277,24 @@ input[type="range"] {
   }
 
   .dock {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    overflow-x: auto;
+    justify-content: flex-start;
+    scrollbar-width: none;
+  }
+
+  .dock::-webkit-scrollbar {
+    display: none;
+  }
+
+  .dock-zone {
+    flex: 0 0 auto;
+  }
+
+  .dock-left,
+  .dock-center,
+  .dock-right {
+    flex-basis: auto;
+    padding: 0;
   }
 
   .chat-panel {
@@ -3321,6 +3384,17 @@ input[type="range"] {
     box-shadow: 0 12px 34px rgba(45, 29, 9, 0.16);
     scroll-snap-type: x mandatory;
     -webkit-overflow-scrolling: touch;
+  }
+
+  .dock-zone {
+    display: flex;
+    flex: 0 0 auto;
+    gap: 7px;
+  }
+
+  .dock-center {
+    justify-content: flex-start;
+    padding: 0;
   }
 
   .dock::-webkit-scrollbar {
@@ -4398,6 +4472,17 @@ blockquote cite {
     scroll-snap-type: x proximity;
     scrollbar-width: none;
     -webkit-overflow-scrolling: touch;
+  }
+
+  .chat-page .dock-zone {
+    display: flex;
+    flex: 0 0 auto;
+    gap: 7px;
+  }
+
+  .chat-page .dock-center {
+    justify-content: flex-start;
+    padding: 0;
   }
 
   .chat-page .dock::-webkit-scrollbar {

@@ -12,39 +12,47 @@
   <body class="chat-page">
     <main class="mirror-shell">
       <header class="top-zone">
-        <nav class="dock" aria-label="对话控制台">
-          <a class="dock-item dock-link home-link" href="/">
-            <span>主页</span>
-            <strong>镜室</strong>
-          </a>
-          <button class="dock-item" data-modal="skill">
-            <span>对话对象</span>
-            <strong id="skill-label">毛选</strong>
-          </button>
-          <button class="dock-item" data-modal="counterpart">
-            <span>你是谁</span>
-            <strong id="counterpart-label">未填写</strong>
-          </button>
-          <button class="dock-item" data-modal="scene">
-            <span>语气场景</span>
-            <strong id="scene-label">真我复盘</strong>
-          </button>
-          <button class="dock-item wide" data-modal="model">
-            <span>模型</span>
-            <strong id="model-label">DeepSeek v4 Flash</strong>
-          </button>
-          <button class="dock-item compact" data-modal="temperature">
-            <span>温度</span>
-            <strong id="temperature-label">0.7</strong>
-          </button>
-          <button class="dock-item auth" data-modal="auth">
-            <span>账户</span>
-            <strong id="auth-label">登录 / 注册</strong>
-          </button>
-          <a class="dock-item dock-link pricing-link" href="/pricing">
-            <span>定价说明</span>
-            <strong>套餐</strong>
-          </a>
+        <nav class="dock dock-split" aria-label="对话控制台">
+          <div class="dock-zone dock-left">
+            <a class="dock-item dock-link home-link" href="/">
+              <span>主页</span>
+              <strong>镜室</strong>
+            </a>
+          </div>
+
+          <div class="dock-zone dock-center">
+            <button class="dock-item" data-modal="skill">
+              <span>对话对象</span>
+              <strong id="skill-label">毛选</strong>
+            </button>
+            <button class="dock-item" data-modal="counterpart">
+              <span>你是谁</span>
+              <strong id="counterpart-label">未填写</strong>
+            </button>
+            <button class="dock-item" data-modal="scene">
+              <span>语气场景</span>
+              <strong id="scene-label">真我复盘</strong>
+            </button>
+            <button class="dock-item wide" data-modal="model">
+              <span>模型</span>
+              <strong id="model-label">DeepSeek v4 Flash</strong>
+            </button>
+            <button class="dock-item compact" data-modal="temperature">
+              <span>温度</span>
+              <strong id="temperature-label">0.7</strong>
+            </button>
+          </div>
+
+          <div class="dock-zone dock-right">
+            <button class="dock-item auth" data-modal="auth">
+              <span>账户</span>
+              <strong id="auth-label">登录 / 注册</strong>
+            </button>
+            <a class="dock-item dock-link pricing-link" href="/pricing">
+              <span>定价说明</span>
+              <strong>套餐</strong>
+            </a>
+          </div>
         </nav>
       </header>
 
