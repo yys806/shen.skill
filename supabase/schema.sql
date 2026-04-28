@@ -416,10 +416,14 @@ on public.mirror_conversations (user_id, updated_at_ms desc);
 create table if not exists public.skill_settings (
   id text primary key,
   enabled boolean not null default true,
+  display_order integer not null default 1000,
   admin_note text,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
+
+alter table public.skill_settings
+add column if not exists display_order integer not null default 1000;
 
 alter table public.skill_settings enable row level security;
 
@@ -455,3 +459,7 @@ with check (
 insert into public.skill_settings (id, enabled)
 values ('shen.skill', false)
 on conflict (id) do nothing;
+
+update public.skill_settings
+set display_order = 999
+where id = 'shen.skill' and display_order = 1000;

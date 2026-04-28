@@ -1197,6 +1197,81 @@ body.home-page::after {
   font-weight: 900;
 }
 
+.skill-admin-item {
+  cursor: grab;
+  transition: transform 160ms var(--ease-soft), border-color 160ms var(--ease-soft), box-shadow 160ms var(--ease-soft), opacity 160ms var(--ease-soft);
+}
+
+.skill-admin-item.dragging {
+  opacity: 0.55;
+  cursor: grabbing;
+  transform: scale(0.99);
+}
+
+.skill-admin-item.drag-over {
+  border-color: rgba(35, 93, 76, 0.48);
+  box-shadow: 0 0 0 4px rgba(35, 93, 76, 0.1), var(--shadow);
+}
+
+.drag-handle {
+  display: inline-flex !important;
+  width: fit-content !important;
+  margin-bottom: 10px;
+  padding: 7px 10px !important;
+  border: 1px dashed rgba(35, 93, 76, 0.28);
+  border-radius: 999px;
+  color: var(--green) !important;
+  background: rgba(255, 252, 244, 0.62) !important;
+  font: 900 11px/1 "Gill Sans", "Trebuchet MS", sans-serif;
+  letter-spacing: 0.12em;
+}
+
+.skill-switch {
+  position: relative;
+  width: 96px;
+  height: 46px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  border: 0;
+  border-radius: 999px;
+  padding: 0 13px;
+  color: rgba(27, 23, 18, 0.62);
+  background: linear-gradient(135deg, #d9d4c9, #b9afa0);
+  box-shadow: inset 0 0 0 1px rgba(27, 23, 18, 0.12), 0 12px 22px rgba(45, 29, 9, 0.12);
+  cursor: pointer;
+  transition: background 200ms var(--ease-soft), color 200ms var(--ease-soft);
+}
+
+.skill-switch i {
+  position: absolute;
+  left: 5px;
+  width: 36px;
+  height: 36px;
+  border-radius: 999px;
+  background: rgba(255, 252, 244, 0.96);
+  box-shadow: 0 8px 16px rgba(45, 29, 9, 0.16);
+  transition: transform 220ms var(--ease-snap);
+}
+
+.skill-switch span {
+  position: relative;
+  z-index: 1;
+  color: inherit !important;
+  background: transparent !important;
+  font: 900 12px/1 "Gill Sans", "Trebuchet MS", sans-serif;
+}
+
+.skill-switch.on {
+  justify-content: flex-start;
+  color: #fff8e8;
+  background: linear-gradient(135deg, #235d4c, #3f8a66);
+}
+
+.skill-switch.on i {
+  transform: translateX(50px);
+}
+
 .review-actions {
   display: flex;
   flex-wrap: wrap;

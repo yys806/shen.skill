@@ -192,9 +192,9 @@ async function loadSkills() {
 function renderSkills() {
   if (!allSkills.length) return renderNotice(skillList, "当前没有 Skill。");
   skillList.innerHTML = allSkills.map(skill => `
-    <article class="submission-item skill-admin-item" data-skill-id="${escapeAttribute(skill.id)}">
+    <article class="submission-item skill-admin-item" data-skill-id="${escapeAttribute(skill.id)}" draggable="true">
       <div>
-        <span class="status-pill status-${skill.enabled ? "approved" : "rejected"}">${skill.enabled ? "已启用" : "已隐藏"}</span>
+        <span class="drag-handle" title="拖动排序">拖动排序</span>
         <h2>${escapeHtml(skill.name || skill.id)}</h2>
         <p>${escapeHtml(skill.description || skill.summary || "")}</p>
         <dl class="submission-meta">
@@ -202,16 +202,11 @@ function renderSkills() {
           <dt>GitHub</dt><dd>${skill.source?.startsWith("http") ? `<a href="${escapeAttribute(skill.source)}" target="_blank" rel="noreferrer">${escapeHtml(skill.source)}</a>` : escapeHtml(skill.source || "local")}</dd>
           <dt>可见性</dt><dd>${skill.enabled ? "普通用户可见并可对话" : "仅管理员可见，普通用户不可见也不可用"}</dd>
         </dl>
-        <label class="review-note">
-          <span>管理员备注</span>
-          <textarea data-skill-note="${escapeAttribute(skill.id)}" rows="2" placeholder="隐藏原因、发布注意等">${escapeHtml(skill.adminNote || "")}</textarea>
-        </label>
       </div>
       <aside>
-        <button data-skill-toggle="${escapeAttribute(skill.id)}" data-enabled="${skill.enabled ? "false" : "true"}" type="button">
-          ${skill.enabled ? "停用隐藏" : "启用公开"}
+        <button class="skill-switch ${skill.enabled ? "on" : ""}" data-skill-toggle="${escapeAttribute(skill.id)}" data-enabled="${skill.enabled ? "false" : "true"}" type="button" aria-pressed="${skill.enabled ? "true" : "false"}">
+          <i></i><span>${skill.enabled ? "启用" : "禁用"}</span>
         </button>
-        <button data-skill-save="${escapeAttribute(skill.id)}" type="button">保存备注</button>
       </aside>
     </article>
   `).join("");
@@ -219,24 +214,75 @@ function renderSkills() {
   skillList.querySelectorAll("[data-skill-toggle]").forEach(button => {
     button.addEventListener("click", () => updateSkillEnabled(button.dataset.skillToggle, button.dataset.enabled === "true"));
   });
-  skillList.querySelectorAll("[data-skill-save]").forEach(button => {
-    button.addEventListener("click", () => {
-      const skill = allSkills.find(item => item.id === button.dataset.skillSave);
-      updateSkillEnabled(button.dataset.skillSave, Boolean(skill?.enabled));
-    });
-  });
+  bindSkillDragSorting();
 }
 
 async function updateSkillEnabled(id, enabled) {
-  const textarea = skillList.querySelector(`[data-skill-note="${CSS.escape(id)}"]`);
   const response = await fetch("/api/admin/skills", {
     method: "PATCH",
     headers: { ...authHeaders(), "Content-Type": "application/json" },
-    body: JSON.stringify({ id, enabled, adminNote: textarea?.value || "" })
+    body: JSON.stringify({ id, enabled })
   });
   const data = await response.json().catch(() => ({}));
   if (!response.ok) return renderNotice(skillList, data.detail || data.error || "更新 Skill 失败。");
   await loadSkills();
+}
+
+function bindSkillDragSorting() {
+  let draggedId = "";
+  skillList.querySelectorAll(".skill-admin-item").forEach(item => {
+    item.addEventListener("dragstart", event => {
+      draggedId = item.dataset.skillId;
+      item.classList.add("dragging");
+      event.dataTransfer.effectAllowed = "move";
+      event.dataTransfer.setData("text/plain", draggedId);
+    });
+    item.addEventListener("dragend", () => {
+      item.classList.remove("dragging");
+      draggedId = "";
+      skillList.querySelectorAll(".drag-over").forEach(node => node.classList.remove("drag-over"));
+    });
+    item.addEventListener("dragover", event => {
+      event.preventDefault();
+      if (item.dataset.skillId !== draggedId) item.classList.add("drag-over");
+    });
+    item.addEventListener("dragleave", () => item.classList.remove("drag-over"));
+    item.addEventListener("drop", event => {
+      event.preventDefault();
+      item.classList.remove("drag-over");
+      const sourceId = draggedId || event.dataTransfer.getData("text/plain");
+      reorderSkill(sourceId, item.dataset.skillId);
+    });
+  });
+}
+
+async function reorderSkill(sourceId, targetId) {
+  if (!sourceId || !targetId || sourceId === targetId) return;
+  const sourceIndex = allSkills.findIndex(item => item.id === sourceId);
+  const targetIndex = allSkills.findIndex(item => item.id === targetId);
+  if (sourceIndex === -1 || targetIndex === -1) return;
+  const [moved] = allSkills.splice(sourceIndex, 1);
+  allSkills.splice(targetIndex, 0, moved);
+  allSkills = allSkills.map((skill, index) => ({ ...skill, displayOrder: index }));
+  renderSkills();
+  await saveSkillOrder();
+}
+
+async function saveSkillOrder() {
+  const response = await fetch("/api/admin/skills", {
+    method: "PATCH",
+    headers: { ...authHeaders(), "Content-Type": "application/json" },
+    body: JSON.stringify({
+      skills: allSkills.map((skill, index) => ({
+        id: skill.id,
+        enabled: Boolean(skill.enabled),
+        displayOrder: index
+      }))
+    })
+  });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) return renderNotice(skillList, data.detail || data.error || "保存排序失败。");
+  allSkills = allSkills.map((skill, index) => ({ ...skill, displayOrder: index }));
 }
 
 async function loadUsers() {

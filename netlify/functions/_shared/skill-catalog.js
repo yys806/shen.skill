@@ -24,7 +24,7 @@ export async function loadSkillCatalog({ includeDisabled = false } = {}) {
 }
 
 export async function readSkillSettings() {
-  const result = await supabaseAdminRequest("/skill_settings?select=id,enabled,admin_note,updated_at");
+  const result = await supabaseAdminRequest("/skill_settings?select=id,enabled,display_order,admin_note,updated_at");
   if (!result.ok || !Array.isArray(result.data)) return new Map();
   return new Map(result.data.map(item => [item.id, item]));
 }
@@ -40,13 +40,14 @@ async function readBaseCatalog() {
 }
 
 function mergeCatalog(catalog, settings) {
-  return catalog.map(item => {
+  return catalog.map((item, index) => {
     const setting = settings.get(item.id);
     const defaultEnabled = item.id === "shen.skill" ? false : true;
     return {
       ...item,
       enabled: setting ? Boolean(setting.enabled) : defaultEnabled,
+      displayOrder: Number.isFinite(Number(setting?.display_order)) ? Number(setting.display_order) : index,
       adminNote: setting?.admin_note || ""
     };
-  });
+  }).sort((a, b) => (a.displayOrder - b.displayOrder) || String(a.name).localeCompare(String(b.name), "zh-CN"));
 }
