@@ -57,8 +57,10 @@ let appState = loadState(currentStateKey);
 let accountUsage = null;
 let pendingSignup = null;
 let otpCooldownTimer = null;
+let launchSkillId = new URLSearchParams(window.location.search).get("skill") || "";
+const launchAppliedKeys = new Set();
 
-applyInitialSkillFromUrl();
+applyLaunchSkillFromUrl();
 renderAll();
 boot();
 
@@ -80,6 +82,8 @@ async function boot() {
     const { data } = await supabase.auth.getSession();
     session = data.session;
     await switchUserState(session?.user || null);
+    applyLaunchSkillFromUrl({ consume: Boolean(session?.user) });
+    persistAndRender();
     await ensureCurrentUserProfile();
     await refreshAccountPlan();
     updateAuthState();
@@ -87,6 +91,8 @@ async function boot() {
     supabase.auth.onAuthStateChange(async (_event, nextSession) => {
       session = nextSession;
       await switchUserState(session?.user || null);
+      applyLaunchSkillFromUrl({ consume: Boolean(session?.user) });
+      persistAndRender();
       await ensureCurrentUserProfile();
       await refreshAccountPlan();
       updateAuthState();
@@ -1191,15 +1197,31 @@ function migrateConversationSettings() {
   }
 }
 
-function applyInitialSkillFromUrl() {
-  const skillId = new URLSearchParams(window.location.search).get("skill");
-  if (!skillId) return;
-  const skill = findSkill(skillId);
-  if (skill.id !== skillId) return;
-  const conversation = createConversation(false, { ...defaultSettings(), skill: skill.id });
-  appState.conversations.unshift(conversation);
-  appState.activeConversationId = conversation.id;
-  appState.skill = skill.id;
+function applyLaunchSkillFromUrl(options = {}) {
+  const { consume = false } = options;
+  if (!launchSkillId) return false;
+  const skill = findSkill(launchSkillId);
+  if (skill.id !== launchSkillId) {
+    if (consume) clearLaunchSkillUrl();
+    return false;
+  }
+
+  if (!launchAppliedKeys.has(currentStateKey)) {
+    const settings = { ...defaultSettings(), skill: skill.id };
+    normalizeSettingsForSkill(settings);
+    const conversation = createConversation(false, settings);
+    appState.conversations.unshift(conversation);
+    appState.activeConversationId = conversation.id;
+    appState.skill = skill.id;
+    launchAppliedKeys.add(currentStateKey);
+  }
+
+  if (consume) clearLaunchSkillUrl();
+  return true;
+}
+
+function clearLaunchSkillUrl() {
+  launchSkillId = "";
   window.history.replaceState(null, "", window.location.pathname);
 }
 
