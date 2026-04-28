@@ -294,3 +294,77 @@ using (auth.uid() = user_id);
 
 create index if not exists request_events_user_type_created_idx
 on public.request_events (user_id, event_type, created_at desc);
+
+create table if not exists public.user_entitlements (
+  user_id uuid primary key references auth.users(id) on delete cascade,
+  plan text not null default 'free',
+  status text not null default 'inactive',
+  provider text,
+  provider_customer_id text,
+  provider_subscription_id text,
+  provider_transaction_id text,
+  current_period_ends_at timestamptz,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+alter table public.user_entitlements enable row level security;
+
+drop trigger if exists user_entitlements_set_updated_at on public.user_entitlements;
+create trigger user_entitlements_set_updated_at
+before update on public.user_entitlements
+for each row execute function public.set_updated_at();
+
+drop policy if exists "users can read own entitlements" on public.user_entitlements;
+create policy "users can read own entitlements"
+on public.user_entitlements for select
+using (auth.uid() = user_id);
+
+drop policy if exists "admins can read all entitlements" on public.user_entitlements;
+create policy "admins can read all entitlements"
+on public.user_entitlements for select
+using (
+  lower(coalesce((auth.jwt() ->> 'email'), '')) = '3492675568@qq.com'
+);
+
+create index if not exists user_entitlements_status_idx
+on public.user_entitlements (status, updated_at desc);
+
+create table if not exists public.billing_events (
+  id text primary key,
+  event_type text not null,
+  payload jsonb not null,
+  created_at timestamptz not null default now()
+);
+
+alter table public.billing_events enable row level security;
+
+drop policy if exists "admins can read billing events" on public.billing_events;
+create policy "admins can read billing events"
+on public.billing_events for select
+using (
+  lower(coalesce((auth.jwt() ->> 'email'), '')) = '3492675568@qq.com'
+);
+
+create index if not exists billing_events_created_idx
+on public.billing_events (created_at desc);
+
+create table if not exists public.checkout_sessions (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users(id) on delete cascade,
+  provider text not null default 'paddle',
+  provider_transaction_id text,
+  checkout_url text,
+  status text not null default 'created',
+  created_at timestamptz not null default now()
+);
+
+alter table public.checkout_sessions enable row level security;
+
+drop policy if exists "users can read own checkout sessions" on public.checkout_sessions;
+create policy "users can read own checkout sessions"
+on public.checkout_sessions for select
+using (auth.uid() = user_id);
+
+create index if not exists checkout_sessions_user_created_idx
+on public.checkout_sessions (user_id, created_at desc);

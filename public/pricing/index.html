@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>镜室 Pro | Paddle 支付</title>
+    <meta name="description" content="升级镜室 Pro，解锁更稳定的公开试用权益。" />
+    <link rel="icon" href="/icon.png" type="image/png" />
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body class="home-page pricing-page">
+    <main class="pricing-shell">
+      <nav class="launch-nav pricing-nav">
+        <a class="home-brand" href="/">
+          <span></span>
+          <strong>镜室</strong>
+        </a>
+        <div class="pricing-nav-actions">
+          <a href="/chat">进入聊天</a>
+          <a href="/">返回首页</a>
+        </div>
+      </nav>
+
+      <section class="pricing-hero">
+        <p class="home-kicker">billing / paddle checkout</p>
+        <h1>镜室 Pro</h1>
+        <p>
+          先把支付闭环跑起来：登录后点击升级，会跳转到 Paddle 托管收银台。
+          支付成功后由 webhook 写入你的会员权益。
+        </p>
+      </section>
+
+      <section class="pricing-grid">
+        <article class="pricing-card featured">
+          <span class="status-pill" id="billing-status">正在读取状态</span>
+          <h2>Pro 试用席位</h2>
+          <p class="price-line">由 Paddle 价格配置决定</p>
+          <ul>
+            <li>保留现有 skill 对话体验。</li>
+            <li>支付后自动同步会员状态。</li>
+            <li>后续可逐步接入额度、会员模型和团队空间。</li>
+          </ul>
+          <button id="checkout-button" class="home-primary" type="button">升级 Pro</button>
+          <p id="billing-feedback" class="field-help">需要先登录镜室账号。</p>
+        </article>
+
+        <article class="pricing-card">
+          <h2>接入说明</h2>
+          <p>
+            当前版本不会立刻限制聊天功能。我们先验证 Paddle checkout、webhook、
+            Supabase 权益表都稳定，再决定哪些功能放入 Pro。
+          </p>
+          <a class="home-secondary" href="/chat">去登录 / 对话</a>
+        </article>
+      </section>
+    </main>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script type="module" src="/pricing/pricing.js"></script>
+  </body>
+</html>

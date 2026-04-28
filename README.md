@@ -126,4 +126,26 @@ GitHub Actions 需要在仓库 Secrets 里配置：
 SUPABASE_DB_PASSWORD
 ```
 
+## Paddle payment
+
+当前支付闭环是：登录账号 -> 打开 `/pricing` -> 创建 Paddle checkout -> Paddle webhook 写入 Supabase 会员权益。这个版本先不默认限制聊天功能，等支付和权益同步跑稳后，再接入额度、会员模型或 Pro 功能。
+
+Netlify 需要配置这些环境变量：
+
+```text
+SUPABASE_SERVICE_ROLE_KEY
+PADDLE_ENV=sandbox
+PADDLE_API_KEY
+PADDLE_PRICE_ID
+PADDLE_WEBHOOK_SECRET
+```
+
+Paddle webhook 地址：
+
+```text
+https://skill-chat.cn/api/webhooks/paddle
+```
+
+Supabase 需要执行最新的 `supabase/schema.sql`，新增 `user_entitlements`、`billing_events` 和 `checkout_sessions`。
+
 如果需要立即发布，也可以在 GitHub Actions 里手动运行 `Publish approved skills`。

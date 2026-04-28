@@ -1253,6 +1253,123 @@ body.home-page::after {
   background: rgba(255, 252, 244, 0.92);
 }
 
+.pricing-page {
+  min-height: 100vh;
+}
+
+.pricing-shell {
+  width: min(100vw - 36px, 1120px);
+  margin: 0 auto;
+  padding: 28px 0 72px;
+}
+
+.pricing-nav {
+  position: static;
+  width: 100%;
+  transform: none;
+  margin-bottom: 42px;
+}
+
+.pricing-nav-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.pricing-nav-actions a {
+  color: var(--ink);
+  text-decoration: none;
+  font-weight: 900;
+  padding: 11px 15px;
+  border-radius: 999px;
+  background: rgba(255, 252, 244, 0.74);
+}
+
+.pricing-hero,
+.pricing-card {
+  border: 1px solid rgba(27, 23, 18, 0.12);
+  background:
+    radial-gradient(circle at 90% 0%, rgba(194, 168, 112, 0.25), transparent 18rem),
+    linear-gradient(135deg, rgba(255, 252, 244, 0.9), rgba(239, 226, 202, 0.74));
+  box-shadow: var(--shadow);
+}
+
+.pricing-hero {
+  border-radius: 38px;
+  padding: clamp(32px, 6vw, 72px);
+}
+
+.pricing-hero h1 {
+  margin: 0 0 16px;
+  font-size: clamp(54px, 10vw, 112px);
+  line-height: 0.9;
+  letter-spacing: -0.08em;
+}
+
+.pricing-hero p:not(.home-kicker) {
+  max-width: 720px;
+  margin: 0;
+  color: var(--muted);
+  font-size: clamp(18px, 2.4vw, 25px);
+  line-height: 1.65;
+}
+
+.pricing-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(280px, 0.9fr);
+  gap: 22px;
+  margin-top: 22px;
+}
+
+.pricing-card {
+  display: grid;
+  gap: 18px;
+  align-content: start;
+  border-radius: 34px;
+  padding: clamp(24px, 4vw, 42px);
+}
+
+.pricing-card.featured {
+  background:
+    radial-gradient(circle at 84% 12%, rgba(35, 93, 76, 0.18), transparent 14rem),
+    linear-gradient(135deg, rgba(255, 252, 244, 0.96), rgba(239, 226, 202, 0.82));
+}
+
+.pricing-card h2 {
+  margin: 0;
+  font-size: clamp(30px, 4vw, 48px);
+  letter-spacing: -0.06em;
+}
+
+.pricing-card p,
+.pricing-card li {
+  color: var(--muted);
+  font-size: 18px;
+  line-height: 1.7;
+}
+
+.pricing-card ul {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+  padding-left: 22px;
+}
+
+.price-line {
+  margin: 0;
+  color: var(--lacquer) !important;
+  font-weight: 900;
+}
+
+.status-pill[data-status="active"] {
+  color: #fff8e8;
+  background: var(--green);
+}
+
+.field-help.is-error {
+  color: var(--lacquer);
+}
+
 .footer-contact {
   position: relative;
 }
@@ -1512,6 +1629,35 @@ body.home-page::after {
     align-items: stretch;
     flex-direction: column;
     border-radius: 28px;
+  }
+
+  .pricing-shell {
+    width: min(100vw - 18px, 1120px);
+    padding-top: 12px;
+  }
+
+  .pricing-nav {
+    grid-template-columns: 1fr;
+    gap: 10px;
+    border-radius: 26px;
+  }
+
+  .pricing-nav-actions {
+    justify-content: stretch;
+  }
+
+  .pricing-nav-actions a {
+    flex: 1;
+    text-align: center;
+  }
+
+  .pricing-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .pricing-hero,
+  .pricing-card {
+    border-radius: 26px;
   }
 
   .contact-card {
