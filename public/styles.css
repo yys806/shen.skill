@@ -4026,3 +4026,210 @@ blockquote cite {
     margin-left: 0;
   }
 }
+
+/* Mobile chat repair: keep the page scrollable and let only dense areas scroll inside. */
+@media (max-width: 620px) {
+  html,
+  body.chat-page {
+    height: auto;
+    min-height: 100%;
+    overflow-x: hidden;
+    overflow-y: auto;
+  }
+
+  body.chat-page {
+    overscroll-behavior-y: auto;
+  }
+
+  .chat-page .mirror-shell {
+    width: 100%;
+    height: auto;
+    min-height: 100dvh;
+    max-height: none;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: max(8px, env(safe-area-inset-top)) 8px max(10px, env(safe-area-inset-bottom));
+    overflow: visible;
+  }
+
+  .chat-page .top-zone {
+    position: sticky;
+    top: 0;
+    z-index: 30;
+  }
+
+  .chat-page .dock {
+    min-height: 56px;
+    display: flex;
+    grid-template-columns: none;
+    gap: 7px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    padding: 6px;
+    border-radius: 18px;
+    scroll-snap-type: x proximity;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .chat-page .dock::-webkit-scrollbar {
+    display: none;
+  }
+
+  .chat-page .dock-item {
+    min-width: 116px;
+    flex: 0 0 116px;
+    padding: 8px 10px;
+  }
+
+  .chat-page .dock-item.wide {
+    min-width: 156px;
+    flex-basis: 156px;
+  }
+
+  .chat-page .dock-item.compact {
+    min-width: 86px;
+    flex-basis: 86px;
+  }
+
+  .chat-page .workspace,
+  .chat-page .workspace.history-collapsed {
+    height: auto;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    grid-template-columns: none;
+    grid-template-rows: none;
+  }
+
+  .chat-page .history-panel {
+    flex: 0 0 auto;
+    max-height: 44dvh;
+    border-radius: 18px;
+  }
+
+  .chat-page .history-panel.collapsed {
+    max-height: 56px;
+  }
+
+  .chat-page .history-panel.collapsed .panel-head {
+    height: 56px;
+    min-height: 56px;
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    padding: 9px 10px 9px 14px;
+  }
+
+  .chat-page .history-panel.collapsed .panel-head h2,
+  .chat-page .history-panel.collapsed .panel-head .eyebrow {
+    display: block;
+  }
+
+  .chat-page .history-panel.collapsed #new-chat,
+  .chat-page .history-panel.collapsed .conversation-list {
+    display: none;
+  }
+
+  .chat-page .history-panel.collapsed .history-actions {
+    width: auto;
+    display: flex;
+  }
+
+  .chat-page .history-panel .panel-head {
+    padding: 10px 12px;
+  }
+
+  .chat-page .history-panel .panel-head h2,
+  .chat-page .chat-header h2 {
+    font-size: 20px;
+    letter-spacing: -0.04em;
+  }
+
+  .chat-page .conversation-list {
+    max-height: calc(44dvh - 58px);
+    overflow-y: auto;
+    padding: 10px;
+  }
+
+  .chat-page .chat-panel {
+    flex: 1 1 auto;
+    min-height: calc(100dvh - 146px);
+    max-height: none;
+    display: flex;
+    flex-direction: column;
+    border-radius: 20px;
+    overflow: hidden;
+  }
+
+  .chat-page .chat-header {
+    flex: 0 0 auto;
+    min-height: 62px;
+    padding: 10px 12px;
+  }
+
+  .chat-page .chat-header h2 {
+    max-width: 58vw;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .chat-page .messages {
+    flex: 1 1 auto;
+    min-height: 42dvh;
+    max-height: calc(100dvh - 250px);
+    overflow-y: auto;
+    padding: 13px 10px;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .chat-page .composer {
+    flex: 0 0 auto;
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 8px;
+    padding: 10px;
+  }
+
+  .chat-page .composer textarea {
+    min-height: 48px;
+    max-height: 128px;
+    overflow-y: auto;
+  }
+
+  .chat-page .composer button {
+    min-height: 44px;
+  }
+
+  .chat-page .message {
+    grid-template-columns: 32px minmax(0, 1fr);
+    gap: 8px;
+  }
+
+  .chat-page .message.user {
+    grid-template-columns: minmax(0, 1fr) 32px;
+  }
+
+  .chat-page .avatar {
+    width: 32px;
+    height: 32px;
+    border-radius: 12px;
+  }
+
+  .chat-page .bubble {
+    padding: 12px 13px;
+  }
+
+  .chat-page .content {
+    font-size: 15px;
+    line-height: 1.68;
+  }
+
+  .chat-page .message-tools {
+    opacity: 1;
+  }
+}
