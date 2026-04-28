@@ -1321,6 +1321,10 @@ body.home-page::after {
   margin-top: 22px;
 }
 
+.pricing-grid.pricing-three {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
 .pricing-card {
   display: grid;
   gap: 18px;
@@ -1333,6 +1337,22 @@ body.home-page::after {
   background:
     radial-gradient(circle at 84% 12%, rgba(35, 93, 76, 0.18), transparent 14rem),
     linear-gradient(135deg, rgba(255, 252, 244, 0.96), rgba(239, 226, 202, 0.82));
+}
+
+.pricing-card.pro-card {
+  color: #fff8e8;
+  background:
+    radial-gradient(circle at 86% 14%, rgba(194, 168, 112, 0.34), transparent 12rem),
+    linear-gradient(135deg, #20130d, #5b2117);
+}
+
+.pricing-card.pro-card p,
+.pricing-card.pro-card li {
+  color: rgba(255, 248, 232, 0.78);
+}
+
+.pricing-card.pro-card .price-line {
+  color: #ffe6a8 !important;
 }
 
 .pricing-card h2 {
@@ -1355,6 +1375,44 @@ body.home-page::after {
   padding-left: 22px;
 }
 
+.plan-card {
+  min-height: 100%;
+}
+
+.feature-list {
+  list-style: none;
+  padding-left: 0 !important;
+}
+
+.feature-list li {
+  position: relative;
+  padding-left: 32px;
+}
+
+.feature-list li::before {
+  position: absolute;
+  left: 0;
+  top: 0.06em;
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 999px;
+  font: 900 12px/1 "Gill Sans", "Trebuchet MS", sans-serif;
+}
+
+.feature-list li.yes::before {
+  content: "✓";
+  color: #fff8e8;
+  background: var(--green);
+}
+
+.feature-list li.no::before {
+  content: "×";
+  color: #fff8e8;
+  background: var(--lacquer);
+}
+
 .price-line {
   margin: 0;
   color: var(--lacquer) !important;
@@ -1368,6 +1426,32 @@ body.home-page::after {
 
 .field-help.is-error {
   color: var(--lacquer);
+}
+
+.pricing-note {
+  display: grid;
+  gap: 10px;
+  margin-top: 22px;
+  padding: 24px 28px;
+  border: 1px solid rgba(27, 23, 18, 0.1);
+  border-radius: 28px;
+  background: rgba(255, 252, 244, 0.68);
+}
+
+.pricing-note p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 17px;
+  line-height: 1.7;
+}
+
+.pricing-note a {
+  color: var(--lacquer);
+  font-weight: 900;
+}
+
+.refund-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
 .footer-contact {
@@ -1655,6 +1739,11 @@ body.home-page::after {
     grid-template-columns: 1fr;
   }
 
+  .pricing-grid.pricing-three,
+  .refund-grid {
+    grid-template-columns: 1fr;
+  }
+
   .pricing-hero,
   .pricing-card {
     border-radius: 26px;
@@ -1805,7 +1894,7 @@ button {
 .dock {
   min-height: 62px;
   display: grid;
-  grid-template-columns: repeat(6, minmax(0, 1fr));
+  grid-template-columns: 0.72fr repeat(5, minmax(0, 1fr)) 1.08fr 0.82fr;
   gap: 7px;
   padding: 7px;
   border-radius: 16px 28px 16px 28px;
@@ -1826,6 +1915,21 @@ button {
     rgba(255, 249, 237, 0.62);
   text-align: left;
   transition: transform 180ms ease, border-color 180ms ease, box-shadow 180ms ease;
+}
+
+.dock-link {
+  color: inherit;
+  text-decoration: none;
+}
+
+.dock-link.home-link {
+  background: rgba(255, 252, 244, 0.82);
+}
+
+.dock-link.pricing-link {
+  background:
+    radial-gradient(circle at 90% 10%, rgba(194, 168, 112, 0.28), transparent 4rem),
+    linear-gradient(135deg, rgba(255, 252, 244, 0.96), rgba(239, 226, 202, 0.76));
 }
 
 .dock-item:hover {

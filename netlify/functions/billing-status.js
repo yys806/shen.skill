@@ -34,6 +34,7 @@ export default async (req) => {
   return json({
     ok: true,
     entitlement,
+    isPaid: ["plus", "pro"].includes(entitlement.plan) && ["active", "trialing"].includes(entitlement.status),
     isPro: entitlement.plan === "pro" && ["active", "trialing"].includes(entitlement.status)
   });
 };

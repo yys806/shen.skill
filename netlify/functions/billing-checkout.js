@@ -14,9 +14,13 @@ export default async (req) => {
     return json({ error: "Unauthorized", detail: authResult.detail }, 401);
   }
 
-  const priceId = getEnv("PADDLE_PRICE_ID");
+  const body = await req.json().catch(() => ({}));
+  const plan = String(body.plan || "pro").toLowerCase() === "plus" ? "plus" : "pro";
+  const priceId = plan === "plus"
+    ? getEnv("PADDLE_PLUS_PRICE_ID", getEnv("PADDLE_PRICE_ID"))
+    : getEnv("PADDLE_PRO_PRICE_ID", getEnv("PADDLE_PRICE_ID"));
   if (!priceId) {
-    return json({ error: "Billing not configured", detail: "请先配置 PADDLE_PRICE_ID。" }, 500);
+    return json({ error: "Billing not configured", detail: `请先配置 ${plan === "plus" ? "PADDLE_PLUS_PRICE_ID" : "PADDLE_PRO_PRICE_ID"}。` }, 500);
   }
 
   const user = authResult.user;
@@ -27,7 +31,7 @@ export default async (req) => {
       custom_data: {
         user_id: user.id,
         email: user.email || "",
-        plan: "pro"
+        plan
       }
     }
   });
