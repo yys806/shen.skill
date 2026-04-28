@@ -54,6 +54,7 @@ let supabase = null;
 let session = null;
 let appState = loadState(currentStateKey);
 let accountUsage = null;
+let pendingSignup = null;
 
 applyInitialSkillFromUrl();
 renderAll();
@@ -423,9 +424,12 @@ function renderAuthModal() {
       <input id="password" type="password" autocomplete="${isSignup ? "new-password" : "current-password"}" placeholder="大小写 + 数字 + 特殊符号" />
       ${isSignup ? '<label for="confirm-password">确认密码</label><input id="confirm-password" type="password" autocomplete="new-password" placeholder="再输入一次密码" />' : ""}
       ${isSignup ? '<label class="policy-check"><input id="policy-agree" type="checkbox" /> <span>我已阅读并同意 <a href="/privacy/" target="_blank" rel="noreferrer">隐私政策</a> 和 <a href="/terms/" target="_blank" rel="noreferrer">服务条款</a></span></label>' : ""}
+      ${isSignup ? '<div id="otp-panel" class="otp-panel hidden"><label for="signup-otp">邮箱验证码</label><input id="signup-otp" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="输入邮件里的 6 位验证码" /><button id="otp-submit" class="modal-primary" type="button">验证邮箱</button><button id="otp-resend" class="link-button" type="button">重新发送验证码</button></div>' : ""}
       <button id="auth-submit" class="modal-primary" type="button">${isSignup ? "注册" : "登录"}</button>
     `;
     dom.modalBody.querySelector("#auth-submit").addEventListener("click", () => submitAuth(mode));
+    dom.modalBody.querySelector("#otp-submit")?.addEventListener("click", verifySignupOtp);
+    dom.modalBody.querySelector("#otp-resend")?.addEventListener("click", resendSignupOtp);
   };
 
   dom.modalBody.querySelector("#auth-login-tab").addEventListener("click", () => {
@@ -481,7 +485,7 @@ async function submitAuth(mode) {
   const duplicate = await checkProfileDuplicate(nickname, email);
   if (duplicate) return;
 
-  setFeedback("注册中。开启邮箱验证后，需要先去邮箱点击确认链接。");
+  setFeedback("注册中，稍等我把验证码发到你的邮箱...");
   const { data, error } = await supabase.auth.signUp({
     email,
     password,
@@ -498,10 +502,66 @@ async function submitAuth(mode) {
     await switchUserState(null);
     await refreshAccountPlan();
     updateAuthState();
-    setFeedback("注册已提交。请确认 Supabase 已开启邮箱验证；开启后用户需要先点邮箱确认链接再登录。");
+    showOtpPanel(email, password, nickname);
   } else {
-    setFeedback("注册成功。请去邮箱点击验证链接，验证后再回来登录。");
+    showOtpPanel(email, password, nickname);
   }
+}
+
+function showOtpPanel(email, password, nickname) {
+  pendingSignup = { email, password, nickname };
+  dom.modalBody.querySelector("#otp-panel")?.classList.remove("hidden");
+  dom.modalBody.querySelector("#auth-submit").classList.add("hidden");
+  dom.modalBody.querySelector("#signup-otp")?.focus();
+  setFeedback(`验证码已发送到 ${email}。请查看邮箱，把 6 位验证码填到上面。`);
+}
+
+async function verifySignupOtp() {
+  if (!pendingSignup?.email) return setFeedback("请先完成注册信息填写。");
+  const token = dom.modalBody.querySelector("#signup-otp")?.value.trim();
+  if (!/^\d{6}$/.test(token || "")) return setFeedback("请输入 6 位数字验证码。");
+
+  setFeedback("正在验证邮箱...");
+  const { data, error } = await supabase.auth.verifyOtp({
+    email: pendingSignup.email,
+    token,
+    type: "signup"
+  });
+  if (error) return setFeedback(error.message);
+
+  if (data.session) {
+    session = data.session;
+  } else {
+    const login = await supabase.auth.signInWithPassword({
+      email: pendingSignup.email,
+      password: pendingSignup.password
+    });
+    if (login.error) {
+      setFeedback("邮箱已验证。请用刚才的邮箱和密码登录。");
+      pendingSignup = null;
+      return;
+    }
+    session = login.data.session;
+  }
+
+  await switchUserState(session?.user || null);
+  await ensureCurrentUserProfile(pendingSignup.nickname);
+  await refreshAccountPlan();
+  updateAuthState();
+  pendingSignup = null;
+  closeModal();
+}
+
+async function resendSignupOtp() {
+  if (!pendingSignup?.email) return setFeedback("请先完成注册信息填写。");
+  setFeedback("正在重新发送验证码...");
+  const { error } = await supabase.auth.resend({
+    type: "signup",
+    email: pendingSignup.email,
+    options: { emailRedirectTo: `${window.location.origin}/chat` }
+  });
+  if (error) return setFeedback(error.message);
+  setFeedback(`新的验证码已发送到 ${pendingSignup.email}。`);
 }
 
 async function ensureCurrentUserProfile(preferredNickname = "") {

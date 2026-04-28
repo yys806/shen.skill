@@ -3232,6 +3232,31 @@ input[type="range"] {
   font-weight: 900;
 }
 
+.otp-panel {
+  display: grid;
+  gap: 10px;
+  padding: 16px;
+  border: 1px solid rgba(35, 93, 76, 0.2);
+  border-radius: 22px;
+  background:
+    radial-gradient(circle at 92% 8%, rgba(35, 93, 76, 0.16), transparent 6rem),
+    rgba(255, 252, 244, 0.62);
+}
+
+.otp-panel.hidden {
+  display: none;
+}
+
+.link-button {
+  width: fit-content;
+  border: 0;
+  padding: 0;
+  color: var(--lacquer);
+  background: transparent;
+  font-weight: 900;
+  cursor: pointer;
+}
+
 .account-card {
   display: grid;
   gap: 6px;
