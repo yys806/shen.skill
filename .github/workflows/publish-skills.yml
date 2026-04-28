@@ -1,0 +1,50 @@
+name: Publish approved skills
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "*/10 * * * *"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: publish-approved-skills
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Publish pending skills
+        shell: pwsh
+        env:
+          SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+        run: npm run publish:skills -- --limit 5
+
+      - name: Commit published skills
+        shell: pwsh
+        run: |
+          git config user.name "mirror-room-publisher"
+          git config user.email "actions@github.com"
+          git add public/index.html public/skills skills
+          if (git diff --cached --quiet) {
+            Write-Host "No generated skill changes."
+          } else {
+            git commit -m "Auto publish approved skills"
+            git push
+          }

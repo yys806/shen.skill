@@ -206,6 +206,68 @@ with check (
 create index if not exists skill_publish_tasks_created_idx
 on public.skill_publish_tasks (created_at desc);
 
+create unique index if not exists skill_publish_tasks_submission_unique_idx
+on public.skill_publish_tasks (submission_id);
+
+create or replace function public.auto_queue_skill_publish_task(submission_id_input uuid)
+returns public.skill_publish_tasks
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  submission_record public.skill_submissions;
+  task_record public.skill_publish_tasks;
+begin
+  select *
+  into submission_record
+  from public.skill_submissions
+  where id = submission_id_input;
+
+  if submission_record.id is null then
+    raise exception 'submission not found';
+  end if;
+
+  if submission_record.user_id <> auth.uid() then
+    raise exception 'permission denied';
+  end if;
+
+  if submission_record.status <> 'approved' then
+    raise exception 'submission is not approved';
+  end if;
+
+  insert into public.skill_publish_tasks (
+    submission_id,
+    repo_url,
+    skill_name,
+    status,
+    created_by_email
+  )
+  values (
+    submission_record.id,
+    submission_record.repo_url,
+    submission_record.name,
+    'pending',
+    submission_record.submitter_email
+  )
+  on conflict (submission_id)
+  do update set
+    repo_url = excluded.repo_url,
+    skill_name = excluded.skill_name,
+    status = case
+      when public.skill_publish_tasks.status = 'done' then public.skill_publish_tasks.status
+      else 'pending'
+    end,
+    updated_at = now()
+  returning * into task_record;
+
+  return task_record;
+end;
+$$;
+
+revoke all on function public.auto_queue_skill_publish_task(uuid) from public;
+grant execute on function public.auto_queue_skill_publish_task(uuid) to authenticated;
+
 create table if not exists public.request_events (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null references auth.users(id) on delete cascade,

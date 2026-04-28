@@ -108,3 +108,22 @@ npm run publish:skills -- --dry-run --keep-temp
 ```
 
 worker 只更新本地文件和 Supabase 任务状态，不会自动部署。确认生成结果没问题后，再正常提交代码并部署到 Netlify。
+
+## 全自动审核发布
+
+当前提交页已经接入自动审核：
+
+- 用户提交 GitHub 仓库后，后端会检查仓库是否可访问。
+- 仓库根目录必须存在 `SKILL.md`。
+- `SKILL.md` 大小必须在 200 bytes 到 250KB 之间。
+- 通过后 submission 会自动标记为 `approved`，并写入 `skill_publish_tasks`。
+- GitHub Actions 每 10 分钟运行一次 `publish:skills`，自动拉取 pending 任务、生成本地 skill 文件、更新 catalog、提交到 GitHub。
+- 如果 Netlify 已绑定 GitHub 自动部署，push 后会自动上线。
+
+GitHub Actions 需要在仓库 Secrets 里配置：
+
+```text
+SUPABASE_DB_PASSWORD
+```
+
+如果需要立即发布，也可以在 GitHub Actions 里手动运行 `Publish approved skills`。

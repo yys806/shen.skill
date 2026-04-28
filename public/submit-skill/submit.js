@@ -48,7 +48,7 @@ form.addEventListener("submit", async event => {
     return;
   }
 
-  setFeedback("正在提交审核...");
+  setFeedback("正在自动审核仓库，并生成发布任务...");
   const response = await fetch("/api/skill-submissions", {
     method: "POST",
     headers: {
@@ -64,7 +64,7 @@ form.addEventListener("submit", async event => {
   }
 
   form.reset();
-  setFeedback("提交成功。我们会审核这个 skill，审核后再发布到线上。");
+  setFeedback("提交成功，已自动审核通过并进入发布队列。发布 worker 会自动处理并上线。");
 });
 
 function renderAuthState() {
