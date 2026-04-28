@@ -3214,16 +3214,20 @@ input[type="range"] {
 
 .policy-check {
   display: flex;
-  align-items: flex-start;
-  gap: 10px;
+  align-items: center;
+  gap: 12px;
+  min-height: 48px;
+  padding: 4px 0;
   color: var(--muted);
   font-size: 13px;
   line-height: 1.55;
 }
 
 .policy-check input {
-  width: auto;
-  margin-top: 3px;
+  flex: 0 0 auto;
+  width: 22px;
+  height: 22px;
+  margin: 0;
   accent-color: var(--green);
 }
 
@@ -3232,29 +3236,16 @@ input[type="range"] {
   font-weight: 900;
 }
 
-.otp-panel {
+.otp-row {
   display: grid;
+  grid-template-columns: minmax(0, 1fr) 136px;
   gap: 10px;
-  padding: 16px;
-  border: 1px solid rgba(35, 93, 76, 0.2);
-  border-radius: 22px;
-  background:
-    radial-gradient(circle at 92% 8%, rgba(35, 93, 76, 0.16), transparent 6rem),
-    rgba(255, 252, 244, 0.62);
+  width: 100%;
 }
 
-.otp-panel.hidden {
-  display: none;
-}
-
-.link-button {
-  width: fit-content;
-  border: 0;
-  padding: 0;
-  color: var(--lacquer);
-  background: transparent;
-  font-weight: 900;
-  cursor: pointer;
+.otp-row .modal-primary {
+  min-height: 52px;
+  padding: 0 14px;
 }
 
 .account-card {

@@ -55,6 +55,7 @@ let session = null;
 let appState = loadState(currentStateKey);
 let accountUsage = null;
 let pendingSignup = null;
+let otpCooldownTimer = null;
 
 applyInitialSkillFromUrl();
 renderAll();
@@ -423,28 +424,33 @@ function renderAuthModal() {
       <label for="password">密码</label>
       <input id="password" type="password" autocomplete="${isSignup ? "new-password" : "current-password"}" placeholder="大小写 + 数字 + 特殊符号" />
       ${isSignup ? '<label for="confirm-password">确认密码</label><input id="confirm-password" type="password" autocomplete="new-password" placeholder="再输入一次密码" />' : ""}
+      ${isSignup ? '<label for="signup-otp">邮箱验证码</label><div class="otp-row"><input id="signup-otp" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="8" placeholder="输入 8 位验证码" /><button id="otp-send" class="modal-primary" type="button">发送验证码</button></div>' : ""}
       ${isSignup ? '<label class="policy-check"><input id="policy-agree" type="checkbox" /> <span>我已阅读并同意 <a href="/privacy/" target="_blank" rel="noreferrer">隐私政策</a> 和 <a href="/terms/" target="_blank" rel="noreferrer">服务条款</a></span></label>' : ""}
-      ${isSignup ? '<div id="otp-panel" class="otp-panel hidden"><label for="signup-otp">邮箱验证码</label><input id="signup-otp" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="输入邮件里的 6 位验证码" /><button id="otp-submit" class="modal-primary" type="button">验证邮箱</button><button id="otp-resend" class="link-button" type="button">重新发送验证码</button></div>' : ""}
-      <button id="auth-submit" class="modal-primary" type="button">${isSignup ? "注册" : "登录"}</button>
+      <button id="auth-submit" class="modal-primary" type="button">${isSignup ? "验证并注册" : "登录"}</button>
     `;
     dom.modalBody.querySelector("#auth-submit").addEventListener("click", () => submitAuth(mode));
-    dom.modalBody.querySelector("#otp-submit")?.addEventListener("click", verifySignupOtp);
-    dom.modalBody.querySelector("#otp-resend")?.addEventListener("click", resendSignupOtp);
+    dom.modalBody.querySelector("#otp-send")?.addEventListener("click", () => {
+      if (pendingSignup?.email) return resendSignupOtp();
+      return sendSignupOtp();
+    });
   };
 
   dom.modalBody.querySelector("#auth-login-tab").addEventListener("click", () => {
     mode = "login";
+    pendingSignup = null;
+    window.clearInterval(otpCooldownTimer);
     switchAuthTab(mode);
     renderFields();
   });
   dom.modalBody.querySelector("#auth-signup-tab").addEventListener("click", () => {
     mode = "signup";
+    pendingSignup = null;
+    window.clearInterval(otpCooldownTimer);
     switchAuthTab(mode);
     renderFields();
   });
   renderFields();
 }
-
 async function submitAuth(mode) {
   if (!supabase) {
     setFeedback("Supabase 还没配置好。");
@@ -461,12 +467,12 @@ async function submitAuth(mode) {
     const { data, error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) setFeedback(error.message);
     else {
-    session = data.session;
-    await switchUserState(session?.user || null);
-    await ensureCurrentUserProfile();
-    await refreshAccountPlan();
-    updateAuthState();
-    closeModal();
+      session = data.session;
+      await switchUserState(session?.user || null);
+      await ensureCurrentUserProfile();
+      await refreshAccountPlan();
+      updateAuthState();
+      closeModal();
     }
     return;
   }
@@ -474,18 +480,37 @@ async function submitAuth(mode) {
   const nickname = dom.modalBody.querySelector("#nickname").value.trim();
   const email = identifier;
   const confirmPassword = dom.modalBody.querySelector("#confirm-password").value;
+  const token = dom.modalBody.querySelector("#signup-otp")?.value.trim();
   const agreedToPolicies = dom.modalBody.querySelector("#policy-agree")?.checked;
   const passwordError = validatePassword(password, confirmPassword);
   if (!nickname) return setFeedback("昵称不能为空。");
   if (!email) return setFeedback("邮箱不能为空。");
   if (!isEmail(email)) return setFeedback("注册时请输入有效邮箱。");
   if (passwordError) return setFeedback(passwordError);
+  if (!/^\d{8}$/.test(token || "")) return setFeedback("请输入邮件里的 8 位数字验证码。");
   if (!agreedToPolicies) return setFeedback("注册前需要先阅读并同意隐私政策和服务条款。");
+
+  pendingSignup = { email, password, nickname };
+  return verifySignupOtp();
+}
+
+async function sendSignupOtp() {
+  if (!supabase) return setFeedback("Supabase 还没配置好。");
+  const nickname = dom.modalBody.querySelector("#nickname")?.value.trim();
+  const email = dom.modalBody.querySelector("#email")?.value.trim();
+  const password = dom.modalBody.querySelector("#password")?.value;
+  const confirmPassword = dom.modalBody.querySelector("#confirm-password")?.value;
+  const passwordError = validatePassword(password || "", confirmPassword || "");
+
+  if (!nickname) return setFeedback("昵称不能为空。");
+  if (!email) return setFeedback("邮箱不能为空。");
+  if (!isEmail(email)) return setFeedback("注册时请输入有效邮箱。");
+  if (passwordError) return setFeedback(passwordError);
 
   const duplicate = await checkProfileDuplicate(nickname, email);
   if (duplicate) return;
 
-  setFeedback("注册中，稍等我把验证码发到你的邮箱...");
+  setFeedback("正在发送验证码...");
   const { data, error } = await supabase.auth.signUp({
     email,
     password,
@@ -494,32 +519,26 @@ async function submitAuth(mode) {
       data: { nickname }
     }
   });
-  if (error) {
-    setFeedback(explainSignupError(error.message));
-  } else if (data.session) {
+  if (error) return setFeedback(explainSignupError(error.message));
+
+  if (data.session) {
     await supabase.auth.signOut({ scope: "local" });
     session = null;
     await switchUserState(null);
     await refreshAccountPlan();
     updateAuthState();
-    showOtpPanel(email, password, nickname);
-  } else {
-    showOtpPanel(email, password, nickname);
   }
-}
 
-function showOtpPanel(email, password, nickname) {
   pendingSignup = { email, password, nickname };
-  dom.modalBody.querySelector("#otp-panel")?.classList.remove("hidden");
-  dom.modalBody.querySelector("#auth-submit").classList.add("hidden");
+  startOtpCooldown();
   dom.modalBody.querySelector("#signup-otp")?.focus();
-  setFeedback(`验证码已发送到 ${email}。请查看邮箱，把 6 位验证码填到上面。`);
+  setFeedback(`验证码已发送到 ${email}。`);
 }
 
 async function verifySignupOtp() {
-  if (!pendingSignup?.email) return setFeedback("请先完成注册信息填写。");
+  if (!pendingSignup?.email) return setFeedback("请先点击发送验证码。");
   const token = dom.modalBody.querySelector("#signup-otp")?.value.trim();
-  if (!/^\d{6}$/.test(token || "")) return setFeedback("请输入 6 位数字验证码。");
+  if (!/^\d{8}$/.test(token || "")) return setFeedback("请输入 8 位数字验证码。");
 
   setFeedback("正在验证邮箱...");
   const { data, error } = await supabase.auth.verifyOtp({
@@ -553,7 +572,7 @@ async function verifySignupOtp() {
 }
 
 async function resendSignupOtp() {
-  if (!pendingSignup?.email) return setFeedback("请先完成注册信息填写。");
+  if (!pendingSignup?.email) return setFeedback("请先点击发送验证码。");
   setFeedback("正在重新发送验证码...");
   const { error } = await supabase.auth.resend({
     type: "signup",
@@ -561,9 +580,28 @@ async function resendSignupOtp() {
     options: { emailRedirectTo: `${window.location.origin}/chat` }
   });
   if (error) return setFeedback(error.message);
+  startOtpCooldown();
   setFeedback(`新的验证码已发送到 ${pendingSignup.email}。`);
 }
 
+function startOtpCooldown(seconds = 60) {
+  const button = dom.modalBody.querySelector("#otp-send");
+  if (!button) return;
+  window.clearInterval(otpCooldownTimer);
+  let remaining = seconds;
+  button.disabled = true;
+  button.textContent = `${remaining}s`;
+  otpCooldownTimer = window.setInterval(() => {
+    remaining -= 1;
+    if (remaining <= 0) {
+      window.clearInterval(otpCooldownTimer);
+      button.disabled = false;
+      button.textContent = "重新发送";
+      return;
+    }
+    button.textContent = `${remaining}s`;
+  }, 1000);
+}
 async function ensureCurrentUserProfile(preferredNickname = "") {
   if (!supabase || !session?.user) return;
   const user = session.user;
