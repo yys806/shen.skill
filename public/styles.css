@@ -857,6 +857,14 @@ body.home-page::after {
   padding: clamp(24px, 4vw, 42px);
 }
 
+.submission-status-panel {
+  margin-top: 24px;
+}
+
+.section-head.compact {
+  margin-bottom: 18px;
+}
+
 .submission-auth {
   display: grid;
   gap: 6px;
@@ -1057,6 +1065,10 @@ body.home-page::after {
   letter-spacing: -0.06em;
 }
 
+.submission-item.compact h2 {
+  font-size: 24px;
+}
+
 .submission-item p {
   margin: 0;
   color: var(--muted);
@@ -1107,6 +1119,22 @@ body.home-page::after {
   background: rgba(255, 252, 244, 0.62);
   font: inherit;
   resize: vertical;
+}
+
+.review-note-display {
+  margin-top: 12px !important;
+  padding: 12px 14px;
+  border: 1px solid rgba(27, 23, 18, 0.1);
+  border-radius: 14px;
+  background: rgba(255, 252, 244, 0.6);
+}
+
+.review-note-display strong {
+  color: var(--ink);
+}
+
+.review-note-display.muted {
+  color: rgba(87, 75, 58, 0.62);
 }
 
 .submission-item aside {

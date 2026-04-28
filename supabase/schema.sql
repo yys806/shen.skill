@@ -141,6 +141,11 @@ create policy "users can insert own skill submissions"
 on public.skill_submissions for insert
 with check (auth.uid() = user_id);
 
+drop policy if exists "users can read own skill submissions" on public.skill_submissions;
+create policy "users can read own skill submissions"
+on public.skill_submissions for select
+using (auth.uid() = user_id);
+
 drop policy if exists "admins can read skill submissions" on public.skill_submissions;
 create policy "admins can read skill submissions"
 on public.skill_submissions for select

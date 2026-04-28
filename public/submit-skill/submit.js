@@ -4,6 +4,14 @@ let currentSession = null;
 const authBox = document.querySelector("#submit-auth");
 const form = document.querySelector("#skill-submit-form");
 const feedback = document.querySelector("#submit-feedback");
+const mySubmissions = document.querySelector("#my-submissions");
+
+const statusLabels = {
+  pending: "待审核",
+  approved: "已通过，等待发布",
+  rejected: "已拒绝",
+  published: "已发布"
+};
 
 bootSubmitPage();
 
@@ -20,10 +28,12 @@ async function bootSubmitPage() {
     const { data } = await supabaseClient.auth.getSession();
     currentSession = data.session;
     renderAuthState();
+    await loadMySubmissions();
 
-    supabaseClient.auth.onAuthStateChange((_event, session) => {
+    supabaseClient.auth.onAuthStateChange(async (_event, session) => {
       currentSession = session;
       renderAuthState();
+      await loadMySubmissions();
     });
   } catch (error) {
     setFeedback(`初始化失败：${error.message}`, true);
@@ -48,7 +58,7 @@ form.addEventListener("submit", async event => {
     return;
   }
 
-  setFeedback("正在自动审核仓库，并生成发布任务...");
+  setFeedback("正在提交审核...");
   const response = await fetch("/api/skill-submissions", {
     method: "POST",
     headers: {
@@ -64,7 +74,8 @@ form.addEventListener("submit", async event => {
   }
 
   form.reset();
-  setFeedback("提交成功，已自动审核通过并进入发布队列。发布 worker 会自动处理并上线。");
+  setFeedback("提交成功，等待管理员审核。你可以在下方查看状态和备注。");
+  await loadMySubmissions();
 });
 
 function renderAuthState() {
@@ -85,6 +96,47 @@ function renderAuthState() {
   form.classList.add("is-disabled");
 }
 
+async function loadMySubmissions() {
+  if (!mySubmissions) return;
+  if (!currentSession?.access_token) {
+    mySubmissions.innerHTML = `<article class="submission-empty">登录后可以查看自己的提交状态。</article>`;
+    return;
+  }
+
+  mySubmissions.innerHTML = `<article class="submission-empty">正在读取提交记录...</article>`;
+  const response = await fetch("/api/skill-submissions", {
+    headers: {
+      "Authorization": `Bearer ${currentSession.access_token}`
+    }
+  });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    mySubmissions.innerHTML = `<article class="submission-empty">${escapeHtml(data.detail || data.error || "读取失败。")}</article>`;
+    return;
+  }
+
+  const submissions = data.submissions || [];
+  if (!submissions.length) {
+    mySubmissions.innerHTML = `<article class="submission-empty">还没有提交记录。</article>`;
+    return;
+  }
+
+  mySubmissions.innerHTML = submissions.map(item => `
+    <article class="submission-item compact">
+      <div>
+        <span class="status-pill status-${escapeAttribute(item.status || "pending")}">${escapeHtml(statusLabels[item.status] || item.status || "待审核")}</span>
+        <h2>${escapeHtml(item.name)}</h2>
+        <p>${escapeHtml(item.description || "")}</p>
+        ${item.review_note ? `<p class="review-note-display"><strong>管理员备注：</strong>${escapeHtml(item.review_note)}</p>` : `<p class="review-note-display muted">暂无管理员备注。</p>`}
+      </div>
+      <aside>
+        <a href="${escapeAttribute(item.repo_url)}" target="_blank" rel="noreferrer">GitHub</a>
+        <time>${formatDate(item.created_at)}</time>
+      </aside>
+    </article>
+  `).join("");
+}
+
 function setFeedback(message, isError = false) {
   feedback.textContent = message;
   feedback.classList.toggle("is-error", Boolean(isError));
@@ -103,4 +155,12 @@ function escapeHtml(value) {
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;");
+}
+
+function escapeAttribute(value) {
+  return escapeHtml(value).replace(/'/g, "&#039;");
+}
+
+function formatDate(value) {
+  return new Date(value || Date.now()).toLocaleString("zh-CN");
 }

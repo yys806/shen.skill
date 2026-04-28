@@ -15,7 +15,6 @@ let allUsers = [];
 const authBox = document.querySelector("#admin-auth");
 const submissionList = document.querySelector("#submission-list");
 const userList = document.querySelector("#user-list");
-const publishList = document.querySelector("#publish-list");
 const statusFilter = document.querySelector("#status-filter");
 const userSearch = document.querySelector("#user-search");
 const submissionTools = document.querySelector("#submission-tools");
@@ -66,7 +65,6 @@ async function renderAuthState() {
     `;
     renderNotice(submissionList, "等待管理员登录。");
     renderNotice(userList, "等待管理员登录。");
-    renderNotice(publishList, "等待管理员登录。");
     return;
   }
 
@@ -78,7 +76,6 @@ async function renderAuthState() {
   if (!isAdminSession()) {
     renderNotice(submissionList, "当前账号不是管理员，无法查看后台。");
     renderNotice(userList, "当前账号不是管理员，无法查看后台。");
-    renderNotice(publishList, "当前账号不是管理员，无法查看后台。");
     return;
   }
 
@@ -91,7 +88,6 @@ function renderTabs() {
   });
   submissionList.classList.toggle("hidden", activeTab !== "submissions");
   userList.classList.toggle("hidden", activeTab !== "users");
-  publishList.classList.toggle("hidden", activeTab !== "publish");
   submissionTools.classList.toggle("hidden", activeTab !== "submissions");
   userTools.classList.toggle("hidden", activeTab !== "users");
 }
@@ -99,7 +95,6 @@ function renderTabs() {
 async function loadActiveTab() {
   renderTabs();
   if (activeTab === "users") return loadUsers();
-  if (activeTab === "publish") return loadPublishTasks();
   return loadSubmissions();
 }
 
@@ -150,9 +145,6 @@ function renderSubmissions() {
           ${saveNoteButton(item)}
           ${reviewButton(item, "approved", "通过")}
           ${reviewButton(item, "rejected", "拒绝")}
-          ${reviewButton(item, "published", "标记已发布")}
-          ${reviewButton(item, "pending", "退回待审")}
-          ${publishButton(item)}
         </div>
       </div>
       <aside>
@@ -165,9 +157,6 @@ function renderSubmissions() {
 
   submissionList.querySelectorAll("[data-review-status]").forEach(button => {
     button.addEventListener("click", () => updateSubmissionStatus(button.dataset.id, button.dataset.reviewStatus));
-  });
-  submissionList.querySelectorAll("[data-publish-submission]").forEach(button => {
-    button.addEventListener("click", () => createPublishTask(button.dataset.publishSubmission));
   });
 }
 
@@ -185,21 +174,6 @@ async function updateSubmissionStatus(id, status) {
     return;
   }
   await loadSubmissions();
-}
-
-async function createPublishTask(submissionId) {
-  const response = await fetch("/api/admin/publish-tasks", {
-    method: "POST",
-    headers: { ...authHeaders(), "Content-Type": "application/json" },
-    body: JSON.stringify({ submissionId })
-  });
-  const data = await response.json().catch(() => ({}));
-  if (!response.ok) {
-    renderNotice(submissionList, data.detail || data.error || "生成发布任务失败。");
-    return;
-  }
-  activeTab = "publish";
-  await loadActiveTab();
 }
 
 async function loadUsers() {
@@ -237,37 +211,6 @@ function renderUsers() {
   `).join("");
 }
 
-async function loadPublishTasks() {
-  renderNotice(publishList, "正在读取发布任务...");
-  const response = await fetch("/api/admin/publish-tasks", { headers: authHeaders() });
-  const data = await response.json().catch(() => ({}));
-  if (!response.ok) {
-    renderNotice(publishList, data.detail || data.error || "读取发布任务失败。");
-    return;
-  }
-
-  const tasks = data.tasks || [];
-  if (!tasks.length) {
-    renderNotice(publishList, "目前还没有发布任务。通过审核后可在 Skill 审批里生成。");
-    return;
-  }
-
-  publishList.innerHTML = tasks.map(task => `
-    <article class="submission-item">
-      <div>
-        <span class="status-pill status-${escapeAttribute(task.status || "pending")}">${escapeHtml(task.status || "pending")}</span>
-        <h2>${escapeHtml(task.skill_name)}</h2>
-        <p>半自动发布任务已生成。后续发布 worker 会基于这条任务拉仓库、校验 skill、更新白名单并触发部署。</p>
-      </div>
-      <aside>
-        <a href="${escapeAttribute(task.repo_url)}" target="_blank" rel="noreferrer">打开 GitHub</a>
-        <small>${escapeHtml(task.created_by_email || "unknown")}</small>
-        <time>${formatDate(task.created_at)}</time>
-      </aside>
-    </article>
-  `).join("");
-}
-
 function reviewButton(item, status, label) {
   const disabled = item.status === status ? "disabled" : "";
   return `<button ${disabled} data-id="${escapeAttribute(item.id)}" data-review-status="${status}" type="button">${label}</button>`;
@@ -275,11 +218,6 @@ function reviewButton(item, status, label) {
 
 function saveNoteButton(item) {
   return `<button data-id="${escapeAttribute(item.id)}" data-review-status="${escapeAttribute(item.status || "pending")}" type="button">保存备注</button>`;
-}
-
-function publishButton(item) {
-  if (!["approved", "published"].includes(item.status)) return "";
-  return `<button data-publish-submission="${escapeAttribute(item.id)}" type="button">生成发布任务</button>`;
 }
 
 function renderNotice(target, message) {

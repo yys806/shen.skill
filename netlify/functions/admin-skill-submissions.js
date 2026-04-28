@@ -32,7 +32,20 @@ export default async (req) => {
     if (!result.ok) {
       return json({ error: "Submission update failed", detail: result.detail }, 500);
     }
-    return json({ ok: true, submission: result.data?.[0] || null });
+    const submission = result.data?.[0] || null;
+    let publishTask = null;
+    if (status === "approved" && submission) {
+      const taskResult = await queuePublishTask(authResult.authorization, submission);
+      if (!taskResult.ok) {
+        return json({
+          error: "Publish task queue failed",
+          detail: `已通过审核，但发布队列生成失败：${taskResult.detail}`,
+          submission
+        }, 500);
+      }
+      publishTask = taskResult.data?.[0] || null;
+    }
+    return json({ ok: true, submission, publishTask });
   }
 
   const result = await listSubmissions(authResult.authorization);
@@ -99,5 +112,38 @@ async function updateSubmission(authorization, id, payload) {
     return { ok: true, data };
   } catch (error) {
     return { ok: false, detail: `Supabase 更新失败：${error.message}` };
+  }
+}
+
+async function queuePublishTask(authorization, submission) {
+  const supabaseUrl = getEnv("SUPABASE_URL", "https://gqhzwngzfoigzqndlbsq.supabase.co").replace(/\/$/, "");
+  const supabaseAnonKey = getEnv("SUPABASE_ANON_KEY");
+  const query = new URLSearchParams({ on_conflict: "submission_id" });
+  const payload = {
+    submission_id: submission.id,
+    repo_url: submission.repo_url,
+    skill_name: submission.name,
+    status: "pending",
+    created_by_email: submission.submitter_email || ADMIN_EMAIL
+  };
+
+  try {
+    const response = await fetch(`${supabaseUrl}/rest/v1/skill_publish_tasks?${query}`, {
+      method: "POST",
+      headers: {
+        "apikey": supabaseAnonKey,
+        "Authorization": authorization,
+        "Content-Type": "application/json",
+        "Prefer": "return=representation,resolution=merge-duplicates"
+      },
+      body: JSON.stringify(payload)
+    });
+    const data = await response.json().catch(() => null);
+    if (!response.ok) {
+      return { ok: false, detail: data?.message || "发布任务生成失败。请确认 Supabase 已执行最新 schema.sql。" };
+    }
+    return { ok: true, data };
+  } catch (error) {
+    return { ok: false, detail: `Supabase 发布任务生成失败：${error.message}` };
   }
 }

@@ -20,7 +20,7 @@
       <section class="admin-head">
         <p class="home-kicker">admin review</p>
         <h1>镜室后台</h1>
-        <p>只有管理员邮箱可以查看。当前管理员：3492675568@qq.com。审批按钮目前用于记录审核状态；自动上线需要单独接入安全发布流程。</p>
+        <p>只有管理员邮箱可以查看。当前管理员：3492675568@qq.com。通过后会自动进入发布队列，后续由发布 worker 上线。</p>
       </section>
 
       <section class="admin-panel">
@@ -28,7 +28,6 @@
         <div class="admin-tabs" role="tablist" aria-label="后台功能">
           <button class="active" data-admin-tab="submissions" type="button">Skill 审批</button>
           <button data-admin-tab="users" type="button">用户管理</button>
-          <button data-admin-tab="publish" type="button">发布任务</button>
         </div>
         <div id="submission-tools" class="admin-tools">
           <select id="status-filter" aria-label="按审核状态筛选">
@@ -44,7 +43,6 @@
         </div>
         <div id="submission-list" class="submission-list"></div>
         <div id="user-list" class="submission-list hidden"></div>
-        <div id="publish-list" class="submission-list hidden"></div>
       </section>
     </main>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
