@@ -53,6 +53,7 @@ let currentStateKey = `${stateKeyPrefix}:anon`;
 let supabase = null;
 let session = null;
 let appState = loadState(currentStateKey);
+let accountUsage = null;
 
 applyInitialSkillFromUrl();
 renderAll();
@@ -376,9 +377,25 @@ function renderAuthModal() {
         <span class="account-plan ${escapeHtml(accountPlan)}">${escapeHtml(planBadge())}</span>
         <strong>${escapeHtml(nickname)}</strong>
         <span>${escapeHtml(session.user.email || session.user.id)}</span>
+        <small>${escapeHtml(formatAccountUsage())}</small>
       </div>
+      <div class="account-manage-grid">
+        <label for="nickname-update">修改昵称</label>
+        <input id="nickname-update" value="${escapeHtml(nickname)}" maxlength="40" />
+        <button id="nickname-save" class="modal-primary" type="button">保存昵称</button>
+      </div>
+      <div class="account-manage-grid">
+        <label for="old-password">修改密码</label>
+        <input id="old-password" type="password" autocomplete="current-password" placeholder="原始密码" />
+        <input id="new-password" type="password" autocomplete="new-password" placeholder="新密码：大小写 + 数字 + 特殊符号" />
+        <input id="new-password-confirm" type="password" autocomplete="new-password" placeholder="再次输入新密码" />
+        <button id="password-save" class="modal-primary" type="button">修改密码</button>
+      </div>
+      <p id="account-feedback" class="field-help"></p>
       <button id="logout-button" class="modal-primary danger" type="button">退出登录</button>
     `;
+    dom.modalBody.querySelector("#nickname-save").addEventListener("click", saveNickname);
+    dom.modalBody.querySelector("#password-save").addEventListener("click", savePassword);
     dom.modalBody.querySelector("#logout-button").addEventListener("click", async () => {
       await performLogout();
     });
@@ -869,12 +886,92 @@ async function refreshAccountPlan() {
     if (!response.ok) throw new Error(formatError(data));
     const plan = String(data.entitlement?.plan || "free").toLowerCase();
     const status = String(data.entitlement?.status || "inactive").toLowerCase();
+    accountUsage = data.usage || null;
     accountPlan = ["plus", "pro"].includes(plan) && ["active", "trialing"].includes(status)
       ? plan
       : "free";
   } catch {
     accountPlan = "free";
   }
+}
+
+async function saveNickname() {
+  const nickname = dom.modalBody.querySelector("#nickname-update").value.trim();
+  if (!nickname) return setAccountFeedback("昵称不能为空。", true);
+  if (nickname !== session.user.user_metadata?.nickname) {
+    const duplicate = await checkNicknameDuplicateForAccount(nickname);
+    if (duplicate) return;
+  }
+
+  setAccountFeedback("正在保存昵称...");
+  const { error: metadataError } = await supabase.auth.updateUser({ data: { nickname } });
+  if (metadataError) return setAccountFeedback(metadataError.message, true);
+
+  const { error: profileError } = await supabase
+    .from("profiles")
+    .update({ nickname, nickname_key: nickname.toLowerCase() })
+    .eq("id", session.user.id);
+  if (profileError) return setAccountFeedback(explainSignupError(profileError.message), true);
+
+  const { data } = await supabase.auth.getSession();
+  session = data.session;
+  updateAuthState();
+  setAccountFeedback("昵称已更新。");
+}
+
+async function savePassword() {
+  const oldPassword = dom.modalBody.querySelector("#old-password").value;
+  const newPassword = dom.modalBody.querySelector("#new-password").value;
+  const confirmPassword = dom.modalBody.querySelector("#new-password-confirm").value;
+  const passwordError = validatePassword(newPassword, confirmPassword);
+  if (!oldPassword) return setAccountFeedback("请输入原始密码。", true);
+  if (passwordError) return setAccountFeedback(passwordError, true);
+
+  setAccountFeedback("正在验证原密码...");
+  const email = session.user.email;
+  const { error: verifyError } = await supabase.auth.signInWithPassword({ email, password: oldPassword });
+  if (verifyError) return setAccountFeedback("原始密码不正确。", true);
+
+  setAccountFeedback("正在修改密码...");
+  const { error } = await supabase.auth.updateUser({ password: newPassword });
+  if (error) return setAccountFeedback(error.message, true);
+  setAccountFeedback("密码已修改，下次登录请使用新密码。");
+  dom.modalBody.querySelector("#old-password").value = "";
+  dom.modalBody.querySelector("#new-password").value = "";
+  dom.modalBody.querySelector("#new-password-confirm").value = "";
+}
+
+function setAccountFeedback(message, isError = false) {
+  const target = dom.modalBody.querySelector("#account-feedback");
+  if (!target) return;
+  target.textContent = message;
+  target.classList.toggle("is-error", Boolean(isError));
+}
+
+async function checkNicknameDuplicateForAccount(nickname) {
+  const nicknameKey = normalizeNickname(nickname);
+  const { data, error } = await supabase
+    .from("profiles")
+    .select("id,nickname_key")
+    .eq("nickname_key", nicknameKey);
+
+  if (error) {
+    setAccountFeedback(`无法检查昵称是否重复：${error.message}`, true);
+    return true;
+  }
+
+  if ((data || []).some(profile => profile.id !== session.user.id)) {
+    setAccountFeedback("这个昵称已经被注册了，换一个吧。", true);
+    return true;
+  }
+  return false;
+}
+
+function formatAccountUsage() {
+  if (accountPlan === "admin") return "剩余额度：无限";
+  if (!accountUsage) return "剩余额度：读取中";
+  if (accountUsage.unlimited) return "剩余额度：无限";
+  return `剩余额度：${accountUsage.remaining}/${accountUsage.limit}，本月已用 ${accountUsage.used}`;
 }
 
 function planBadge() {

@@ -3,12 +3,12 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Skill 后台 | 镜室</title>
+    <title>镜室后台 | Admin</title>
     <link rel="icon" href="/icon.png" type="image/png" />
     <link rel="stylesheet" href="/styles.css" />
   </head>
-  <body class="home-page admin-page">
-    <main class="skill-detail-shell">
+  <body class="home-page admin-page locked">
+    <main id="admin-main" class="skill-detail-shell admin-main hidden">
       <nav class="skill-detail-nav">
         <a class="home-brand" href="/"><span></span><strong>镜室后台</strong></a>
         <div>
@@ -18,9 +18,9 @@
       </nav>
 
       <section class="admin-head">
-        <p class="home-kicker">admin review</p>
+        <p class="home-kicker">admin console</p>
         <h1>镜室后台</h1>
-        <p>只有管理员邮箱可以查看。当前管理员：3492675568@qq.com。通过后会自动进入发布队列，后续由发布 worker 上线。</p>
+        <p>管理员可审核 skill、查看用户状态、调整套餐和删除异常账号。当前管理员：3492675568@qq.com。</p>
       </section>
 
       <section class="admin-panel">
@@ -45,6 +45,21 @@
         <div id="user-list" class="submission-list hidden"></div>
       </section>
     </main>
+
+    <section id="admin-gate" class="admin-gate">
+      <div class="admin-gate-card">
+        <p class="home-kicker">admin login</p>
+        <h1>进入后台</h1>
+        <p>请使用管理员邮箱登录。验证通过后才会加载后台数据。</p>
+        <label for="admin-email">邮箱</label>
+        <input id="admin-email" type="email" autocomplete="username" value="3492675568@qq.com" />
+        <label for="admin-password">密码</label>
+        <input id="admin-password" type="password" autocomplete="current-password" placeholder="管理员密码" />
+        <button id="admin-login" class="modal-primary" type="button">登录后台</button>
+        <p id="admin-login-feedback" class="field-help"></p>
+      </div>
+    </section>
+
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="/admin/admin.js"></script>
   </body>

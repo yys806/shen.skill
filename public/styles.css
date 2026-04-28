@@ -1186,6 +1186,89 @@ body.home-page::after {
   white-space: nowrap;
 }
 
+.admin-page.locked .admin-main {
+  filter: blur(12px);
+  pointer-events: none;
+  user-select: none;
+}
+
+.admin-gate {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: rgba(222, 201, 167, 0.38);
+  backdrop-filter: blur(18px);
+}
+
+.admin-gate.hidden {
+  display: none;
+}
+
+.admin-gate-card {
+  width: min(100%, 460px);
+  display: grid;
+  gap: 13px;
+  padding: clamp(24px, 5vw, 42px);
+  border: 1px solid rgba(27, 23, 18, 0.12);
+  border-radius: 34px;
+  background:
+    radial-gradient(circle at 86% 12%, rgba(35, 93, 76, 0.18), transparent 12rem),
+    linear-gradient(135deg, rgba(255, 252, 244, 0.96), rgba(239, 226, 202, 0.88));
+  box-shadow: var(--shadow);
+}
+
+.admin-gate-card h1 {
+  margin: 0;
+  font-size: clamp(42px, 8vw, 74px);
+  letter-spacing: -0.08em;
+}
+
+.rich-user {
+  align-items: center;
+}
+
+.rich-user p,
+.rich-user small {
+  margin: 6px 0 0;
+  color: var(--muted);
+}
+
+.user-admin-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.user-admin-actions select,
+.user-admin-actions button {
+  min-height: 42px;
+  border: 1px solid rgba(27, 23, 18, 0.12);
+  border-radius: 999px;
+  padding: 0 14px;
+  background: rgba(255, 252, 244, 0.86);
+  font-weight: 900;
+}
+
+.user-admin-actions button {
+  color: #fff8e8;
+  background: var(--night);
+  cursor: pointer;
+}
+
+.user-admin-actions button.danger {
+  background: var(--lacquer);
+}
+
+.user-admin-actions button:disabled,
+.user-admin-actions select:disabled {
+  opacity: 0.48;
+  cursor: not-allowed;
+}
+
 .workflow-line {
   grid-template-columns: repeat(3, minmax(0, 1fr));
 }
@@ -3177,6 +3260,20 @@ input[type="range"] {
 
 .account-plan.plus {
   background: #a06a25;
+}
+
+.account-card small {
+  color: var(--green);
+  font-weight: 900;
+}
+
+.account-manage-grid {
+  display: grid;
+  gap: 10px;
+  padding: 16px;
+  border: 1px solid rgba(27, 23, 18, 0.1);
+  border-radius: 22px;
+  background: rgba(255, 252, 244, 0.48);
 }
 
 .context-menu {

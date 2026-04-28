@@ -12,6 +12,10 @@ let activeTab = "submissions";
 let allSubmissions = [];
 let allUsers = [];
 
+const adminMain = document.querySelector("#admin-main");
+const adminGate = document.querySelector("#admin-gate");
+const loginButton = document.querySelector("#admin-login");
+const loginFeedback = document.querySelector("#admin-login-feedback");
 const authBox = document.querySelector("#admin-auth");
 const submissionList = document.querySelector("#submission-list");
 const userList = document.querySelector("#user-list");
@@ -27,23 +31,33 @@ async function bootAdminPage() {
   try {
     const config = await getJson("/api/config");
     if (!config.hasSupabase) {
-      renderNotice(submissionList, "Supabase 未配置，后台暂不可用。");
+      setLoginFeedback("Supabase 未配置，后台暂不可用。", true);
       return;
     }
 
     supabaseClient = window.supabase.createClient(config.supabaseUrl, config.supabaseAnonKey);
     const { data } = await supabaseClient.auth.getSession();
     currentSession = data.session;
-    renderAuthState();
+    await renderAuthState();
 
-    supabaseClient.auth.onAuthStateChange((_event, session) => {
+    supabaseClient.auth.onAuthStateChange(async (_event, session) => {
       currentSession = session;
-      renderAuthState();
+      await renderAuthState();
     });
   } catch (error) {
-    renderNotice(submissionList, `后台初始化失败：${error.message}`);
+    setLoginFeedback(`后台初始化失败：${error.message}`, true);
   }
 }
+
+loginButton.addEventListener("click", async () => {
+  const email = document.querySelector("#admin-email").value.trim();
+  const password = document.querySelector("#admin-password").value;
+  setLoginFeedback("正在验证管理员身份...");
+  const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
+  if (error) return setLoginFeedback(error.message, true);
+  currentSession = data.session;
+  await renderAuthState();
+});
 
 tabButtons.forEach(button => {
   button.addEventListener("click", () => {
@@ -57,28 +71,25 @@ statusFilter.addEventListener("change", renderSubmissions);
 userSearch.addEventListener("input", renderUsers);
 
 async function renderAuthState() {
-  if (!currentSession?.user) {
-    authBox.innerHTML = `
-      <span>未登录</span>
-      <strong>请先用管理员账号在 /chat 登录。</strong>
-      <a href="/chat">去登录</a>
-    `;
-    renderNotice(submissionList, "等待管理员登录。");
-    renderNotice(userList, "等待管理员登录。");
+  if (!isAdminSession()) {
+    document.body.classList.add("locked");
+    adminGate.classList.remove("hidden");
+    adminMain.classList.add("hidden");
+    if (currentSession?.user) {
+      setLoginFeedback("当前账号不是管理员，请换管理员账号登录。", true);
+      await supabaseClient.auth.signOut({ scope: "local" });
+      currentSession = null;
+    }
     return;
   }
 
+  document.body.classList.remove("locked");
+  adminGate.classList.add("hidden");
+  adminMain.classList.remove("hidden");
   authBox.innerHTML = `
-    <span>当前账号</span>
+    <span>管理员已登录</span>
     <strong>${escapeHtml(currentSession.user.email || "unknown")}</strong>
   `;
-
-  if (!isAdminSession()) {
-    renderNotice(submissionList, "当前账号不是管理员，无法查看后台。");
-    renderNotice(userList, "当前账号不是管理员，无法查看后台。");
-    return;
-  }
-
   await loadActiveTab();
 }
 
@@ -102,11 +113,7 @@ async function loadSubmissions() {
   renderNotice(submissionList, "正在读取提交列表...");
   const response = await fetch("/api/admin/skill-submissions", { headers: authHeaders() });
   const data = await response.json().catch(() => ({}));
-  if (!response.ok) {
-    renderNotice(submissionList, data.detail || data.error || "读取失败。");
-    return;
-  }
-
+  if (!response.ok) return renderNotice(submissionList, data.detail || data.error || "读取失败。");
   allSubmissions = data.submissions || [];
   renderSubmissions();
 }
@@ -117,10 +124,7 @@ function renderSubmissions() {
     ? allSubmissions
     : allSubmissions.filter(item => item.status === status);
 
-  if (!submissions.length) {
-    renderNotice(submissionList, "当前筛选下没有提交。");
-    return;
-  }
+  if (!submissions.length) return renderNotice(submissionList, "当前筛选下没有提交。");
 
   submissionList.innerHTML = submissions.map(item => `
     <article class="submission-item" data-submission-id="${escapeAttribute(item.id)}">
@@ -162,17 +166,13 @@ function renderSubmissions() {
 
 async function updateSubmissionStatus(id, status) {
   const textarea = submissionList.querySelector(`[data-review-note="${CSS.escape(id)}"]`);
-  const reviewNote = textarea?.value || "";
   const response = await fetch("/api/admin/skill-submissions", {
     method: "PATCH",
     headers: { ...authHeaders(), "Content-Type": "application/json" },
-    body: JSON.stringify({ id, status, reviewNote })
+    body: JSON.stringify({ id, status, reviewNote: textarea?.value || "" })
   });
   const data = await response.json().catch(() => ({}));
-  if (!response.ok) {
-    renderNotice(submissionList, data.detail || data.error || "更新失败。");
-    return;
-  }
+  if (!response.ok) return renderNotice(submissionList, data.detail || data.error || "更新失败。");
   await loadSubmissions();
 }
 
@@ -180,11 +180,7 @@ async function loadUsers() {
   renderNotice(userList, "正在读取用户列表...");
   const response = await fetch("/api/admin/users", { headers: authHeaders() });
   const data = await response.json().catch(() => ({}));
-  if (!response.ok) {
-    renderNotice(userList, data.detail || data.error || "读取用户失败。");
-    return;
-  }
-
+  if (!response.ok) return renderNotice(userList, data.detail || data.error || "读取用户失败。");
   allUsers = data.users || [];
   renderUsers();
 }
@@ -195,20 +191,58 @@ function renderUsers() {
     ? allUsers.filter(user => `${user.email || ""} ${user.nickname || ""}`.toLowerCase().includes(keyword))
     : allUsers;
 
-  if (!users.length) {
-    renderNotice(userList, "当前搜索下没有用户。");
-    return;
-  }
+  if (!users.length) return renderNotice(userList, "当前搜索下没有用户。");
 
   userList.innerHTML = users.map(user => `
-    <article class="user-admin-item">
+    <article class="user-admin-item rich-user" data-user-id="${escapeAttribute(user.id)}">
       <div>
-        <span>${escapeHtml(user.nickname || "未设置昵称")}</span>
-        <strong>${escapeHtml(user.email || "unknown")}</strong>
+        <span class="status-pill">${escapeHtml(planLabel(user.plan))}</span>
+        <strong>${escapeHtml(user.nickname || "未设置昵称")}</strong>
+        <p>${escapeHtml(user.email || "unknown")}</p>
+        <small>额度：${formatUsage(user.usage)} · 注册：${formatDate(user.created_at)}</small>
       </div>
-      <time>注册：${formatDate(user.created_at)}</time>
+      <div class="user-admin-actions">
+        <select data-plan-select="${escapeAttribute(user.id)}" ${user.plan === "admin" ? "disabled" : ""}>
+          <option value="free" ${user.plan === "free" ? "selected" : ""}>Free</option>
+          <option value="plus" ${user.plan === "plus" ? "selected" : ""}>Plus</option>
+          <option value="pro" ${user.plan === "pro" ? "selected" : ""}>Pro</option>
+        </select>
+        <button data-save-plan="${escapeAttribute(user.id)}" ${user.plan === "admin" ? "disabled" : ""} type="button">保存套餐</button>
+        <button class="danger" data-delete-user="${escapeAttribute(user.id)}" data-email="${escapeAttribute(user.email || "")}" ${user.plan === "admin" ? "disabled" : ""} type="button">删除用户</button>
+      </div>
     </article>
   `).join("");
+
+  userList.querySelectorAll("[data-save-plan]").forEach(button => {
+    button.addEventListener("click", () => updatePlan(button.dataset.savePlan));
+  });
+  userList.querySelectorAll("[data-delete-user]").forEach(button => {
+    button.addEventListener("click", () => deleteUser(button.dataset.deleteUser, button.dataset.email));
+  });
+}
+
+async function updatePlan(userId) {
+  const select = userList.querySelector(`[data-plan-select="${CSS.escape(userId)}"]`);
+  const response = await fetch("/api/admin/users", {
+    method: "PATCH",
+    headers: { ...authHeaders(), "Content-Type": "application/json" },
+    body: JSON.stringify({ userId, plan: select.value })
+  });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) return renderNotice(userList, data.detail || data.error || "套餐更新失败。");
+  await loadUsers();
+}
+
+async function deleteUser(userId, email) {
+  if (!confirm(`确认删除用户 ${email || userId}？这个操作会删除账号和关联数据。`)) return;
+  const response = await fetch("/api/admin/users", {
+    method: "DELETE",
+    headers: { ...authHeaders(), "Content-Type": "application/json" },
+    body: JSON.stringify({ userId, email })
+  });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) return renderNotice(userList, data.detail || data.error || "删除失败。");
+  await loadUsers();
 }
 
 function reviewButton(item, status, label) {
@@ -224,6 +258,11 @@ function renderNotice(target, message) {
   target.innerHTML = `<article class="submission-empty">${escapeHtml(message)}</article>`;
 }
 
+function setLoginFeedback(message, isError = false) {
+  loginFeedback.textContent = message;
+  loginFeedback.classList.toggle("is-error", Boolean(isError));
+}
+
 function authHeaders() {
   return { "Authorization": `Bearer ${currentSession.access_token}` };
 }
@@ -237,6 +276,18 @@ async function getJson(url) {
   const data = await response.json();
   if (!response.ok) throw new Error(data.detail || data.error || "请求失败");
   return data;
+}
+
+function planLabel(plan) {
+  if (plan === "admin") return "管理员";
+  if (plan === "pro") return "Pro";
+  if (plan === "plus") return "Plus";
+  return "Free";
+}
+
+function formatUsage(usage = {}) {
+  if (usage.unlimited) return "无限";
+  return `${usage.remaining ?? 0}/${usage.limit ?? 0} 剩余，本月已用 ${usage.used ?? 0}`;
 }
 
 function formatDate(value) {
