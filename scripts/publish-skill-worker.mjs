@@ -269,6 +269,16 @@ function inferCatalogFromText(text) {
     };
   }
 
+  if (text.includes("张雪峰") || lower.includes("zhangxuefeng")) {
+    return {
+      label: "education choice / career reality / plain talk",
+      description: "张雪峰思维操作系统，聚焦教育选择、职业规划、普通家庭决策和阶层流动现实。",
+      summary: "一个把张雪峰的教育选择框架、就业倒推法、阶层现实主义和东北大哥式表达封装起来的升学与职业决策视角。它适合帮普通家庭把专业、学校、行业和试错成本算清楚。",
+      bestFor: ["高考志愿和专业选择", "考研院校与专业取舍", "用就业数据倒推今天的选择", "普通家庭的职业规划", "识别看起来体面但中位数很差的坑"],
+      notes: ["先问家庭条件和分数背景", "说话直接、快节奏、段子化", "重视就业率、薪资中位数和真实去向", "不讲空泛理想，先算试错成本", "需要最新数据的问题应先查资料再判断"]
+    };
+  }
+
   return {
     label: extractHeading(text) || "community skill / reviewed submission",
     description: "",
@@ -286,6 +296,7 @@ function extractParagraph(text) {
   return text
     .split(/\r?\n/)
     .map(line => line.trim())
+    .filter(line => !/<[^>]+>/.test(line))
     .find(line => line.length > 40 && !line.startsWith("#") && !line.startsWith(">") && !line.startsWith("-"))
     ?.slice(0, 180) || "";
 }
