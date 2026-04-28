@@ -170,12 +170,14 @@ dom.form.addEventListener("submit", async event => {
     thinking.content = data.content || "我这边没拿到模型回复，可能是模型名或 API key 配置的问题。";
     thinking.createdAt = Date.now();
     conversation.updatedAt = Date.now();
+    await syncAccountUsage();
     persistAndRender();
   } catch (error) {
     thinking.pending = false;
     thinking.content = `这下卡住了：${error.message}\n\n先检查 Netlify 环境变量、Supabase 登录状态和模型名。`;
     thinking.createdAt = Date.now();
     conversation.updatedAt = Date.now();
+    await syncAccountUsage();
     persistAndRender();
   }
 });
@@ -377,7 +379,7 @@ function renderAuthModal() {
         <span class="account-plan ${escapeHtml(accountPlan)}">${escapeHtml(planBadge())}</span>
         <strong>${escapeHtml(nickname)}</strong>
         <span>${escapeHtml(session.user.email || session.user.id)}</span>
-        <small>${escapeHtml(formatAccountUsage())}</small>
+        <small id="account-usage-text">${escapeHtml(formatAccountUsage())}</small>
       </div>
       <div class="account-manage-grid">
         <label for="nickname-update">修改昵称</label>
@@ -870,11 +872,13 @@ function setAuthLabel(text) {
 async function refreshAccountPlan() {
   if (!session?.access_token) {
     accountPlan = "free";
+    accountUsage = null;
     return;
   }
 
   if (String(session.user?.email || "").toLowerCase() === "3492675568@qq.com") {
     accountPlan = "admin";
+    accountUsage = { unlimited: true, used: 0, limit: null, remaining: null };
     return;
   }
 
@@ -893,6 +897,12 @@ async function refreshAccountPlan() {
   } catch {
     accountPlan = "free";
   }
+}
+
+async function syncAccountUsage() {
+  await refreshAccountPlan();
+  updateAuthState();
+  updateAccountUsageText();
 }
 
 async function saveNickname() {
@@ -946,6 +956,11 @@ function setAccountFeedback(message, isError = false) {
   if (!target) return;
   target.textContent = message;
   target.classList.toggle("is-error", Boolean(isError));
+}
+
+function updateAccountUsageText() {
+  const target = dom.modalBody?.querySelector?.("#account-usage-text");
+  if (target) target.textContent = formatAccountUsage();
 }
 
 async function checkNicknameDuplicateForAccount(nickname) {

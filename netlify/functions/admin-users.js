@@ -46,7 +46,8 @@ async function listUsers() {
     supabaseAdminRequest(`/request_events?${new URLSearchParams({
       select: "user_id",
       event_type: "eq.chat",
-      created_at: `gte.${currentMonthStart()}`
+      created_at: `gte.${currentMonthStart()}`,
+      limit: "10000"
     })}`)
   ]);
 
