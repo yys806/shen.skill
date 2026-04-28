@@ -45,9 +45,9 @@ async function handleChat(req) {
   const counterpart = cleanText(body.counterpart || "");
   const scene = cleanText(body.scene || "self");
   const skill = await normalizeSkillId(cleanText(body.skill || "maoxuan-skill"));
-  const provider = normalizeProvider(body.provider || "siliconflow");
+  const provider = normalizeProvider(body.provider || "deepseek");
   const temperature = clamp(Number(body.temperature ?? 0.72), 0, 1.5);
-  const model = cleanText(body.model || getEnv("SILICONFLOW_MODEL", "Pro/moonshotai/Kimi-K2.6"));
+  const model = cleanText(body.model || getEnv("DEEPSEEK_MODEL", "deepseek-v4-flash"));
   const providerConfig = getProviderConfig(provider);
 
   if (!providerConfig.apiKey) {

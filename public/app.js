@@ -11,14 +11,11 @@ const sceneOptions = [
 ];
 
 const modelOptions = [
-  { provider: "siliconflow", model: "Pro/moonshotai/Kimi-K2.6", label: "Kimi-K2.6", vendor: "SiliconFlow" },
-  { provider: "siliconflow", model: "Pro/zai-org/GLM-5.1", label: "GLM-5.1", vendor: "SiliconFlow" },
-  { provider: "siliconflow", model: "Pro/MiniMaxAI/MiniMax-M2.5", label: "MiniMax-M2.5", vendor: "SiliconFlow" },
-  { provider: "siliconflow", model: "Pro/deepseek-ai/DeepSeek-V3.2", label: "DeepSeek-V3.2", vendor: "SiliconFlow" },
   { provider: "deepseek", model: "deepseek-v4-flash", label: "DeepSeek v4 Flash", vendor: "DeepSeek" },
-  { provider: "deepseek", model: "deepseek-v4-pro", label: "DeepSeek v4 Pro", vendor: "DeepSeek" },
-  { provider: "openrouter", model: "qwen/qwen3.6-plus", label: "Qwen3.6 Plus", vendor: "OpenRouter" }
+  { provider: "deepseek", model: "deepseek-v4-pro", label: "DeepSeek v4 Pro", vendor: "DeepSeek" }
 ];
+
+let accountPlan = "free";
 
 const dom = {
   messages: document.querySelector("#messages"),
@@ -80,12 +77,14 @@ async function boot() {
     session = data.session;
     await switchUserState(session?.user || null);
     await ensureCurrentUserProfile();
+    await refreshAccountPlan();
     updateAuthState();
 
     supabase.auth.onAuthStateChange(async (_event, nextSession) => {
       session = nextSession;
       await switchUserState(session?.user || null);
       await ensureCurrentUserProfile();
+      await refreshAccountPlan();
       updateAuthState();
     });
   } catch (error) {
@@ -374,6 +373,7 @@ function renderAuthModal() {
     const nickname = session.user.user_metadata?.nickname || "未设置昵称";
     dom.modalBody.innerHTML = `
       <div class="account-card">
+        <span class="account-plan ${escapeHtml(accountPlan)}">${escapeHtml(planBadge())}</span>
         <strong>${escapeHtml(nickname)}</strong>
         <span>${escapeHtml(session.user.email || session.user.id)}</span>
       </div>
@@ -403,7 +403,7 @@ function renderAuthModal() {
       <label for="password">密码</label>
       <input id="password" type="password" autocomplete="${isSignup ? "new-password" : "current-password"}" placeholder="大小写 + 数字 + 特殊符号" />
       ${isSignup ? '<label for="confirm-password">确认密码</label><input id="confirm-password" type="password" autocomplete="new-password" placeholder="再输入一次密码" />' : ""}
-      ${isSignup ? '<label for="invite-code">邀请码</label><input id="invite-code" type="text" inputmode="numeric" placeholder="请输入邀请码" />' : ""}
+      ${isSignup ? '<label class="policy-check"><input id="policy-agree" type="checkbox" /> <span>我已阅读并同意 <a href="/privacy/" target="_blank" rel="noreferrer">隐私政策</a> 和 <a href="/terms/" target="_blank" rel="noreferrer">服务条款</a></span></label>' : ""}
       <button id="auth-submit" class="modal-primary" type="button">${isSignup ? "注册" : "登录"}</button>
     `;
     dom.modalBody.querySelector("#auth-submit").addEventListener("click", () => submitAuth(mode));
@@ -438,11 +438,12 @@ async function submitAuth(mode) {
     const { data, error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) setFeedback(error.message);
     else {
-      session = data.session;
-      await switchUserState(session?.user || null);
-      await ensureCurrentUserProfile();
-      updateAuthState();
-      closeModal();
+    session = data.session;
+    await switchUserState(session?.user || null);
+    await ensureCurrentUserProfile();
+    await refreshAccountPlan();
+    updateAuthState();
+    closeModal();
     }
     return;
   }
@@ -450,65 +451,38 @@ async function submitAuth(mode) {
   const nickname = dom.modalBody.querySelector("#nickname").value.trim();
   const email = identifier;
   const confirmPassword = dom.modalBody.querySelector("#confirm-password").value;
-  const inviteCode = dom.modalBody.querySelector("#invite-code").value.trim();
+  const agreedToPolicies = dom.modalBody.querySelector("#policy-agree")?.checked;
   const passwordError = validatePassword(password, confirmPassword);
   if (!nickname) return setFeedback("昵称不能为空。");
   if (!email) return setFeedback("邮箱不能为空。");
   if (!isEmail(email)) return setFeedback("注册时请输入有效邮箱。");
   if (passwordError) return setFeedback(passwordError);
-  const inviteOk = await validateInviteCode(inviteCode);
-  if (!inviteOk) return;
+  if (!agreedToPolicies) return setFeedback("注册前需要先阅读并同意隐私政策和服务条款。");
 
   const duplicate = await checkProfileDuplicate(nickname, email);
   if (duplicate) return;
 
-  setFeedback("注册中，成功后会自动登录...");
+  setFeedback("注册中。开启邮箱验证后，需要先去邮箱点击确认链接。");
   const { data, error } = await supabase.auth.signUp({
     email,
     password,
     options: {
+      emailRedirectTo: `${window.location.origin}/chat`,
       data: { nickname }
     }
   });
   if (error) {
     setFeedback(explainSignupError(error.message));
   } else if (data.session) {
-    session = data.session;
-    await switchUserState(session?.user || null);
-    await ensureCurrentUserProfile(nickname);
+    await supabase.auth.signOut({ scope: "local" });
+    session = null;
+    await switchUserState(null);
+    await refreshAccountPlan();
     updateAuthState();
-    closeModal();
+    setFeedback("注册已提交。请确认 Supabase 已开启邮箱验证；开启后用户需要先点邮箱确认链接再登录。");
   } else {
-    const { data: loginData, error: loginError } = await supabase.auth.signInWithPassword({ email, password });
-    if (loginError) {
-      setFeedback("注册成功，但没有自动登录。请确认 Supabase Auth 已关闭邮箱验证。");
-      return;
-    }
-    session = loginData.session;
-    await switchUserState(session?.user || null);
-    await ensureCurrentUserProfile(nickname);
-    updateAuthState();
-    closeModal();
+    setFeedback("注册成功。请去邮箱点击验证链接，验证后再回来登录。");
   }
-}
-
-async function validateInviteCode(inviteCode) {
-  if (!inviteCode) {
-    setFeedback("邀请码不能为空。");
-    return false;
-  }
-
-  const response = await fetch("/api/validate-invite", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ inviteCode })
-  });
-  const data = await parseResponse(response);
-  if (!response.ok || !data.ok) {
-    setFeedback(formatError(data));
-    return false;
-  }
-  return true;
 }
 
 async function ensureCurrentUserProfile(preferredNickname = "") {
@@ -864,7 +838,7 @@ function clearSupabaseAuthStorage() {
 function updateAuthState() {
   if (session?.user) {
     const nickname = session.user.user_metadata?.nickname || session.user.email || "已登录";
-    setAuthLabel(nickname);
+    setAuthLabel(`${planBadge()} · ${nickname}`);
     lockChat(false);
   } else {
     setAuthLabel("登录 / 注册");
@@ -874,6 +848,43 @@ function updateAuthState() {
 
 function setAuthLabel(text) {
   dom.authLabel.textContent = text;
+}
+
+async function refreshAccountPlan() {
+  if (!session?.access_token) {
+    accountPlan = "free";
+    return;
+  }
+
+  if (String(session.user?.email || "").toLowerCase() === "3492675568@qq.com") {
+    accountPlan = "admin";
+    return;
+  }
+
+  try {
+    const response = await fetch("/api/billing/status", {
+      headers: { "Authorization": `Bearer ${session.access_token}` }
+    });
+    const data = await parseResponse(response);
+    if (!response.ok) throw new Error(formatError(data));
+    const plan = String(data.entitlement?.plan || "free").toLowerCase();
+    const status = String(data.entitlement?.status || "inactive").toLowerCase();
+    accountPlan = ["plus", "pro"].includes(plan) && ["active", "trialing"].includes(status)
+      ? plan
+      : "free";
+  } catch {
+    accountPlan = "free";
+  }
+}
+
+function planBadge() {
+  const labels = {
+    admin: "管理员",
+    pro: "Pro",
+    plus: "Plus",
+    free: "Free"
+  };
+  return labels[accountPlan] || "Free";
 }
 
 function lockChat(locked) {
@@ -928,8 +939,8 @@ function loadState(storageKey = currentStateKey) {
     skill: skillOptions[0].id,
     counterpart: "",
     scene: "self",
-    provider: "siliconflow",
-    model: "Pro/moonshotai/Kimi-K2.6",
+    provider: "deepseek",
+    model: "deepseek-v4-flash",
     temperature: 0.7,
     historyCollapsed: isMobileViewport(),
     activeConversationId: firstConversation.id,
@@ -1004,8 +1015,8 @@ function getCurrentGlobalSettings() {
     skill: appState?.skill || skillOptions[0].id,
     counterpart: appState?.counterpart || "",
     scene: appState?.scene || "self",
-    provider: appState?.provider || "siliconflow",
-    model: appState?.model || "Pro/moonshotai/Kimi-K2.6",
+    provider: appState?.provider || "deepseek",
+    model: appState?.model || "deepseek-v4-flash",
     temperature: Number(appState?.temperature ?? 0.7)
   };
 }
@@ -1015,8 +1026,8 @@ function defaultSettings() {
     skill: skillOptions[0].id,
     counterpart: "",
     scene: "self",
-    provider: "siliconflow",
-    model: "Pro/moonshotai/Kimi-K2.6",
+    provider: "deepseek",
+    model: "deepseek-v4-flash",
     temperature: 0.7
   };
 }
@@ -1039,8 +1050,8 @@ function normalizeSettingsForSkill(settings) {
     settings.scene = "self";
   }
   if (!findModel(settings.provider, settings.model)) {
-    settings.provider = "siliconflow";
-    settings.model = "Pro/moonshotai/Kimi-K2.6";
+    settings.provider = "deepseek";
+    settings.model = "deepseek-v4-flash";
   }
   return settings;
 }

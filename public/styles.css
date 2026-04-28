@@ -1904,7 +1904,8 @@ button {
   display: flex;
   min-width: 0;
   flex-direction: column;
-  justify-content: space-between;
+  align-items: center;
+  justify-content: center;
   gap: 5px;
   padding: 8px 11px;
   border: 1px solid rgba(27, 23, 18, 0.12);
@@ -1913,7 +1914,7 @@ button {
   background:
     linear-gradient(135deg, rgba(255, 253, 246, 0.88), rgba(234, 213, 177, 0.52)),
     rgba(255, 249, 237, 0.62);
-  text-align: left;
+  text-align: center;
   transition: transform 180ms ease, border-color 180ms ease, box-shadow 180ms ease;
 }
 
@@ -1923,13 +1924,17 @@ button {
 }
 
 .dock-link.home-link {
-  background: rgba(255, 252, 244, 0.82);
+  border-color: rgba(35, 93, 76, 0.24);
+  background:
+    radial-gradient(circle at 18% 12%, rgba(35, 93, 76, 0.18), transparent 4rem),
+    rgba(255, 252, 244, 0.88);
 }
 
 .dock-link.pricing-link {
+  border-color: rgba(143, 45, 28, 0.24);
   background:
-    radial-gradient(circle at 90% 10%, rgba(194, 168, 112, 0.28), transparent 4rem),
-    linear-gradient(135deg, rgba(255, 252, 244, 0.96), rgba(239, 226, 202, 0.76));
+    radial-gradient(circle at 90% 10%, rgba(143, 45, 28, 0.22), transparent 4rem),
+    linear-gradient(135deg, rgba(255, 252, 244, 0.96), rgba(226, 199, 159, 0.82));
 }
 
 .dock-item:hover {
@@ -1960,7 +1965,10 @@ button {
 }
 
 .dock-item.auth {
-  background: linear-gradient(135deg, var(--night), #3d2418);
+  border-color: rgba(255, 248, 232, 0.22);
+  background:
+    radial-gradient(circle at 14% 18%, rgba(255, 230, 168, 0.24), transparent 4rem),
+    linear-gradient(135deg, var(--night), #3d2418);
 }
 
 .dock-item.auth span,
@@ -3075,6 +3083,26 @@ input[type="range"] {
   gap: 10px;
 }
 
+.policy-check {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.policy-check input {
+  width: auto;
+  margin-top: 3px;
+  accent-color: var(--green);
+}
+
+.policy-check a {
+  color: var(--lacquer);
+  font-weight: 900;
+}
+
 .account-card {
   display: grid;
   gap: 6px;
@@ -3082,6 +3110,27 @@ input[type="range"] {
   border: 1px solid var(--line);
   border-radius: 22px;
   background: rgba(255, 252, 244, 0.68);
+}
+
+.account-plan {
+  width: fit-content;
+  margin-bottom: 4px;
+  padding: 7px 11px;
+  border-radius: 999px;
+  color: #fff8e8 !important;
+  background: var(--green);
+  font: 900 11px/1 "Gill Sans", "Trebuchet MS", sans-serif !important;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.account-plan.admin,
+.account-plan.pro {
+  background: var(--lacquer);
+}
+
+.account-plan.plus {
+  background: #a06a25;
 }
 
 .context-menu {

@@ -1,13 +1,8 @@
 import { getEnv } from "./env.js";
 
 export const modelCatalog = [
-  { provider: "siliconflow", model: "Pro/moonshotai/Kimi-K2.6", label: "Kimi-K2.6" },
-  { provider: "siliconflow", model: "Pro/zai-org/GLM-5.1", label: "GLM-5.1" },
-  { provider: "siliconflow", model: "Pro/MiniMaxAI/MiniMax-M2.5", label: "MiniMax-M2.5" },
-  { provider: "siliconflow", model: "Pro/deepseek-ai/DeepSeek-V3.2", label: "DeepSeek-V3.2" },
   { provider: "deepseek", model: "deepseek-v4-flash", label: "DeepSeek v4 Flash" },
-  { provider: "deepseek", model: "deepseek-v4-pro", label: "DeepSeek v4 Pro" },
-  { provider: "openrouter", model: "qwen/qwen3.6-plus", label: "Qwen3.6 Plus" }
+  { provider: "deepseek", model: "deepseek-v4-pro", label: "DeepSeek v4 Pro" }
 ];
 
 export function getProviderConfig(provider) {
@@ -21,32 +16,11 @@ export function getProviderConfig(provider) {
     };
   }
 
-  if (provider === "openrouter") {
-    return {
-      name: "OpenRouter",
-      url: "https://openrouter.ai/api/v1/chat/completions",
-      apiKey: getEnv("OPENROUTER_API_KEY"),
-      timeoutMs: 22_000,
-      headers: {
-        "HTTP-Referer": "https://shen-skill.netlify.app",
-        "X-Title": "shen.skill mirror"
-      }
-    };
-  }
-
-  return {
-    name: "SiliconFlow",
-    url: "https://api.siliconflow.cn/v1/chat/completions",
-    apiKey: getEnv("SILICONFLOW_API_KEY"),
-    timeoutMs: 24_000,
-    headers: {}
-  };
+  return getProviderConfig("deepseek");
 }
 
 export function normalizeProvider(provider) {
-  return ["siliconflow", "deepseek", "openrouter"].includes(provider)
-    ? provider
-    : "siliconflow";
+  return provider === "deepseek" ? provider : "deepseek";
 }
 
 export function modelExists(provider, model) {

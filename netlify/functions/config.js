@@ -9,7 +9,7 @@ export default async () => {
     supabaseUrl,
     supabaseAnonKey,
     hasSupabase: Boolean(supabaseUrl && supabaseAnonKey),
-    model: getEnv("SILICONFLOW_MODEL", "Qwen/Qwen2.5-72B-Instruct")
+    model: getEnv("DEEPSEEK_MODEL", "deepseek-v4-flash")
   });
 };
 
