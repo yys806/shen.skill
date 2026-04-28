@@ -1,6 +1,6 @@
 import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm";
 
-const skillOptions = await loadSkillOptions();
+let skillOptions = await loadSkillOptions();
 
 const sceneOptions = [
   { id: "self", name: "真我复盘", description: "理性、短句、拆动机，适合和本人对话。" },
@@ -22,6 +22,7 @@ const dom = {
   form: document.querySelector("#composer"),
   prompt: document.querySelector("#prompt"),
   clear: document.querySelector("#clear"),
+  exportMd: document.querySelector("#export-md"),
   newChat: document.querySelector("#new-chat"),
   toggleHistory: document.querySelector("#toggle-history"),
   workspace: document.querySelector(".workspace"),
@@ -59,6 +60,9 @@ let pendingSignup = null;
 let otpCooldownTimer = null;
 let launchSkillId = new URLSearchParams(window.location.search).get("skill") || "";
 const launchAppliedKeys = new Set();
+let cloudSyncTimer = null;
+let cloudSyncing = false;
+let passwordRecoveryMode = false;
 
 applyLaunchSkillFromUrl();
 renderAll();
@@ -79,18 +83,27 @@ async function boot() {
     }
 
     supabase = createClient(config.supabaseUrl, config.supabaseAnonKey);
+    await handlePasswordRecoveryCode();
     const { data } = await supabase.auth.getSession();
     session = data.session;
     await switchUserState(session?.user || null);
+    await refreshSkillOptions();
+    await mergeCloudConversations();
     applyLaunchSkillFromUrl({ consume: Boolean(session?.user) });
     persistAndRender();
     await ensureCurrentUserProfile();
     await refreshAccountPlan();
     updateAuthState();
 
-    supabase.auth.onAuthStateChange(async (_event, nextSession) => {
+    supabase.auth.onAuthStateChange(async (event, nextSession) => {
       session = nextSession;
+      if (event === "PASSWORD_RECOVERY") {
+        passwordRecoveryMode = true;
+        openModal("auth");
+      }
       await switchUserState(session?.user || null);
+      await refreshSkillOptions();
+      await mergeCloudConversations();
       applyLaunchSkillFromUrl({ consume: Boolean(session?.user) });
       persistAndRender();
       await ensureCurrentUserProfile();
@@ -101,6 +114,18 @@ async function boot() {
     setAuthLabel("配置失败");
     addSystemMessage(`配置读取失败：${error.message}`);
     lockChat(true);
+  }
+}
+
+async function handlePasswordRecoveryCode() {
+  const params = new URLSearchParams(window.location.search);
+  const code = params.get("code");
+  if (!code || !supabase) return;
+  const { error } = await supabase.auth.exchangeCodeForSession(code);
+  if (!error) {
+    passwordRecoveryMode = true;
+    window.history.replaceState(null, "", window.location.pathname);
+    window.setTimeout(() => openModal("auth"), 0);
   }
 }
 
@@ -134,9 +159,14 @@ dom.toggleHistory.addEventListener("click", () => {
 dom.clear.addEventListener("click", () => {
   const conversation = getActiveConversation();
   conversation.messages = [];
+  conversation.updatedAt = Date.now();
   conversation.title = "新的镜室对话";
   persistAndRender();
 });
+
+if (dom.exportMd) {
+  dom.exportMd.addEventListener("click", exportActiveConversationMarkdown);
+}
 
 dom.form.addEventListener("submit", async event => {
   event.preventDefault();
@@ -379,8 +409,26 @@ function renderTemperatureModal() {
   });
 }
 
+function renderPasswordRecoveryModal() {
+  setModalHead("password", "设置新密码");
+  dom.modalBody.innerHTML = `
+    <p class="field-help">你已经通过邮件链接验证。设置一个新密码后，就可以继续使用当前账号。</p>
+    <label for="recovery-password">新密码</label>
+    <input id="recovery-password" type="password" autocomplete="new-password" placeholder="大小写 + 数字 + 特殊符号" />
+    <label for="recovery-password-confirm">确认新密码</label>
+    <input id="recovery-password-confirm" type="password" autocomplete="new-password" placeholder="再输入一次新密码" />
+    <button id="recovery-save" class="modal-primary" type="button">保存新密码</button>
+    <p id="account-feedback" class="field-help"></p>
+  `;
+  dom.modalBody.querySelector("#recovery-save").addEventListener("click", saveRecoveredPassword);
+}
+
 function renderAuthModal() {
   setModalHead("account", session ? "账户状态" : "登录 / 注册");
+  if (passwordRecoveryMode && session?.user) {
+    renderPasswordRecoveryModal();
+    return;
+  }
   if (session?.user) {
     const nickname = session.user.user_metadata?.nickname || "未设置昵称";
     dom.modalBody.innerHTML = `
@@ -436,6 +484,15 @@ function renderAuthModal() {
       <button id="auth-submit" class="modal-primary" type="button">${isSignup ? "验证并注册" : "登录"}</button>
     `;
     dom.modalBody.querySelector("#auth-submit").addEventListener("click", () => submitAuth(mode));
+    if (!isSignup) {
+      const forgot = document.createElement("button");
+      forgot.id = "forgot-password";
+      forgot.className = "link-button";
+      forgot.type = "button";
+      forgot.textContent = "忘记密码？发送重置邮件";
+      dom.modalBody.querySelector("#auth-fields").appendChild(forgot);
+      forgot.addEventListener("click", sendPasswordReset);
+    }
     dom.modalBody.querySelector("#otp-send")?.addEventListener("click", () => {
       if (pendingSignup?.email) return resendSignupOtp();
       return sendSignupOtp();
@@ -499,6 +556,20 @@ async function submitAuth(mode) {
 
   pendingSignup = { email, password, nickname };
   return verifySignupOtp();
+}
+
+async function sendPasswordReset() {
+  if (!supabase) return setFeedback("Supabase 还没配置好。");
+  const identifier = dom.modalBody.querySelector("#email")?.value.trim();
+  if (!identifier) return setFeedback("先输入邮箱或昵称。");
+  const email = await resolveLoginEmail(identifier);
+  if (!email) return;
+  setFeedback("正在发送密码重置邮件...");
+  const { error } = await supabase.auth.resetPasswordForEmail(email, {
+    redirectTo: `${window.location.origin}/chat`
+  });
+  if (error) return setFeedback(error.message);
+  setFeedback(`重置邮件已发送到 ${email}，打开邮件里的链接后回来设置新密码。`);
 }
 
 async function sendSignupOtp() {
@@ -1063,6 +1134,23 @@ async function savePassword() {
   dom.modalBody.querySelector("#new-password-confirm").value = "";
 }
 
+async function saveRecoveredPassword() {
+  const newPassword = dom.modalBody.querySelector("#recovery-password")?.value || "";
+  const confirmPassword = dom.modalBody.querySelector("#recovery-password-confirm")?.value || "";
+  const passwordError = validatePassword(newPassword, confirmPassword);
+  if (passwordError) return setAccountFeedback(passwordError, true);
+
+  setAccountFeedback("正在保存新密码...");
+  const { error } = await supabase.auth.updateUser({ password: newPassword });
+  if (error) return setAccountFeedback(error.message, true);
+  passwordRecoveryMode = false;
+  setAccountFeedback("新密码已保存。");
+  window.setTimeout(() => {
+    closeModal();
+    updateAuthState();
+  }, 600);
+}
+
 function setAccountFeedback(message, isError = false) {
   const target = dom.modalBody.querySelector("#account-feedback");
   if (!target) return;
@@ -1174,6 +1262,91 @@ function loadState(storageKey = currentStateKey) {
 
 function saveState() {
   localStorage.setItem(currentStateKey, JSON.stringify(appState));
+  queueCloudSync();
+}
+
+function queueCloudSync() {
+  if (!supabase || !session?.user || cloudSyncing) return;
+  window.clearTimeout(cloudSyncTimer);
+  cloudSyncTimer = window.setTimeout(syncCloudConversations, 700);
+}
+
+async function mergeCloudConversations() {
+  if (!supabase || !session?.user) return;
+  const { data, error } = await supabase
+    .from("mirror_conversations")
+    .select("id,title,pinned,settings,messages,created_at_ms,updated_at_ms")
+    .order("updated_at_ms", { ascending: false });
+  if (error || !Array.isArray(data)) return;
+
+  const byId = new Map(appState.conversations.map(conversation => [conversation.id, conversation]));
+  for (const row of data) {
+    const local = byId.get(row.id);
+    const cloudConversation = fromCloudConversation(row);
+    if (!local || Number(row.updated_at_ms || 0) > Number(local.updatedAt || 0)) {
+      byId.set(row.id, cloudConversation);
+    }
+  }
+
+  appState.conversations = [...byId.values()].sort((a, b) => {
+    if (a.pinned !== b.pinned) return a.pinned ? -1 : 1;
+    return (b.updatedAt || 0) - (a.updatedAt || 0);
+  });
+  if (!appState.conversations.length) {
+    appState.conversations = [createConversation(false, defaultSettings())];
+  }
+  if (!appState.conversations.some(item => item.id === appState.activeConversationId)) {
+    appState.activeConversationId = appState.conversations[0].id;
+  }
+  hydrateAppSettingsFromConversation();
+  saveState();
+}
+
+async function syncCloudConversations() {
+  if (!supabase || !session?.user) return;
+  cloudSyncing = true;
+  try {
+    const rows = appState.conversations.map(toCloudConversation);
+    if (!rows.length) return;
+    await supabase
+      .from("mirror_conversations")
+      .upsert(rows, { onConflict: "id" });
+  } finally {
+    cloudSyncing = false;
+  }
+}
+
+async function deleteCloudConversation(conversationId) {
+  if (!supabase || !session?.user) return;
+  await supabase
+    .from("mirror_conversations")
+    .delete()
+    .eq("id", conversationId);
+}
+
+function toCloudConversation(conversation) {
+  return {
+    id: conversation.id,
+    user_id: session.user.id,
+    title: conversation.title || "新的镜室对话",
+    pinned: Boolean(conversation.pinned),
+    settings: conversation.settings || defaultSettings(),
+    messages: (conversation.messages || []).filter(message => !message.pending),
+    created_at_ms: Number(conversation.createdAt || Date.now()),
+    updated_at_ms: Number(conversation.updatedAt || Date.now())
+  };
+}
+
+function fromCloudConversation(row) {
+  return {
+    id: row.id,
+    title: row.title || "新的镜室对话",
+    pinned: Boolean(row.pinned),
+    createdAt: Number(row.created_at_ms || Date.now()),
+    updatedAt: Number(row.updated_at_ms || Date.now()),
+    settings: normalizeSettingsForSkill({ ...(row.settings || defaultSettings()) }),
+    messages: Array.isArray(row.messages) ? row.messages : []
+  };
 }
 
 function isMobileViewport() {
@@ -1353,6 +1526,48 @@ function formatTime(value) {
   });
 }
 
+function exportActiveConversationMarkdown() {
+  const conversation = getActiveConversation();
+  const settings = conversation.settings || defaultSettings();
+  const skill = findSkill(settings.skill);
+  const lines = [
+    `# ${conversation.title || "镜室对话"}`,
+    "",
+    `- Skill: ${skill.name || settings.skill}`,
+    `- Model: ${settings.model || ""}`,
+    `- Temperature: ${settings.temperature ?? ""}`,
+    `- Exported: ${new Date().toLocaleString("zh-CN")}`,
+    ""
+  ];
+
+  for (const message of conversation.messages || []) {
+    if (message.pending) continue;
+    const role = message.role === "user" ? "我" : "镜";
+    lines.push(`## ${role} · ${new Date(message.createdAt || Date.now()).toLocaleString("zh-CN")}`);
+    lines.push("");
+    lines.push(String(message.content || "").trim());
+    lines.push("");
+  }
+
+  const blob = new Blob([lines.join("\n")], { type: "text/markdown;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = `${safeFileName(conversation.title || "mirror-conversation")}.md`;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
+}
+
+function safeFileName(value) {
+  return String(value)
+    .trim()
+    .replace(/[\\/:*?"<>|]+/g, "-")
+    .replace(/\s+/g, "-")
+    .slice(0, 80) || "mirror-conversation";
+}
+
 function findPreviousUserMessage(messages, index) {
   for (let i = index - 1; i >= 0; i -= 1) {
     if (messages[i]?.role === "user") return messages[i];
@@ -1473,6 +1688,7 @@ function deleteConversation(conversationId) {
     hydrateAppSettingsFromConversation();
   }
   persistAndRender();
+  deleteCloudConversation(conversationId);
 }
 
 function formatError(data) {
@@ -1496,8 +1712,13 @@ async function loadSkillOptions() {
     { id: "maoxuan-skill", name: "毛选", description: "毛选思维框架 skill，专注问题分析与战略判断。", needsContext: false }
   ];
   try {
-    const response = await fetch("/skills/catalog.json", { cache: "no-store" });
-    const catalog = await response.json();
+    const accessToken = getSessionAccessToken();
+    const headers = accessToken
+      ? { "Authorization": `Bearer ${accessToken}` }
+      : {};
+    const response = await fetch("/api/skills", { cache: "no-store", headers });
+    const payload = await response.json();
+    const catalog = payload.skills || [];
     if (!response.ok || !Array.isArray(catalog) || !catalog.length) return fallback;
     return catalog.map(item => ({
       id: item.id,
@@ -1508,4 +1729,19 @@ async function loadSkillOptions() {
   } catch {
     return fallback;
   }
+}
+
+function getSessionAccessToken() {
+  try {
+    return session?.access_token || "";
+  } catch {
+    return "";
+  }
+}
+
+async function refreshSkillOptions() {
+  const nextOptions = await loadSkillOptions();
+  if (!nextOptions.length) return;
+  skillOptions = nextOptions;
+  normalizeSettingsForSkill(getActiveSettings());
 }

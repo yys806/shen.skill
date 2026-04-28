@@ -1,6 +1,6 @@
 import { getEnv } from "./_shared/env.js";
 import { json } from "./_shared/json.js";
-import { verifySupabaseUser } from "./_shared/auth.js";
+import { isAdmin, verifySupabaseUser } from "./_shared/auth.js";
 import { checkRateLimit } from "./_shared/rate-limit.js";
 import { loadSkillPrompt, normalizeSkillId } from "./_shared/skill.js";
 import { getProviderConfig, modelExists, normalizeProvider } from "./_shared/providers.js";
@@ -44,7 +44,9 @@ async function handleChat(req) {
   const messages = Array.isArray(body.messages) ? body.messages : [];
   const counterpart = cleanText(body.counterpart || "");
   const scene = cleanText(body.scene || "self");
-  const skill = await normalizeSkillId(cleanText(body.skill || "maoxuan-skill"));
+  const skill = await normalizeSkillId(cleanText(body.skill || "maoxuan-skill"), {
+    includeDisabled: isAdmin(authResult.user)
+  });
   const provider = normalizeProvider(body.provider || "deepseek");
   const temperature = clamp(Number(body.temperature ?? 0.72), 0, 1.5);
   const model = cleanText(body.model || getEnv("DEEPSEEK_MODEL", "deepseek-v4-flash"));
@@ -68,7 +70,9 @@ async function handleChat(req) {
     return json({ error: "messages is required" }, 400);
   }
 
-  const skillPrompt = await loadSkillPrompt(skill);
+  const skillPrompt = await loadSkillPrompt(skill, {
+    includeDisabled: isAdmin(authResult.user)
+  });
   const memories = await loadRecentMemories(req, authResult.user.id, skill);
   const needsSceneContext = false;
   const contextRules = needsSceneContext

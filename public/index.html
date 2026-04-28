@@ -257,6 +257,44 @@ Stay hungry. Stay foolish.`]
         setActiveSection(active);
       }
 
+      async function loadHomeSkillGrid() {
+        const grid = document.querySelector(".home-skill-grid");
+        if (!grid) return;
+        try {
+          const response = await fetch("/api/skills", { cache: "no-store" });
+          const data = await response.json();
+          if (!response.ok || !Array.isArray(data.skills)) return;
+          grid.innerHTML = data.skills.map(skill => `
+            <a href="/skills/${escapeAttribute(skill.id)}/">
+              <strong>${escapeHtml(skill.name || skill.id)}</strong>
+              <span>${escapeHtml(skill.description || skill.summary || "")}</span>
+              <em>查看档案</em>
+            </a>
+          `).join("") + `
+            <a class="submit-skill-card" href="/submit-skill/">
+              <strong>提交你自己的 skill</strong>
+              <span>名称 / GitHub 仓库 / 简要说明</span>
+              <em>去提交</em>
+            </a>
+          `;
+        } catch {
+          // Keep the static fallback grid.
+        }
+      }
+
+      function escapeHtml(value) {
+        return String(value)
+          .replaceAll("&", "&amp;")
+          .replaceAll("<", "&lt;")
+          .replaceAll(">", "&gt;")
+          .replaceAll('"', "&quot;")
+          .replaceAll("'", "&#039;");
+      }
+
+      function escapeAttribute(value) {
+        return escapeHtml(value).replaceAll("/", "");
+      }
+
       document.querySelectorAll('a[href^="#"]').forEach(link => {
         link.addEventListener("click", event => {
           const target = document.querySelector(link.getAttribute("href"));
@@ -269,6 +307,7 @@ Stay hungry. Stay foolish.`]
       });
 
       updateActiveSection();
+      loadHomeSkillGrid();
       renderRandomDialogue();
       window.addEventListener("scroll", updateActiveSection, { passive: true });
       window.addEventListener("resize", updateActiveSection);

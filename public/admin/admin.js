@@ -11,6 +11,7 @@ let currentSession = null;
 let activeTab = "submissions";
 let allSubmissions = [];
 let allUsers = [];
+let allSkills = [];
 
 const adminMain = document.querySelector("#admin-main");
 const adminGate = document.querySelector("#admin-gate");
@@ -18,6 +19,7 @@ const loginButton = document.querySelector("#admin-login");
 const loginFeedback = document.querySelector("#admin-login-feedback");
 const authBox = document.querySelector("#admin-auth");
 const submissionList = document.querySelector("#submission-list");
+const skillList = document.querySelector("#skill-list");
 const userList = document.querySelector("#user-list");
 const statusFilter = document.querySelector("#status-filter");
 const userSearch = document.querySelector("#user-search");
@@ -98,6 +100,7 @@ function renderTabs() {
     button.classList.toggle("active", button.dataset.adminTab === activeTab);
   });
   submissionList.classList.toggle("hidden", activeTab !== "submissions");
+  skillList?.classList.toggle("hidden", activeTab !== "skills");
   userList.classList.toggle("hidden", activeTab !== "users");
   submissionTools.classList.toggle("hidden", activeTab !== "submissions");
   userTools.classList.toggle("hidden", activeTab !== "users");
@@ -105,6 +108,7 @@ function renderTabs() {
 
 async function loadActiveTab() {
   renderTabs();
+  if (activeTab === "skills") return loadSkills();
   if (activeTab === "users") return loadUsers();
   return loadSubmissions();
 }
@@ -174,6 +178,65 @@ async function updateSubmissionStatus(id, status) {
   const data = await response.json().catch(() => ({}));
   if (!response.ok) return renderNotice(submissionList, data.detail || data.error || "更新失败。");
   await loadSubmissions();
+}
+
+async function loadSkills() {
+  renderNotice(skillList, "正在读取 Skill 列表...");
+  const response = await fetch("/api/admin/skills", { headers: authHeaders() });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) return renderNotice(skillList, data.detail || data.error || "读取 Skill 失败。");
+  allSkills = data.skills || [];
+  renderSkills();
+}
+
+function renderSkills() {
+  if (!allSkills.length) return renderNotice(skillList, "当前没有 Skill。");
+  skillList.innerHTML = allSkills.map(skill => `
+    <article class="submission-item skill-admin-item" data-skill-id="${escapeAttribute(skill.id)}">
+      <div>
+        <span class="status-pill status-${skill.enabled ? "approved" : "rejected"}">${skill.enabled ? "已启用" : "已隐藏"}</span>
+        <h2>${escapeHtml(skill.name || skill.id)}</h2>
+        <p>${escapeHtml(skill.description || skill.summary || "")}</p>
+        <dl class="submission-meta">
+          <dt>ID</dt><dd>${escapeHtml(skill.id)}</dd>
+          <dt>GitHub</dt><dd>${skill.source?.startsWith("http") ? `<a href="${escapeAttribute(skill.source)}" target="_blank" rel="noreferrer">${escapeHtml(skill.source)}</a>` : escapeHtml(skill.source || "local")}</dd>
+          <dt>可见性</dt><dd>${skill.enabled ? "普通用户可见并可对话" : "仅管理员可见，普通用户不可见也不可用"}</dd>
+        </dl>
+        <label class="review-note">
+          <span>管理员备注</span>
+          <textarea data-skill-note="${escapeAttribute(skill.id)}" rows="2" placeholder="隐藏原因、发布注意等">${escapeHtml(skill.adminNote || "")}</textarea>
+        </label>
+      </div>
+      <aside>
+        <button data-skill-toggle="${escapeAttribute(skill.id)}" data-enabled="${skill.enabled ? "false" : "true"}" type="button">
+          ${skill.enabled ? "停用隐藏" : "启用公开"}
+        </button>
+        <button data-skill-save="${escapeAttribute(skill.id)}" type="button">保存备注</button>
+      </aside>
+    </article>
+  `).join("");
+
+  skillList.querySelectorAll("[data-skill-toggle]").forEach(button => {
+    button.addEventListener("click", () => updateSkillEnabled(button.dataset.skillToggle, button.dataset.enabled === "true"));
+  });
+  skillList.querySelectorAll("[data-skill-save]").forEach(button => {
+    button.addEventListener("click", () => {
+      const skill = allSkills.find(item => item.id === button.dataset.skillSave);
+      updateSkillEnabled(button.dataset.skillSave, Boolean(skill?.enabled));
+    });
+  });
+}
+
+async function updateSkillEnabled(id, enabled) {
+  const textarea = skillList.querySelector(`[data-skill-note="${CSS.escape(id)}"]`);
+  const response = await fetch("/api/admin/skills", {
+    method: "PATCH",
+    headers: { ...authHeaders(), "Content-Type": "application/json" },
+    body: JSON.stringify({ id, enabled, adminNote: textarea?.value || "" })
+  });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) return renderNotice(skillList, data.detail || data.error || "更新 Skill 失败。");
+  await loadSkills();
 }
 
 async function loadUsers() {

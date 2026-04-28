@@ -1,5 +1,6 @@
 import { readFile } from "node:fs/promises";
 import path from "node:path";
+import { loadSkillCatalog } from "./skill-catalog.js";
 
 const fallbackSkillId = "maoxuan-skill";
 const fallbackPrompt = [
@@ -8,16 +9,16 @@ const fallbackPrompt = [
   "不要复读语录；用清楚、短句、可执行的方式分析用户的问题。"
 ].join("\n");
 
-let catalogCache = null;
+const catalogCache = new Map();
 
-export async function normalizeSkillId(skill = fallbackSkillId) {
+export async function normalizeSkillId(skill = fallbackSkillId, options = {}) {
   const safeSkill = /^[a-zA-Z0-9._-]+$/.test(skill) ? skill : fallbackSkillId;
-  const allowedSkills = await loadAllowedSkills();
+  const allowedSkills = await loadAllowedSkills(options);
   return allowedSkills.has(safeSkill) ? safeSkill : fallbackSkillId;
 }
 
-export async function loadSkillPrompt(skill = fallbackSkillId) {
-  const safeSkill = await normalizeSkillId(skill);
+export async function loadSkillPrompt(skill = fallbackSkillId, options = {}) {
+  const safeSkill = await normalizeSkillId(skill, options);
   const skillPath = path.join(process.cwd(), "skills", safeSkill, "SKILL.md");
 
   try {
@@ -27,18 +28,21 @@ export async function loadSkillPrompt(skill = fallbackSkillId) {
   }
 }
 
-async function loadAllowedSkills() {
-  if (catalogCache) return catalogCache;
+async function loadAllowedSkills({ includeDisabled = false } = {}) {
+  const cacheKey = includeDisabled ? "all" : "enabled";
+  if (catalogCache.has(cacheKey)) return catalogCache.get(cacheKey);
   try {
-    const raw = await readFile(path.join(process.cwd(), "skills", "catalog.json"), "utf8");
-    const catalog = JSON.parse(raw);
-    catalogCache = new Set(
+    const catalog = await loadSkillCatalog({ includeDisabled });
+    const allowed = new Set(
       catalog
         .map(item => item?.id)
         .filter(id => typeof id === "string" && /^[a-zA-Z0-9._-]+$/.test(id))
     );
+    catalogCache.set(cacheKey, allowed);
+    return allowed;
   } catch {
-    catalogCache = new Set([fallbackSkillId]);
+    const fallback = new Set([fallbackSkillId]);
+    catalogCache.set(cacheKey, fallback);
+    return fallback;
   }
-  return catalogCache;
 }

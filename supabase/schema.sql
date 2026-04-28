@@ -368,3 +368,90 @@ using (auth.uid() = user_id);
 
 create index if not exists checkout_sessions_user_created_idx
 on public.checkout_sessions (user_id, created_at desc);
+
+create table if not exists public.mirror_conversations (
+  id text primary key,
+  user_id uuid not null references auth.users(id) on delete cascade,
+  title text not null default '新的镜室对话',
+  pinned boolean not null default false,
+  settings jsonb not null default '{}'::jsonb,
+  messages jsonb not null default '[]'::jsonb,
+  created_at_ms bigint not null,
+  updated_at_ms bigint not null,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+alter table public.mirror_conversations enable row level security;
+
+drop trigger if exists mirror_conversations_set_updated_at on public.mirror_conversations;
+create trigger mirror_conversations_set_updated_at
+before update on public.mirror_conversations
+for each row execute function public.set_updated_at();
+
+drop policy if exists "users can read own mirror conversations" on public.mirror_conversations;
+create policy "users can read own mirror conversations"
+on public.mirror_conversations for select
+using (auth.uid() = user_id);
+
+drop policy if exists "users can insert own mirror conversations" on public.mirror_conversations;
+create policy "users can insert own mirror conversations"
+on public.mirror_conversations for insert
+with check (auth.uid() = user_id);
+
+drop policy if exists "users can update own mirror conversations" on public.mirror_conversations;
+create policy "users can update own mirror conversations"
+on public.mirror_conversations for update
+using (auth.uid() = user_id)
+with check (auth.uid() = user_id);
+
+drop policy if exists "users can delete own mirror conversations" on public.mirror_conversations;
+create policy "users can delete own mirror conversations"
+on public.mirror_conversations for delete
+using (auth.uid() = user_id);
+
+create index if not exists mirror_conversations_user_updated_idx
+on public.mirror_conversations (user_id, updated_at_ms desc);
+
+create table if not exists public.skill_settings (
+  id text primary key,
+  enabled boolean not null default true,
+  admin_note text,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+alter table public.skill_settings enable row level security;
+
+drop trigger if exists skill_settings_set_updated_at on public.skill_settings;
+create trigger skill_settings_set_updated_at
+before update on public.skill_settings
+for each row execute function public.set_updated_at();
+
+drop policy if exists "admins can read skill settings" on public.skill_settings;
+create policy "admins can read skill settings"
+on public.skill_settings for select
+using (
+  lower(coalesce((auth.jwt() ->> 'email'), '')) = '3492675568@qq.com'
+);
+
+drop policy if exists "admins can insert skill settings" on public.skill_settings;
+create policy "admins can insert skill settings"
+on public.skill_settings for insert
+with check (
+  lower(coalesce((auth.jwt() ->> 'email'), '')) = '3492675568@qq.com'
+);
+
+drop policy if exists "admins can update skill settings" on public.skill_settings;
+create policy "admins can update skill settings"
+on public.skill_settings for update
+using (
+  lower(coalesce((auth.jwt() ->> 'email'), '')) = '3492675568@qq.com'
+)
+with check (
+  lower(coalesce((auth.jwt() ->> 'email'), '')) = '3492675568@qq.com'
+);
+
+insert into public.skill_settings (id, enabled)
+values ('shen.skill', false)
+on conflict (id) do nothing;

@@ -2279,6 +2279,13 @@ button {
   align-items: center;
 }
 
+.chat-header-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
 .icon-button,
 .ghost-button,
 .modal-primary {
@@ -2288,6 +2295,16 @@ button {
   font: 700 13px/1 "Gill Sans", "Trebuchet MS", sans-serif;
   letter-spacing: 0.08em;
   transition: transform 180ms ease, background 180ms ease, box-shadow 180ms ease;
+}
+
+.link-button {
+  width: fit-content;
+  border: 0;
+  padding: 4px 0;
+  color: var(--lacquer);
+  background: transparent;
+  font-weight: 900;
+  cursor: pointer;
 }
 
 .icon-button,
