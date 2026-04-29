@@ -19,6 +19,7 @@ let allUsers = [];
 let allSkills = [];
 let allPayments = [];
 let allNotifications = [];
+let noticeTargets = [];
 
 const adminMain = document.querySelector("#admin-main");
 const adminGate = document.querySelector("#admin-gate");
@@ -354,9 +355,16 @@ async function updatePaymentStatus(id, status) {
 
 async function loadNotifications() {
   renderNotice(notificationList, "正在读取通知公告...");
-  const response = await fetch("/api/admin/notifications", { headers: authHeaders() });
-  const data = await response.json().catch(() => ({}));
-  if (!response.ok) return renderNotice(notificationList, data.detail || data.error || "读取通知失败。");
+  const [noticeResponse, usersResponse] = await Promise.all([
+    fetch("/api/admin/notifications", { headers: authHeaders() }),
+    allUsers.length ? Promise.resolve(null) : fetch("/api/admin/users", { headers: authHeaders() })
+  ]);
+  const data = await noticeResponse.json().catch(() => ({}));
+  if (!noticeResponse.ok) return renderNotice(notificationList, data.detail || data.error || "读取通知失败。");
+  if (usersResponse) {
+    const userData = await usersResponse.json().catch(() => ({}));
+    if (usersResponse.ok) allUsers = userData.users || [];
+  }
   allNotifications = data.notifications || [];
   renderNotificationsAdmin();
 }
@@ -368,19 +376,22 @@ function renderNotificationsAdmin() {
         <span class="status-pill">发布通知</span>
         <h2>通知公告</h2>
         <div class="admin-notification-form">
+          <select id="notice-type">
+            <option value="announcement">公告</option>
+            <option value="activity">活动</option>
+          </select>
           <select id="notice-audience">
             <option value="all">所有人</option>
-            <option value="plan">按套餐</option>
             <option value="user">指定用户</option>
           </select>
-          <select id="notice-plan">
-            <option value="free">Free</option>
-            <option value="plus">Plus</option>
-            <option value="pro">Pro</option>
-            <option value="admin">管理员</option>
-          </select>
-          <input id="notice-email" type="email" placeholder="指定用户邮箱" />
+          <input id="notice-quota" type="number" min="0" step="1" placeholder="活动赠送额度" />
           <input id="notice-title" type="text" maxlength="80" placeholder="标题" />
+          <div class="notice-user-picker hidden">
+            <input id="notice-email" type="email" placeholder="搜索或输入用户邮箱" />
+            <button id="notice-add-user" type="button">添加</button>
+            <div id="notice-search-results" class="notice-search-results"></div>
+            <div id="notice-targets" class="notice-targets"></div>
+          </div>
           <textarea id="notice-body" rows="4" placeholder="公告内容"></textarea>
           <button id="notice-publish" class="modal-primary" type="button">发布公告</button>
         </div>
@@ -390,33 +401,131 @@ function renderNotificationsAdmin() {
       <article class="submission-item compact-payment">
         <div>
           <span class="status-pill">${escapeHtml(audienceLabel(item))}</span>
-          <h2>${escapeHtml(item.title)}</h2>
-          <p>${escapeHtml(item.body)}</p>
+          <input class="notice-edit-title" data-notice-title="${escapeAttribute(item.id)}" value="${escapeAttribute(item.title)}" />
+          <textarea class="notice-edit-body" data-notice-body="${escapeAttribute(item.id)}" rows="3">${escapeHtml(item.body)}</textarea>
           <dl class="submission-meta">
-            <dt>类型</dt><dd>${escapeHtml(item.type || "announcement")}</dd>
+            <dt>类型</dt><dd>${escapeHtml(typeLabel(item.type))}${item.type === "activity" ? ` · ${escapeHtml(item.quota_delta || 0)} 次额度` : ""}</dd>
             <dt>发布时间</dt><dd>${formatDate(item.created_at)}</dd>
             <dt>发布者</dt><dd>${escapeHtml(item.created_by_email || "system")}</dd>
           </dl>
         </div>
+        <aside>
+          <button data-notice-save="${escapeAttribute(item.id)}" type="button">保存</button>
+          <button class="danger" data-notice-delete="${escapeAttribute(item.id)}" type="button">删除</button>
+        </aside>
       </article>
     `).join("") : `<article class="submission-empty">还没有发布过通知。</article>`}
   `;
   notificationList.querySelector("#notice-publish")?.addEventListener("click", publishNotification);
+  notificationList.querySelector("#notice-audience")?.addEventListener("change", renderNoticeTargetPicker);
+  notificationList.querySelector("#notice-email")?.addEventListener("input", renderNoticeSearchResults);
+  notificationList.querySelector("#notice-add-user")?.addEventListener("click", addNoticeTargetFromInput);
+  notificationList.querySelectorAll("[data-notice-save]").forEach(button => {
+    button.addEventListener("click", () => updateNotification(button.dataset.noticeSave));
+  });
+  notificationList.querySelectorAll("[data-notice-delete]").forEach(button => {
+    button.addEventListener("click", () => deleteNotification(button.dataset.noticeDelete));
+  });
+  renderNoticeTargetPicker();
 }
 
 async function publishNotification() {
   const audience = notificationList.querySelector("#notice-audience").value;
-  const targetPlan = notificationList.querySelector("#notice-plan").value;
-  const targetEmail = notificationList.querySelector("#notice-email").value.trim();
+  const type = notificationList.querySelector("#notice-type").value;
   const title = notificationList.querySelector("#notice-title").value.trim();
   const body = notificationList.querySelector("#notice-body").value.trim();
+  const quotaDelta = Number(notificationList.querySelector("#notice-quota").value || 0);
   const response = await fetch("/api/admin/notifications", {
     method: "POST",
     headers: { ...authHeaders(), "Content-Type": "application/json" },
-    body: JSON.stringify({ audience, targetPlan, targetEmail, title, body })
+    body: JSON.stringify({ audience, type, quotaDelta, targetEmails: noticeTargets.map(user => user.email), title, body })
   });
   const data = await response.json().catch(() => ({}));
   if (!response.ok) return renderNotice(notificationList, data.detail || data.error || "发布失败。");
+  noticeTargets = [];
+  await loadNotifications();
+}
+
+function renderNoticeTargetPicker() {
+  const audience = notificationList.querySelector("#notice-audience")?.value || "all";
+  const picker = notificationList.querySelector(".notice-user-picker");
+  picker?.classList.toggle("hidden", audience !== "user");
+  renderNoticeTargets();
+}
+
+function renderNoticeSearchResults() {
+  const input = notificationList.querySelector("#notice-email");
+  const results = notificationList.querySelector("#notice-search-results");
+  const keyword = input.value.trim().toLowerCase();
+  if (!keyword) {
+    results.innerHTML = "";
+    return;
+  }
+  const matches = allUsers
+    .filter(user => `${user.email || ""} ${user.nickname || ""}`.toLowerCase().includes(keyword))
+    .slice(0, 6);
+  results.innerHTML = matches.map(user => `
+    <button type="button" data-pick-user="${escapeAttribute(user.email || "")}">
+      ${escapeHtml(user.nickname || "未设置昵称")} · ${escapeHtml(user.email || "")}
+    </button>
+  `).join("");
+  results.querySelectorAll("[data-pick-user]").forEach(button => {
+    button.addEventListener("click", () => addNoticeTarget(button.dataset.pickUser));
+  });
+}
+
+function addNoticeTargetFromInput() {
+  const input = notificationList.querySelector("#notice-email");
+  addNoticeTarget(input.value.trim());
+}
+
+function addNoticeTarget(email) {
+  const normalized = String(email || "").trim().toLowerCase();
+  if (!normalized || noticeTargets.some(user => user.email === normalized)) return;
+  const user = allUsers.find(item => String(item.email || "").toLowerCase() === normalized) || { email: normalized, nickname: "" };
+  noticeTargets.push({ email: normalized, nickname: user.nickname || "" });
+  notificationList.querySelector("#notice-email").value = "";
+  notificationList.querySelector("#notice-search-results").innerHTML = "";
+  renderNoticeTargets();
+}
+
+function renderNoticeTargets() {
+  const target = notificationList.querySelector("#notice-targets");
+  if (!target) return;
+  target.innerHTML = noticeTargets.map(user => `
+    <span>${escapeHtml(user.nickname || user.email)}<button data-remove-target="${escapeAttribute(user.email)}" type="button">×</button></span>
+  `).join("");
+  target.querySelectorAll("[data-remove-target]").forEach(button => {
+    button.addEventListener("click", () => {
+      noticeTargets = noticeTargets.filter(user => user.email !== button.dataset.removeTarget);
+      renderNoticeTargets();
+    });
+  });
+}
+
+async function updateNotification(id) {
+  const title = notificationList.querySelector(`[data-notice-title="${CSS.escape(id)}"]`)?.value || "";
+  const body = notificationList.querySelector(`[data-notice-body="${CSS.escape(id)}"]`)?.value || "";
+  const current = allNotifications.find(item => item.id === id) || {};
+  const response = await fetch("/api/admin/notifications", {
+    method: "PATCH",
+    headers: { ...authHeaders(), "Content-Type": "application/json" },
+    body: JSON.stringify({ id, title, body, type: current.type, quotaDelta: current.quota_delta || 0 })
+  });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) return renderNotice(notificationList, data.detail || data.error || "保存失败。");
+  await loadNotifications();
+}
+
+async function deleteNotification(id) {
+  if (!confirm("确认删除这条通知吗？")) return;
+  const response = await fetch("/api/admin/notifications", {
+    method: "DELETE",
+    headers: { ...authHeaders(), "Content-Type": "application/json" },
+    body: JSON.stringify({ id })
+  });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) return renderNotice(notificationList, data.detail || data.error || "删除失败。");
   await loadNotifications();
 }
 
@@ -556,6 +665,10 @@ function audienceLabel(item) {
   if (item.audience === "user") return `用户：${item.target_email || item.target_user_id || "unknown"}`;
   if (item.audience === "plan") return `套餐：${planLabel(item.target_plan)}`;
   return "所有人";
+}
+
+function typeLabel(type) {
+  return type === "activity" ? "活动" : "公告";
 }
 
 function formatUsage(usage = {}) {

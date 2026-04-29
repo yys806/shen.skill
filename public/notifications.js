@@ -10,7 +10,7 @@ const widget = document.createElement("section");
 widget.className = "notification-widget";
 widget.innerHTML = `
   <button class="notification-bell" type="button" aria-label="通知中心">
-    <span class="bell-shape">铃</span>
+    <span class="bell-shape">通知</span>
     <i class="notification-dot hidden"></i>
     <b class="notification-count hidden">0</b>
   </button>
@@ -23,6 +23,17 @@ widget.innerHTML = `
       <article class="notification-empty">正在读取通知...</article>
     </div>
   </div>
+  <div class="notification-letter-backdrop hidden">
+    <article class="notification-letter">
+      <button class="notification-letter-close" type="button" aria-label="关闭">×</button>
+      <p class="home-kicker">mirror notice</p>
+      <h2></h2>
+      <time></time>
+      <p class="letter-body"></p>
+      <button class="letter-claim hidden" type="button">领取额度</button>
+      <p class="letter-feedback field-help"></p>
+    </article>
+  </div>
 `;
 document.body.appendChild(widget);
 
@@ -32,18 +43,27 @@ const countBadge = widget.querySelector(".notification-count");
 const panel = widget.querySelector(".notification-panel");
 const total = widget.querySelector(".notification-total");
 const list = widget.querySelector(".notification-list");
+const letterBackdrop = widget.querySelector(".notification-letter-backdrop");
+const letter = widget.querySelector(".notification-letter");
+const letterClose = widget.querySelector(".notification-letter-close");
+const letterClaim = widget.querySelector(".letter-claim");
+const letterFeedback = widget.querySelector(".letter-feedback");
+let activeLetterId = "";
 
 bootNotifications();
 
 bell.addEventListener("click", async () => {
   opened = !opened;
   panel.classList.toggle("hidden", !opened);
-  if (opened) {
-    renderNotifications();
-  }
+  if (opened) renderNotifications();
 });
 
 total.addEventListener("click", markVisibleRead);
+letterClose.addEventListener("click", closeLetter);
+letterBackdrop.addEventListener("click", event => {
+  if (event.target === letterBackdrop) closeLetter();
+});
+letterClaim.addEventListener("click", claimActiveNotification);
 
 document.addEventListener("click", event => {
   if (!opened || widget.contains(event.target)) return;
@@ -136,14 +156,66 @@ function renderNotifications() {
     return;
   }
   list.innerHTML = notifications.map(item => `
-    <article class="notification-item ${item.read ? "" : "unread"}">
+    <button class="notification-item ${item.read ? "" : "unread"}" data-notice-id="${escapeAttribute(item.id)}" type="button">
       <div>
         <strong>${escapeHtml(item.title)}</strong>
-        <span>${formatDate(item.created_at)}</span>
+        <span>${typeLabel(item)} · ${formatDate(item.created_at)}</span>
       </div>
       <p>${escapeHtml(item.body)}</p>
-    </article>
+    </button>
   `).join("");
+  list.querySelectorAll("[data-notice-id]").forEach(button => {
+    button.addEventListener("click", () => openLetter(button.dataset.noticeId));
+  });
+}
+
+function openLetter(id) {
+  const item = notifications.find(notification => notification.id === id);
+  if (!item) return;
+  activeLetterId = id;
+  letter.querySelector("h2").textContent = item.title;
+  letter.querySelector("time").textContent = `${typeLabel(item)} · ${new Date(item.created_at).toLocaleString("zh-CN")}`;
+  letter.querySelector(".letter-body").textContent = item.body;
+  letterClaim.classList.toggle("hidden", item.type !== "activity" || Number(item.quota_delta || 0) <= 0);
+  letterClaim.disabled = Boolean(item.claimed);
+  letterClaim.textContent = item.claimed ? "已领取" : `领取 ${item.quota_delta} 次额度`;
+  letterFeedback.textContent = "";
+  letterBackdrop.classList.remove("hidden");
+}
+
+function closeLetter() {
+  activeLetterId = "";
+  letterBackdrop.classList.add("hidden");
+}
+
+async function claimActiveNotification() {
+  if (!activeLetterId || !session?.access_token) return;
+  letterClaim.disabled = true;
+  letterFeedback.textContent = "正在领取...";
+  try {
+    const response = await fetch("/api/notifications", {
+      method: "PATCH",
+      headers: {
+        "Authorization": `Bearer ${session.access_token}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({ action: "claim", id: activeLetterId })
+    });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(data.detail || data.error || "领取失败");
+    notifications = notifications.map(item => item.id === activeLetterId ? { ...item, claimed: true } : item);
+    letterClaim.textContent = "已领取";
+    letterFeedback.textContent = `已领取 ${data.quotaDelta || 0} 次额度。`;
+  } catch (error) {
+    letterClaim.disabled = false;
+    letterFeedback.textContent = error.message;
+    letterFeedback.classList.add("is-error");
+    if (error.message.includes("已经领取")) {
+      letterClaim.disabled = true;
+      letterClaim.textContent = "已领取";
+      notifications = notifications.map(item => item.id === activeLetterId ? { ...item, claimed: true } : item);
+    }
+  }
 }
 
 async function getJson(url) {
@@ -151,6 +223,10 @@ async function getJson(url) {
   const data = await response.json().catch(() => ({}));
   if (!response.ok) throw new Error(data.detail || data.error || "请求失败");
   return data;
+}
+
+function typeLabel(item) {
+  return item.type === "activity" ? "活动" : "公告";
 }
 
 function formatDate(value) {
@@ -168,4 +244,8 @@ function escapeHtml(value) {
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;");
+}
+
+function escapeAttribute(value) {
+  return escapeHtml(value).replace(/'/g, "&#039;");
 }

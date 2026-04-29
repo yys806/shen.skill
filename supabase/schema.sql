@@ -454,11 +454,15 @@ create table if not exists public.notifications (
   target_email citext,
   target_plan text check (target_plan in ('free', 'plus', 'pro', 'admin')),
   type text not null default 'announcement',
+  quota_delta integer not null default 0,
   title text not null,
   body text not null,
   created_by_email citext,
   created_at timestamptz not null default now()
 );
+
+alter table public.notifications
+add column if not exists quota_delta integer not null default 0;
 
 alter table public.notifications enable row level security;
 
@@ -476,6 +480,23 @@ drop policy if exists "admins can insert notifications" on public.notifications;
 create policy "admins can insert notifications"
 on public.notifications for insert
 with check (
+  lower(coalesce((auth.jwt() ->> 'email'), '')) = '3492675568@qq.com'
+);
+
+drop policy if exists "admins can update notifications" on public.notifications;
+create policy "admins can update notifications"
+on public.notifications for update
+using (
+  lower(coalesce((auth.jwt() ->> 'email'), '')) = '3492675568@qq.com'
+)
+with check (
+  lower(coalesce((auth.jwt() ->> 'email'), '')) = '3492675568@qq.com'
+);
+
+drop policy if exists "admins can delete notifications" on public.notifications;
+create policy "admins can delete notifications"
+on public.notifications for delete
+using (
   lower(coalesce((auth.jwt() ->> 'email'), '')) = '3492675568@qq.com'
 );
 
@@ -506,6 +527,36 @@ with check (auth.uid() = user_id);
 
 create index if not exists notification_reads_user_idx
 on public.notification_reads (user_id, read_at desc);
+
+create table if not exists public.notification_claims (
+  notification_id uuid not null references public.notifications(id) on delete cascade,
+  user_id uuid not null references auth.users(id) on delete cascade,
+  quota_delta integer not null default 0,
+  claimed_at timestamptz not null default now(),
+  primary key (notification_id, user_id)
+);
+
+alter table public.notification_claims enable row level security;
+
+drop policy if exists "users can read own notification claims" on public.notification_claims;
+create policy "users can read own notification claims"
+on public.notification_claims for select
+using (auth.uid() = user_id);
+
+drop policy if exists "users can insert own notification claims" on public.notification_claims;
+create policy "users can insert own notification claims"
+on public.notification_claims for insert
+with check (auth.uid() = user_id);
+
+drop policy if exists "admins can read notification claims" on public.notification_claims;
+create policy "admins can read notification claims"
+on public.notification_claims for select
+using (
+  lower(coalesce((auth.jwt() ->> 'email'), '')) = '3492675568@qq.com'
+);
+
+create index if not exists notification_claims_user_idx
+on public.notification_claims (user_id, claimed_at desc);
 
 create table if not exists public.mirror_conversations (
   id text primary key,
