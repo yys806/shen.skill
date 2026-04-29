@@ -153,6 +153,7 @@
     </main>
     <script>
       const sectionLinks = [...document.querySelectorAll(".home-nav-links a[data-section]")];
+      const homeCacheKey = "mirror_home_snapshot_v1";
       const sections = sectionLinks
         .filter(link => link.dataset.section !== "top")
         .map(link => document.getElementById(link.dataset.section))
@@ -229,10 +230,17 @@ Stay hungry. Stay foolish.`]
       function renderRandomDialogue() {
         const target = document.querySelector("#terminal-dialogue");
         if (!target) return;
+        const cached = readHomeSnapshot();
+        if (cached?.terminalHtml) {
+          target.innerHTML = cached.terminalHtml;
+          target.scrollTop = cached.terminalScrollTop || target.scrollHeight;
+          return;
+        }
         const dialogue = terminalDialogues[Math.floor(Math.random() * terminalDialogues.length)];
         target.innerHTML = "";
+        const timers = [];
         dialogue.forEach(([role, content], index) => {
-          window.setTimeout(() => {
+          timers.push(window.setTimeout(() => {
             const article = document.createElement("article");
             article.className = `terminal-line ${role === "YOU" ? "user-line" : "mirror-line"}`;
             const label = document.createElement("small");
@@ -242,7 +250,8 @@ Stay hungry. Stay foolish.`]
             article.append(label, text);
             target.appendChild(article);
             target.scrollTop = target.scrollHeight;
-          }, index * 900);
+            if (index === dialogue.length - 1) saveHomeSnapshot();
+          }, index * 900));
         });
       }
 
@@ -260,8 +269,12 @@ Stay hungry. Stay foolish.`]
       async function loadHomeSkillGrid() {
         const grid = document.querySelector(".home-skill-grid");
         if (!grid) return;
+        const cached = readHomeSnapshot();
+        if (cached?.skillGridHtml) {
+          grid.innerHTML = cached.skillGridHtml;
+        }
         try {
-          const response = await fetch("/api/skills", { cache: "no-store" });
+          const response = await fetch("/api/skills", { cache: "force-cache" });
           const data = await response.json();
           if (!response.ok || !Array.isArray(data.skills)) return;
           grid.innerHTML = data.skills.map(skill => `
@@ -277,9 +290,39 @@ Stay hungry. Stay foolish.`]
               <em>去提交</em>
             </a>
           `;
+          saveHomeSnapshot();
         } catch {
           // Keep the static fallback grid.
         }
+      }
+
+      function readHomeSnapshot() {
+        try {
+          return JSON.parse(sessionStorage.getItem(homeCacheKey) || "null");
+        } catch {
+          return null;
+        }
+      }
+
+      function saveHomeSnapshot() {
+        const terminal = document.querySelector("#terminal-dialogue");
+        const grid = document.querySelector(".home-skill-grid");
+        try {
+          sessionStorage.setItem(homeCacheKey, JSON.stringify({
+            terminalHtml: terminal?.innerHTML || "",
+            terminalScrollTop: terminal?.scrollTop || 0,
+            skillGridHtml: grid?.innerHTML || "",
+            scrollY: window.scrollY
+          }));
+        } catch {
+          // sessionStorage may be unavailable in strict privacy modes.
+        }
+      }
+
+      function restoreHomePosition() {
+        const cached = readHomeSnapshot();
+        if (!cached || !Number.isFinite(Number(cached.scrollY))) return;
+        requestAnimationFrame(() => window.scrollTo(0, Number(cached.scrollY)));
       }
 
       function escapeHtml(value) {
@@ -309,9 +352,14 @@ Stay hungry. Stay foolish.`]
       updateActiveSection();
       loadHomeSkillGrid();
       renderRandomDialogue();
+      restoreHomePosition();
       window.addEventListener("scroll", updateActiveSection, { passive: true });
       window.addEventListener("resize", updateActiveSection);
-      window.addEventListener("pageshow", updateActiveSection);
+      window.addEventListener("pagehide", saveHomeSnapshot);
+      window.addEventListener("pageshow", event => {
+        updateActiveSection();
+        if (event.persisted) restoreHomePosition();
+      });
     </script>
     <script type="module" src="/notifications.js"></script>
   </body>

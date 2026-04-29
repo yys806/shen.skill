@@ -737,7 +737,8 @@ function updateProviderCount(provider) {
 
 async function testModel(id, button) {
   button.disabled = true;
-  button.textContent = "测试中";
+  button.classList.remove("test-ok", "test-failed");
+  button.textContent = "...";
   const response = await fetch("/api/admin/models", {
     method: "PATCH",
     headers: { ...authHeaders(), "Content-Type": "application/json" },
@@ -745,9 +746,13 @@ async function testModel(id, button) {
   });
   const data = await response.json().catch(() => ({}));
   button.disabled = false;
-  button.textContent = data.ok ? `已接通 ${data.latencyMs || 0}ms` : "测试失败";
-  button.classList.toggle("approve", Boolean(data.ok));
-  if (!data.ok) alert(data.error || "测试失败。");
+  if (data.ok) {
+    button.textContent = `${((data.latencyMs || 0) / 1000).toFixed(2)}s`;
+    button.classList.add("test-ok");
+  } else {
+    button.textContent = "失败";
+    button.classList.add("test-failed");
+  }
 }
 
 async function deleteModel(id) {

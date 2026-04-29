@@ -1257,6 +1257,16 @@ body.home-page::after {
   background: rgba(143, 45, 28, 0.06);
 }
 
+.admin-model-row button.test-ok {
+  color: #fff8e8;
+  background: var(--green);
+}
+
+.admin-model-row button.test-failed {
+  color: #fff8e8;
+  background: var(--lacquer);
+}
+
 .model-role-switch {
   position: relative;
   display: grid;

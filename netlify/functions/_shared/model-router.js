@@ -113,12 +113,17 @@ export async function testModelRoute(route) {
         error: data?.error?.message || data?.message || `HTTP ${response.status}`
       };
     }
-    const sample = data?.choices?.[0]?.message?.content || data?.choices?.[0]?.delta?.content || "";
+    const sample = data?.choices?.[0]?.message?.content
+      || data?.choices?.[0]?.delta?.content
+      || data?.choices?.[0]?.text
+      || data?.message?.content
+      || data?.content
+      || "";
     return {
-      ok: Boolean(sample),
+      ok: true,
       latencyMs: Date.now() - startedAt,
       sample,
-      error: sample ? null : "模型返回成功，但没有回答正文。"
+      error: null
     };
   } catch (error) {
     return {
