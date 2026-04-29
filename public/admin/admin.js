@@ -549,20 +549,13 @@ function renderModels() {
     ${Object.entries(groups).map(([provider, models]) => providerPanel(provider, models)).join("")}
   `;
 
-  modelList.querySelectorAll("[data-model-role]").forEach(button => {
-    button.addEventListener("click", () => setModelRole(button.dataset.modelRole, button.dataset.roleValue));
-  });
-  modelList.querySelectorAll("[data-model-temperature]").forEach(input => {
-    input.addEventListener("change", () => updateModel(input.dataset.modelTemperature));
-  });
-  modelList.querySelectorAll("[data-model-test]").forEach(button => {
-    button.addEventListener("click", () => testModel(button.dataset.modelTest, button));
-  });
-  modelList.querySelectorAll("[data-model-delete]").forEach(button => {
-    button.addEventListener("click", () => deleteModel(button.dataset.modelDelete));
-  });
+  bindModelRows(modelList);
   modelList.querySelectorAll("[data-provider-add]").forEach(button => {
-    button.addEventListener("click", () => toggleProviderAdd(button.dataset.providerAdd));
+    button.addEventListener("click", event => {
+      event.preventDefault();
+      event.stopPropagation();
+      toggleProviderAdd(button.dataset.providerAdd);
+    });
   });
   modelList.querySelectorAll("[data-model-create]").forEach(button => {
     button.addEventListener("click", () => createModel(button.dataset.modelCreate));
@@ -571,11 +564,12 @@ function renderModels() {
 
 function providerPanel(provider, models) {
   return `
-    <details class="model-provider-panel">
+    <details class="model-provider-panel" data-provider-panel="${escapeAttribute(provider)}">
       <summary>
+        <span class="provider-chevron" aria-hidden="true"></span>
         <strong>${escapeHtml(providerLabel(provider))}</strong>
-        <span>${models.length} 个模型</span>
-        <button data-provider-add="${escapeAttribute(provider)}" type="button">设置 / 增加</button>
+        <span class="provider-count" data-provider-count="${escapeAttribute(provider)}">${models.length} 个模型</span>
+        <button class="provider-settings" data-provider-add="${escapeAttribute(provider)}" type="button" aria-label="设置 ${escapeAttribute(providerLabel(provider))}">⚙</button>
       </summary>
       <div class="model-provider-add hidden" data-provider-form="${escapeAttribute(provider)}">
         <input data-new-field="name" placeholder="显示名称" />
@@ -630,7 +624,19 @@ async function createModel(provider) {
   });
   const data = await response.json().catch(() => ({}));
   if (!response.ok) return renderNotice(modelList, data.detail || data.error || "新增模型失败。");
-  await loadModels();
+  const model = data.model;
+  if (model) {
+    allModels.push(model);
+    const list = modelList.querySelector(`[data-provider-panel="${CSS.escape(provider)}"] .model-row-list`)
+      || form.closest(".model-provider-panel")?.querySelector(".model-row-list");
+    list?.querySelector(".model-empty-row")?.remove();
+    list?.insertAdjacentHTML("beforeend", modelRow(model));
+    bindModelRows(list);
+    updateProviderCount(provider);
+    form.querySelectorAll("input").forEach(input => {
+      if (!["apiBaseUrl", "apiKeyEnv"].includes(input.dataset.newField)) input.value = "";
+    });
+  }
 }
 
 async function updateModel(id) {
@@ -651,7 +657,10 @@ async function updateModel(id) {
   });
   const data = await response.json().catch(() => ({}));
   if (!response.ok) return renderNotice(modelList, data.detail || data.error || "保存模型失败。");
-  await loadModels();
+  const model = allModels.find(item => item.id === id);
+  if (model) model.temperature = payload.temperature;
+  item.classList.add("saved-flash");
+  setTimeout(() => item.classList.remove("saved-flash"), 650);
 }
 
 async function setModelRole(id, role) {
@@ -663,11 +672,67 @@ async function setModelRole(id, role) {
   });
   const data = await response.json().catch(() => ({}));
   if (!response.ok) return renderNotice(modelList, data.detail || data.error || "切换模型失败。");
-  await loadModels();
+  applyModelRoleLocally(id, role);
 }
 
 function toggleProviderAdd(provider) {
-  modelList.querySelector(`[data-provider-form="${CSS.escape(provider)}"]`)?.classList.toggle("hidden");
+  const form = modelList.querySelector(`[data-provider-form="${CSS.escape(provider)}"]`);
+  form?.closest("details")?.setAttribute("open", "");
+  form?.classList.toggle("hidden");
+}
+
+function bindModelRows(root) {
+  root?.querySelectorAll("[data-model-role]").forEach(button => {
+    if (button.dataset.bound) return;
+    button.dataset.bound = "true";
+    button.addEventListener("click", () => setModelRole(button.dataset.modelRole, button.dataset.roleValue));
+  });
+  root?.querySelectorAll("[data-model-temperature]").forEach(input => {
+    if (input.dataset.bound) return;
+    input.dataset.bound = "true";
+    input.addEventListener("change", () => updateModel(input.dataset.modelTemperature));
+  });
+  root?.querySelectorAll("[data-model-test]").forEach(button => {
+    if (button.dataset.bound) return;
+    button.dataset.bound = "true";
+    button.addEventListener("click", () => testModel(button.dataset.modelTest, button));
+  });
+  root?.querySelectorAll("[data-model-delete]").forEach(button => {
+    if (button.dataset.bound) return;
+    button.dataset.bound = "true";
+    button.addEventListener("click", () => deleteModel(button.dataset.modelDelete));
+  });
+}
+
+function applyModelRoleLocally(id, role) {
+  const targetPriority = role === "primary" ? 10 : (role === "backup" ? 20 : 100);
+  if (role !== "standby") {
+    allModels = allModels.map(model => {
+      if (model.id !== id && Number(model.priority) === targetPriority) {
+        return { ...model, role: "standby", enabled: false, priority: 100 };
+      }
+      return model;
+    });
+  }
+  allModels = allModels.map(model => model.id === id
+    ? { ...model, role, enabled: role !== "standby", priority: targetPriority }
+    : model);
+
+  modelList.querySelectorAll(".admin-model-row").forEach(row => {
+    const model = allModels.find(item => item.id === row.dataset.modelId);
+    if (!model) return;
+    const nextRole = model.role || "standby";
+    row.classList.toggle("is-selected", nextRole !== "standby");
+    row.querySelectorAll("[data-model-role]").forEach(button => {
+      button.classList.toggle("active", button.dataset.roleValue === nextRole);
+    });
+  });
+}
+
+function updateProviderCount(provider) {
+  const count = allModels.filter(model => model.provider === provider).length;
+  const target = modelList.querySelector(`[data-provider-count="${CSS.escape(provider)}"]`);
+  if (target) target.textContent = `${count} 个模型`;
 }
 
 async function testModel(id, button) {
@@ -694,7 +759,17 @@ async function deleteModel(id) {
   });
   const data = await response.json().catch(() => ({}));
   if (!response.ok) return renderNotice(modelList, data.detail || data.error || "删除模型失败。");
-  await loadModels();
+  const model = allModels.find(item => item.id === id);
+  allModels = allModels.filter(item => item.id !== id);
+  const row = modelList.querySelector(`[data-model-id="${CSS.escape(id)}"]`);
+  const list = row?.closest(".model-row-list");
+  row?.remove();
+  if (model) {
+    updateProviderCount(model.provider);
+    if (list && !list.querySelector(".admin-model-row")) {
+      list.innerHTML = `<div class="model-empty-row">这个提供商下面还没有模型。</div>`;
+    }
+  }
 }
 
 async function loadUsers() {
