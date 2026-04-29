@@ -57,6 +57,8 @@ let session = null;
 let appState = loadState(currentStateKey);
 let accountUsage = null;
 let accountEntitlement = null;
+let accountPlanPromise = null;
+let accountPlanFetchedAt = 0;
 let pendingSignup = null;
 let otpCooldownTimer = null;
 let launchSkillId = new URLSearchParams(window.location.search).get("skill") || "";
@@ -210,14 +212,14 @@ dom.form.addEventListener("submit", async event => {
     thinking.content = data.content || "我这边没拿到模型回复，可能是模型名或 API key 配置的问题。";
     thinking.createdAt = Date.now();
     conversation.updatedAt = Date.now();
-    await syncAccountUsage();
+    await syncAccountUsage(true);
     persistAndRender();
   } catch (error) {
     thinking.pending = false;
     thinking.content = `这下卡住了：${error.message}\n\n先检查 Netlify 环境变量、Supabase 登录状态和模型名。`;
     thinking.createdAt = Date.now();
     conversation.updatedAt = Date.now();
-    await syncAccountUsage();
+    await syncAccountUsage(true);
     persistAndRender();
   }
 });
@@ -1054,7 +1056,7 @@ function updateAuthPlanClass() {
   dom.authDock.classList.add(session?.user ? accountPlan : "free");
 }
 
-async function refreshAccountPlan() {
+async function refreshAccountPlan(force = false) {
   if (!session?.access_token) {
     accountPlan = "free";
     accountUsage = null;
@@ -1062,10 +1064,22 @@ async function refreshAccountPlan() {
     return;
   }
 
+  if (accountPlanPromise) return accountPlanPromise;
+  if (!force && Date.now() - accountPlanFetchedAt < 12_000 && accountUsage) return;
+  accountPlanPromise = fetchAccountPlan();
+  try {
+    await accountPlanPromise;
+  } finally {
+    accountPlanPromise = null;
+  }
+}
+
+async function fetchAccountPlan() {
   if (String(session.user?.email || "").toLowerCase() === "3492675568@qq.com") {
     accountPlan = "admin";
     accountUsage = { unlimited: true, used: 0, limit: null, remaining: null };
     accountEntitlement = { plan: "admin", status: "active", current_period_ends_at: null };
+    accountPlanFetchedAt = Date.now();
     return;
   }
 
@@ -1082,14 +1096,15 @@ async function refreshAccountPlan() {
     accountPlan = ["plus", "pro"].includes(plan) && ["active", "trialing"].includes(status)
       ? plan
       : "free";
+    accountPlanFetchedAt = Date.now();
   } catch {
     accountPlan = "free";
     accountEntitlement = null;
   }
 }
 
-async function syncAccountUsage() {
-  await refreshAccountPlan();
+async function syncAccountUsage(force = false) {
+  await refreshAccountPlan(force);
   updateAuthState();
   updateAccountUsageText();
 }

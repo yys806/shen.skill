@@ -1,10 +1,10 @@
-import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm";
-
 let supabaseClient = null;
 let session = null;
 let notifications = [];
 let unreadCount = 0;
 let opened = false;
+let bootPromise = null;
+let booted = false;
 
 const widget = document.createElement("section");
 widget.className = "notification-widget";
@@ -50,9 +50,10 @@ const letterClaim = widget.querySelector(".letter-claim");
 const letterFeedback = widget.querySelector(".letter-feedback");
 let activeLetterId = "";
 
-bootNotifications();
+scheduleNotificationBoot();
 
 bell.addEventListener("click", async () => {
+  await ensureBooted();
   opened = !opened;
   panel.classList.toggle("hidden", !opened);
   if (opened) renderNotifications();
@@ -78,6 +79,7 @@ async function bootNotifications() {
       renderLoggedOut();
       return;
     }
+    const { createClient } = await import("https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm");
     supabaseClient = createClient(config.supabaseUrl, config.supabaseAnonKey);
     const { data } = await supabaseClient.auth.getSession();
     session = data.session;
@@ -87,9 +89,25 @@ async function bootNotifications() {
       await refreshNotifications();
     });
     window.setInterval(refreshNotifications, 60_000);
+    booted = true;
   } catch {
     renderLoggedOut();
   }
+}
+
+function scheduleNotificationBoot() {
+  const start = () => ensureBooted();
+  if ("requestIdleCallback" in window) {
+    window.requestIdleCallback(start, { timeout: 2500 });
+  } else {
+    window.setTimeout(start, 1800);
+  }
+}
+
+function ensureBooted() {
+  if (booted) return Promise.resolve();
+  if (!bootPromise) bootPromise = bootNotifications();
+  return bootPromise;
 }
 
 async function refreshNotifications() {

@@ -14,14 +14,17 @@ export async function checkRateLimit(req, userId, eventType, limit, windowMs) {
 
   try {
     const countResponse = await fetch(`${supabaseUrl}/rest/v1/request_events?${query}`, {
+      method: "HEAD",
       headers: {
         "apikey": supabaseAnonKey,
         "Authorization": authorization,
-        "Accept": "application/json"
+        "Accept": "application/json",
+        "Prefer": "count=exact"
       }
     });
-    const events = await countResponse.json().catch(() => []);
-    if (countResponse.ok && Array.isArray(events) && events.length >= limit) {
+    const range = countResponse.headers.get("content-range") || "";
+    const count = Number(range.split("/").pop());
+    if (countResponse.ok && Number.isFinite(count) && count >= limit) {
       return {
         ok: false,
         detail: `请求太频繁了。当前操作限制为 ${formatWindow(windowMs)}最多 ${limit} 次，请稍后再试。`

@@ -96,12 +96,12 @@ async function queryMonthlyUsage(authorization, userId) {
     select: "id",
     user_id: `eq.${userId}`,
     event_type: "eq.chat",
-    created_at: `gte.${currentMonthStart()}`,
-    limit: "5000"
+    created_at: `gte.${currentMonthStart()}`
   });
 
   try {
     const response = await fetch(`${supabaseUrl}/rest/v1/request_events?${query}`, {
+      method: "HEAD",
       headers: {
         "apikey": supabaseAnonKey,
         "Authorization": authorization,
@@ -109,11 +109,10 @@ async function queryMonthlyUsage(authorization, userId) {
         "Prefer": "count=exact"
       }
     });
-    const data = await response.json().catch(() => []);
     if (!response.ok) return { ok: false, count: 0 };
     const range = response.headers.get("content-range") || "";
     const count = Number(range.split("/").pop());
-    return { ok: true, count: Number.isFinite(count) ? count : (Array.isArray(data) ? data.length : 0) };
+    return { ok: true, count: Number.isFinite(count) ? count : 0 };
   } catch {
     return { ok: false, count: 0 };
   }
