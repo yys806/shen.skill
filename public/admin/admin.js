@@ -18,6 +18,7 @@ let allSubmissions = [];
 let allUsers = [];
 let allSkills = [];
 let allPayments = [];
+let allNotifications = [];
 
 const adminMain = document.querySelector("#admin-main");
 const adminGate = document.querySelector("#admin-gate");
@@ -27,6 +28,7 @@ const authBox = document.querySelector("#admin-auth");
 const submissionList = document.querySelector("#submission-list");
 const skillList = document.querySelector("#skill-list");
 const paymentList = document.querySelector("#payment-list");
+const notificationList = document.querySelector("#notification-list");
 const userList = document.querySelector("#user-list");
 const statusFilter = document.querySelector("#status-filter");
 const userSearch = document.querySelector("#user-search");
@@ -109,6 +111,7 @@ function renderTabs() {
   submissionList.classList.toggle("hidden", activeTab !== "submissions");
   skillList.classList.toggle("hidden", activeTab !== "skills");
   paymentList.classList.toggle("hidden", activeTab !== "payments");
+  notificationList.classList.toggle("hidden", activeTab !== "notifications");
   userList.classList.toggle("hidden", activeTab !== "users");
   submissionTools.classList.toggle("hidden", activeTab !== "submissions");
   userTools.classList.toggle("hidden", activeTab !== "users");
@@ -118,6 +121,7 @@ async function loadActiveTab() {
   renderTabs();
   if (activeTab === "skills") return loadSkills();
   if (activeTab === "payments") return loadPayments();
+  if (activeTab === "notifications") return loadNotifications();
   if (activeTab === "users") return loadUsers();
   return loadSubmissions();
 }
@@ -348,6 +352,74 @@ async function updatePaymentStatus(id, status) {
   if (status === "approved") await loadUsers();
 }
 
+async function loadNotifications() {
+  renderNotice(notificationList, "正在读取通知公告...");
+  const response = await fetch("/api/admin/notifications", { headers: authHeaders() });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) return renderNotice(notificationList, data.detail || data.error || "读取通知失败。");
+  allNotifications = data.notifications || [];
+  renderNotificationsAdmin();
+}
+
+function renderNotificationsAdmin() {
+  notificationList.innerHTML = `
+    <article class="submission-item notification-compose">
+      <div>
+        <span class="status-pill">发布通知</span>
+        <h2>通知公告</h2>
+        <div class="admin-notification-form">
+          <select id="notice-audience">
+            <option value="all">所有人</option>
+            <option value="plan">按套餐</option>
+            <option value="user">指定用户</option>
+          </select>
+          <select id="notice-plan">
+            <option value="free">Free</option>
+            <option value="plus">Plus</option>
+            <option value="pro">Pro</option>
+            <option value="admin">管理员</option>
+          </select>
+          <input id="notice-email" type="email" placeholder="指定用户邮箱" />
+          <input id="notice-title" type="text" maxlength="80" placeholder="标题" />
+          <textarea id="notice-body" rows="4" placeholder="公告内容"></textarea>
+          <button id="notice-publish" class="modal-primary" type="button">发布公告</button>
+        </div>
+      </div>
+    </article>
+    ${allNotifications.length ? allNotifications.map(item => `
+      <article class="submission-item compact-payment">
+        <div>
+          <span class="status-pill">${escapeHtml(audienceLabel(item))}</span>
+          <h2>${escapeHtml(item.title)}</h2>
+          <p>${escapeHtml(item.body)}</p>
+          <dl class="submission-meta">
+            <dt>类型</dt><dd>${escapeHtml(item.type || "announcement")}</dd>
+            <dt>发布时间</dt><dd>${formatDate(item.created_at)}</dd>
+            <dt>发布者</dt><dd>${escapeHtml(item.created_by_email || "system")}</dd>
+          </dl>
+        </div>
+      </article>
+    `).join("") : `<article class="submission-empty">还没有发布过通知。</article>`}
+  `;
+  notificationList.querySelector("#notice-publish")?.addEventListener("click", publishNotification);
+}
+
+async function publishNotification() {
+  const audience = notificationList.querySelector("#notice-audience").value;
+  const targetPlan = notificationList.querySelector("#notice-plan").value;
+  const targetEmail = notificationList.querySelector("#notice-email").value.trim();
+  const title = notificationList.querySelector("#notice-title").value.trim();
+  const body = notificationList.querySelector("#notice-body").value.trim();
+  const response = await fetch("/api/admin/notifications", {
+    method: "POST",
+    headers: { ...authHeaders(), "Content-Type": "application/json" },
+    body: JSON.stringify({ audience, targetPlan, targetEmail, title, body })
+  });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) return renderNotice(notificationList, data.detail || data.error || "发布失败。");
+  await loadNotifications();
+}
+
 async function loadUsers() {
   renderNotice(userList, "正在读取用户列表...");
   const response = await fetch("/api/admin/users", { headers: authHeaders() });
@@ -478,6 +550,12 @@ function actionLabel(action) {
   if (action === "renew") return "续费";
   if (action === "upgrade") return "升级";
   return "开通";
+}
+
+function audienceLabel(item) {
+  if (item.audience === "user") return `用户：${item.target_email || item.target_user_id || "unknown"}`;
+  if (item.audience === "plan") return `套餐：${planLabel(item.target_plan)}`;
+  return "所有人";
 }
 
 function formatUsage(usage = {}) {

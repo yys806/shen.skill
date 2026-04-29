@@ -106,6 +106,9 @@ async function reviewPaymentRequest(req, adminUser) {
     if (!entitlementResult.ok) {
       return json({ error: "Entitlement update failed", detail: entitlementResult.detail }, entitlementResult.status || 500);
     }
+    await createPaymentNotification(payment, "success", updatePayload.ends_at);
+  } else if (status === "rejected") {
+    await createPaymentNotification(payment, "failed", null, reviewNote);
   }
 
   return json({ ok: true, payment: updateResult.data?.[0] || null });
@@ -145,4 +148,44 @@ async function queryEntitlement(userId) {
     limit: "1"
   });
   return supabaseAdminRequest(`/user_entitlements?${query}`);
+}
+
+async function createPaymentNotification(payment, result, endsAt, reviewNote = "") {
+  const success = result === "success";
+  const title = success
+    ? `${planLabel(payment.plan)} ${actionLabel(payment.action)}已通过`
+    : `${planLabel(payment.plan)} ${actionLabel(payment.action)}未通过`;
+  const body = success
+    ? `你的 ${planLabel(payment.plan)} ${cycleLabel(payment.billing_cycle)}支付已核对成功，已追加 ${payment.quota_delta || 0} 次额度，订阅有效期至 ${new Date(endsAt).toLocaleString("zh-CN")}。`
+    : `你的 ${planLabel(payment.plan)} 支付记录未通过审核。${reviewNote ? `原因：${reviewNote}` : "请检查付款信息后重新提交，或联系管理员处理退款。"} `;
+  return supabaseAdminRequest("/notifications", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "Prefer": "return=minimal"
+    },
+    body: JSON.stringify({
+      audience: "user",
+      target_user_id: payment.user_id,
+      target_email: payment.user_email,
+      type: success ? "payment_success" : "payment_failed",
+      title,
+      body,
+      created_by_email: ADMIN_EMAIL
+    })
+  });
+}
+
+function planLabel(plan) {
+  return plan === "plus" ? "Plus" : "Pro";
+}
+
+function actionLabel(action) {
+  if (action === "renew") return "续费";
+  if (action === "upgrade") return "升级";
+  return "开通";
+}
+
+function cycleLabel(cycle) {
+  return cycle === "yearly" ? "年付" : "月付";
 }

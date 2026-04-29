@@ -447,6 +447,66 @@ on public.payment_requests (created_at desc);
 create index if not exists payment_requests_status_created_idx
 on public.payment_requests (status, created_at desc);
 
+create table if not exists public.notifications (
+  id uuid primary key default gen_random_uuid(),
+  audience text not null default 'all' check (audience in ('all', 'user', 'plan')),
+  target_user_id uuid references auth.users(id) on delete cascade,
+  target_email citext,
+  target_plan text check (target_plan in ('free', 'plus', 'pro', 'admin')),
+  type text not null default 'announcement',
+  title text not null,
+  body text not null,
+  created_by_email citext,
+  created_at timestamptz not null default now()
+);
+
+alter table public.notifications enable row level security;
+
+drop policy if exists "users can read matching notifications" on public.notifications;
+create policy "users can read matching notifications"
+on public.notifications for select
+using (
+  audience = 'all'
+  or target_user_id = auth.uid()
+  or lower(coalesce(target_email::text, '')) = lower(coalesce((auth.jwt() ->> 'email'), ''))
+  or lower(coalesce((auth.jwt() ->> 'email'), '')) = '3492675568@qq.com'
+);
+
+drop policy if exists "admins can insert notifications" on public.notifications;
+create policy "admins can insert notifications"
+on public.notifications for insert
+with check (
+  lower(coalesce((auth.jwt() ->> 'email'), '')) = '3492675568@qq.com'
+);
+
+create index if not exists notifications_created_idx
+on public.notifications (created_at desc);
+
+create index if not exists notifications_audience_idx
+on public.notifications (audience, target_email, target_plan, created_at desc);
+
+create table if not exists public.notification_reads (
+  notification_id uuid not null references public.notifications(id) on delete cascade,
+  user_id uuid not null references auth.users(id) on delete cascade,
+  read_at timestamptz not null default now(),
+  primary key (notification_id, user_id)
+);
+
+alter table public.notification_reads enable row level security;
+
+drop policy if exists "users can read own notification receipts" on public.notification_reads;
+create policy "users can read own notification receipts"
+on public.notification_reads for select
+using (auth.uid() = user_id);
+
+drop policy if exists "users can insert own notification receipts" on public.notification_reads;
+create policy "users can insert own notification receipts"
+on public.notification_reads for insert
+with check (auth.uid() = user_id);
+
+create index if not exists notification_reads_user_idx
+on public.notification_reads (user_id, read_at desc);
+
 create table if not exists public.mirror_conversations (
   id text primary key,
   user_id uuid not null references auth.users(id) on delete cascade,
