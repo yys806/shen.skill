@@ -549,8 +549,8 @@ function renderModels() {
     ${Object.entries(groups).map(([provider, models]) => providerPanel(provider, models)).join("")}
   `;
 
-  modelList.querySelectorAll("[data-model-role]").forEach(input => {
-    input.addEventListener("change", () => setModelRole(input.dataset.modelRole, input.value));
+  modelList.querySelectorAll("[data-model-role]").forEach(button => {
+    button.addEventListener("click", () => setModelRole(button.dataset.modelRole, button.dataset.roleValue));
   });
   modelList.querySelectorAll("[data-model-temperature]").forEach(input => {
     input.addEventListener("change", () => updateModel(input.dataset.modelTemperature));
@@ -571,7 +571,7 @@ function renderModels() {
 
 function providerPanel(provider, models) {
   return `
-    <details class="model-provider-panel" open>
+    <details class="model-provider-panel">
       <summary>
         <strong>${escapeHtml(providerLabel(provider))}</strong>
         <span>${models.length} 个模型</span>
@@ -595,12 +595,12 @@ function providerPanel(provider, models) {
 function modelRow(model) {
   const role = model.role || "standby";
   return `
-    <div class="model-row ${role !== "standby" ? "is-selected" : ""}" data-model-id="${escapeAttribute(model.id)}">
-      <select class="model-role-select" data-model-role="${escapeAttribute(model.id)}" aria-label="模型角色">
-        <option value="standby" ${role === "standby" ? "selected" : ""}>备选</option>
-        <option value="primary" ${role === "primary" ? "selected" : ""}>主用</option>
-        <option value="backup" ${role === "backup" ? "selected" : ""}>备用</option>
-      </select>
+    <div class="admin-model-row ${role !== "standby" ? "is-selected" : ""}" data-model-id="${escapeAttribute(model.id)}">
+      <div class="model-role-switch" aria-label="模型角色">
+        <button class="${role === "primary" ? "active" : ""}" data-model-role="${escapeAttribute(model.id)}" data-role-value="primary" type="button">主用</button>
+        <button class="${role === "backup" ? "active" : ""}" data-model-role="${escapeAttribute(model.id)}" data-role-value="backup" type="button">备用</button>
+        <button class="${role === "standby" ? "active" : ""}" data-model-role="${escapeAttribute(model.id)}" data-role-value="standby" type="button">禁用</button>
+      </div>
       <strong>${escapeHtml(model.name || model.model)}</strong>
       <small>${escapeHtml(model.model || "")}${model.has_api_key ? " · key 已配置" : ""}</small>
       <button data-model-test="${escapeAttribute(model.id)}" type="button">测试</button>
