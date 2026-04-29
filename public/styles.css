@@ -1929,30 +1929,12 @@ body.home-page::after {
 }
 
 .bell-shape {
-  font-size: 0;
-}
-
-.bell-shape::before {
-  content: "";
-  width: 18px;
-  height: 20px;
+  width: 24px;
+  height: 24px;
   display: block;
-  border: 3px solid currentColor;
-  border-bottom-width: 5px;
-  border-radius: 14px 14px 8px 8px;
-  clip-path: polygon(0 18%, 18% 18%, 18% 0, 82% 0, 82% 18%, 100% 18%, 100% 100%, 0 100%);
-}
-
-.bell-shape::after {
-  content: "";
-  position: absolute;
-  left: 50%;
-  bottom: 11px;
-  width: 6px;
-  height: 6px;
-  transform: translateX(-50%);
-  border-radius: 999px;
-  background: currentColor;
+  background: url("/notification-icon.svg") center / contain no-repeat;
+  filter: drop-shadow(0 1px 0 rgba(27, 23, 18, 0.08));
+  font-size: 0;
 }
 
 .notification-dot {
@@ -1964,6 +1946,24 @@ body.home-page::after {
   border: 2px solid #fff4df;
   border-radius: 999px;
   background: #c22a1a;
+}
+
+.chat-page .notification-widget {
+  top: 15px;
+  right: max(14px, calc((100vw - min(1440px, calc(100vw - 28px))) / 2 + 2px));
+}
+
+.chat-page .top-zone {
+  padding-right: 60px;
+}
+
+.chat-page .dock-right {
+  flex-basis: 310px;
+}
+
+.chat-page .dock-right .dock-item {
+  min-width: 136px;
+  flex-basis: 148px;
 }
 
 .notification-count {
