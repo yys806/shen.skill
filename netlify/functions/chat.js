@@ -2,7 +2,7 @@ import { getEnv } from "./_shared/env.js";
 import { json } from "./_shared/json.js";
 import { isAdmin, verifySupabaseUser } from "./_shared/auth.js";
 import { checkRateLimit } from "./_shared/rate-limit.js";
-import { resolveModelRoute } from "./_shared/model-router.js";
+import { resolveModelRoutes } from "./_shared/model-router.js";
 import { loadSkillPrompt, normalizeSkillId } from "./_shared/skill.js";
 
 const PLAN_LIMITS = {
@@ -58,18 +58,7 @@ async function handleChat(req) {
   const skill = await normalizeSkillId(cleanText(body.skill || "maoxuan-skill"), {
     includeDisabled: isAdmin(authResult.user)
   });
-  const modelRoute = await resolveModelRoute(authResult.user);
-  const provider = modelRoute.provider;
-  const model = modelRoute.model;
-  const temperature = modelRoute.temperature;
-  const providerConfig = modelRoute.providerConfig;
-
-  if (!providerConfig.apiKey) {
-    return json({
-      error: `Missing ${providerConfig.name} API key`,
-      detail: `请在后台模型管理中配置 ${providerConfig.name} 的 API key 或环境变量。`
-    }, 500);
-  }
+  const modelRoutes = await resolveModelRoutes(authResult.user);
 
   const skillPrompt = await loadSkillPrompt(skill, {
     includeDisabled: isAdmin(authResult.user)
@@ -89,14 +78,58 @@ async function handleChat(req) {
     "- 回答要短，不要 AI 长篇；先像人一样接住，再给判断或建议。",
     "- 不要声称自己真的就是某个现实本人；你是基于 skill 的人格镜像。",
     `- 当前 skill：${skill}`,
-    `- 当前模型提供商：${providerConfig.name}`,
-    `- 当前模型：${model}`,
+    `- 当前模型由后台主用/备用路由控制。`,
     `- 当前登录用户：${authResult.user?.email || authResult.user?.id || "unknown"}`
   ].join("\n");
 
+  const completion = await requestWithFallback(modelRoutes, systemPrompt, messages);
+  if (!completion.ok) {
+    return json({
+      error: completion.error || "Model request failed",
+      detail: completion.detail || "主用和备用模型都不可用，请到后台模型管理检查。"
+    }, 502);
+  }
+
+  return json({
+    content: completion.content,
+    user: authResult.user?.email || authResult.user?.id || null,
+    model: {
+      name: completion.route.name,
+      provider: completion.route.provider,
+      model: completion.route.model,
+      fallback: completion.fallback
+    }
+  });
+}
+
+async function requestWithFallback(routes, systemPrompt, messages) {
+  const errors = [];
+  for (let index = 0; index < routes.length; index += 1) {
+    const route = routes[index];
+    const result = await requestModel(route, systemPrompt, messages);
+    if (result.ok) return { ...result, fallback: index > 0 };
+    errors.push(`${route.name || route.model}: ${result.detail || result.error}`);
+  }
+  return {
+    ok: false,
+    error: "All model routes failed",
+    detail: errors.join("；")
+  };
+}
+
+async function requestModel(route, systemPrompt, messages) {
+  const providerConfig = route.providerConfig;
+  if (!providerConfig.apiKey) {
+    return {
+      ok: false,
+      error: `Missing ${providerConfig.name} API key`,
+      detail: `请在后台模型管理中配置 ${providerConfig.name} 的 API key 或环境变量。`
+    };
+  }
+
   const requestBody = {
-    model,
-    temperature,
+    model: route.model,
+    temperature: route.temperature,
     max_tokens: 1200,
     stream: false,
     messages: [
@@ -104,7 +137,7 @@ async function handleChat(req) {
       ...messages.slice(-24).map(normalizeMessage)
     ]
   };
-  if (provider === "deepseek") {
+  if (route.provider === "deepseek") {
     requestBody.thinking = { type: "disabled" };
   }
 
@@ -125,41 +158,34 @@ async function handleChat(req) {
     });
   } catch (error) {
     const aborted = error?.name === "AbortError";
-    return json({
+    return {
+      ok: false,
       error: aborted ? `${providerConfig.name} timeout` : `${providerConfig.name} network error`,
       detail: aborted
-        ? `模型响应超过 ${Math.round(providerConfig.timeoutMs / 1000)} 秒，已主动中断。可以换一个更快的后台模型，或稍后重试。`
+        ? `模型响应超过 ${Math.round(providerConfig.timeoutMs / 1000)} 秒，已主动中断。`
         : `无法连接 ${providerConfig.name}：${error.message}`
-    }, 502);
+    };
   } finally {
     clearTimeout(timeout);
   }
 
   const data = await readResponseBody(response);
   if (!response.ok) {
-    return json({
+    return {
+      ok: false,
       error: `${providerConfig.name} request failed`,
       detail: formatUpstreamDetail(data, response.status)
-    }, response.status >= 500 ? 502 : response.status);
+    };
   }
-
   const content = extractAssistantContent(data);
   if (!content) {
-    return json({
+    return {
+      ok: false,
       error: "Empty model response",
       detail: formatEmptyResponseDetail(providerConfig.name, data)
-    }, 502);
+    };
   }
-
-  return json({
-    content,
-    user: authResult.user?.email || authResult.user?.id || null,
-    model: {
-      name: modelRoute.name,
-      provider,
-      model
-    }
-  });
+  return { ok: true, content, route };
 }
 
 async function loadRecentMemories(req, userId, skill) {

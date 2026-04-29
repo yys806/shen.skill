@@ -51,6 +51,9 @@ async function updateModel(req) {
   await ensureDefaultRoutes();
   const body = await req.json().catch(() => ({}));
   if (body.action === "test") return testExistingModel(body.id);
+  if (["primary", "backup", "standby"].includes(String(body.role || ""))) {
+    return updateModelRole(body);
+  }
   const id = String(body.id || "").trim();
   if (!id) return json({ error: "Missing id", detail: "缺少模型配置 ID。" }, 400);
 
@@ -65,6 +68,39 @@ async function updateModel(req) {
     body: JSON.stringify(row)
   });
   if (!result.ok) return json({ error: "Model update failed", detail: result.detail }, result.status || 500);
+  return json({ ok: true, model: publicModelRoute(result.data?.[0]) });
+}
+
+async function updateModelRole(body) {
+  const id = String(body.id || "").trim();
+  const role = String(body.role || "standby");
+  if (!id) return json({ error: "Missing id", detail: "缺少模型配置 ID。" }, 400);
+  const priority = role === "primary" ? 10 : (role === "backup" ? 20 : 100);
+  if (role !== "standby") {
+    const resetQuery = new URLSearchParams({ priority: `eq.${priority}` });
+    await supabaseAdminRequest(`/model_routes?${resetQuery}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ enabled: false, priority: 100, updated_at: new Date().toISOString() })
+    });
+  }
+  const query = new URLSearchParams({ id: `eq.${id}` });
+  const result = await supabaseAdminRequest(`/model_routes?${query}`, {
+    method: "PATCH",
+    headers: {
+      "Content-Type": "application/json",
+      "Prefer": "return=representation"
+    },
+    body: JSON.stringify({
+      enabled: role !== "standby",
+      priority,
+      audience: "all",
+      target_plan: null,
+      target_email: null,
+      updated_at: new Date().toISOString()
+    })
+  });
+  if (!result.ok) return json({ error: "Model role update failed", detail: result.detail }, result.status || 500);
   return json({ ok: true, model: publicModelRoute(result.data?.[0]) });
 }
 
@@ -114,25 +150,26 @@ async function ensureDefaultRoutes() {
 
 function sanitizeModelRoute(body, options = {}) {
   const row = {};
-  const assign = (key, value) => {
-    if (!options.partial || value !== undefined) row[key] = value;
+  const has = (...keys) => keys.some(key => Object.prototype.hasOwnProperty.call(body, key));
+  const assign = (key, value, ...sourceKeys) => {
+    if (!options.partial || has(...sourceKeys)) row[key] = value;
   };
 
-  assign("name", clean(body.name, 120) || "自定义模型");
-  assign("provider", normalizeProvider(body.provider));
-  assign("api_base_url", clean(body.apiBaseUrl || body.api_base_url, 300) || "https://api.deepseek.com/chat/completions");
+  assign("name", clean(body.name, 120) || "自定义模型", "name");
+  assign("provider", normalizeProvider(body.provider), "provider");
+  assign("api_base_url", clean(body.apiBaseUrl || body.api_base_url, 300) || "https://api.deepseek.com/chat/completions", "apiBaseUrl", "api_base_url");
   if (typeof body.apiKey === "string" && body.apiKey.trim()) row.api_key = body.apiKey.trim();
   if (typeof body.api_key === "string" && body.api_key.trim()) row.api_key = body.api_key.trim();
   if (!options.partial || body.apiKeyEnv !== undefined || body.api_key_env !== undefined) {
     row.api_key_env = clean(body.apiKeyEnv || body.api_key_env || "", 80) || null;
   }
-  assign("model", clean(body.model, 180) || "deepseek-v4-flash");
-  assign("temperature", clamp(Number(body.temperature ?? 0.7), 0, 1.5));
-  assign("enabled", Boolean(body.enabled));
-  assign("audience", normalizeAudience(body.audience));
-  assign("target_plan", normalizeAudience(body.audience) === "plan" ? normalizePlan(body.targetPlan || body.target_plan) : null);
-  assign("target_email", normalizeAudience(body.audience) === "user" ? clean(body.targetEmail || body.target_email, 160).toLowerCase() : null);
-  assign("priority", Number.isFinite(Number(body.priority)) ? Number(body.priority) : 100);
+  assign("model", clean(body.model, 180) || "deepseek-v4-flash", "model");
+  assign("temperature", clamp(Number(body.temperature ?? 0.7), 0, 1.5), "temperature");
+  assign("enabled", Boolean(body.enabled), "enabled");
+  assign("audience", "all", "audience", "role");
+  assign("target_plan", null, "audience", "role");
+  assign("target_email", null, "audience", "role");
+  assign("priority", Number.isFinite(Number(body.priority)) ? Number(body.priority) : 100, "priority");
   row.updated_at = new Date().toISOString();
   if (!options.partial) {
     row.slug = clean(body.slug, 100) || `custom-${Date.now()}`;

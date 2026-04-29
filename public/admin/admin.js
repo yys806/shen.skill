@@ -81,7 +81,7 @@ tabButtons.forEach(button => {
   });
 });
 
-statusFilter.addEventListener("change", renderSubmissions);
+statusFilter?.addEventListener("change", renderSubmissions);
 userSearch.addEventListener("input", renderUsers);
 
 async function renderAuthState() {
@@ -117,7 +117,7 @@ function renderTabs() {
   notificationList.classList.toggle("hidden", activeTab !== "notifications");
   modelList.classList.toggle("hidden", activeTab !== "models");
   userList.classList.toggle("hidden", activeTab !== "users");
-  submissionTools.classList.toggle("hidden", activeTab !== "submissions");
+  submissionTools.classList.add("hidden");
   userTools.classList.toggle("hidden", activeTab !== "users");
 }
 
@@ -141,12 +141,9 @@ async function loadSubmissions() {
 }
 
 function renderSubmissions() {
-  const status = statusFilter.value;
-  const submissions = status === "all"
-    ? allSubmissions
-    : allSubmissions.filter(item => item.status === status);
+  const submissions = allSubmissions;
 
-  if (!submissions.length) return renderNotice(submissionList, "当前筛选下没有提交。");
+  if (!submissions.length) return renderNotice(submissionList, "当前没有提交。");
 
   submissionList.innerHTML = submissions.map(item => `
     <article class="submission-item" data-submission-id="${escapeAttribute(item.id)}">
@@ -543,49 +540,20 @@ async function loadModels() {
 }
 
 function renderModels() {
+  const groups = groupModelsByProvider();
   modelList.innerHTML = `
-    <article class="submission-item model-admin-form">
-      <div>
-        <span class="status-pill">新增节点</span>
-        <h2>添加模型 / 自定义 API 节点</h2>
-        <div class="model-admin-grid">
-          <input id="model-name" placeholder="显示名称，例如 DeepSeek 快速节点" />
-          <select id="model-provider">
-            <option value="deepseek">DeepSeek</option>
-            <option value="siliconflow">SiliconFlow</option>
-            <option value="openrouter">OpenRouter</option>
-            <option value="custom">自定义</option>
-          </select>
-          <input id="model-base-url" placeholder="API 地址，例如 https://api.deepseek.com/chat/completions" />
-          <input id="model-api-key" type="password" placeholder="API key，可留空改用环境变量" />
-          <input id="model-env-key" placeholder="环境变量名，例如 DEEPSEEK_API_KEY" />
-          <input id="model-model" placeholder="模型名，例如 deepseek-v4-flash" />
-          <input id="model-temperature" type="number" min="0" max="1.5" step="0.1" value="0.7" />
-          <select id="model-audience">
-            <option value="all">所有用户</option>
-            <option value="plan">某类套餐</option>
-            <option value="user">指定用户</option>
-          </select>
-          <select id="model-target-plan">
-            <option value="free">Free</option>
-            <option value="plus">Plus</option>
-            <option value="pro">Pro</option>
-            <option value="admin">管理员</option>
-          </select>
-          <input id="model-target-email" placeholder="指定用户邮箱" />
-          <input id="model-priority" type="number" step="1" value="100" placeholder="优先级，越小越先用" />
-        </div>
-      </div>
-      <aside>
-        <button id="model-create" class="approve" type="button">添加</button>
-      </aside>
+    <article class="model-console-note">
+      <strong>模型路由</strong>
+      <span>只需要选一个主用模型和一个备用模型。主用失败、超时或返回空内容时，会自动切换备用。</span>
     </article>
-    ${allModels.length ? allModels.map(model => modelRow(model)).join("") : `<article class="submission-empty">当前没有模型配置。</article>`}
+    ${Object.entries(groups).map(([provider, models]) => providerPanel(provider, models)).join("")}
   `;
 
-  modelList.querySelector("#model-create")?.addEventListener("click", createModel);
-  modelList.querySelectorAll("[data-model-save]").forEach(button => {
-    button.addEventListener("click", () => updateModel(button.dataset.modelSave));
+  modelList.querySelectorAll("[data-model-role]").forEach(input => {
+    input.addEventListener("change", () => setModelRole(input.dataset.modelRole, input.value));
+  });
+  modelList.querySelectorAll("[data-model-temperature]").forEach(input => {
+    input.addEventListener("change", () => updateModel(input.dataset.modelTemperature));
   });
   modelList.querySelectorAll("[data-model-test]").forEach(button => {
     button.addEventListener("click", () => testModel(button.dataset.modelTest, button));
@@ -593,62 +561,67 @@ function renderModels() {
   modelList.querySelectorAll("[data-model-delete]").forEach(button => {
     button.addEventListener("click", () => deleteModel(button.dataset.modelDelete));
   });
+  modelList.querySelectorAll("[data-provider-add]").forEach(button => {
+    button.addEventListener("click", () => toggleProviderAdd(button.dataset.providerAdd));
+  });
+  modelList.querySelectorAll("[data-model-create]").forEach(button => {
+    button.addEventListener("click", () => createModel(button.dataset.modelCreate));
+  });
 }
 
-function modelRow(model) {
+function providerPanel(provider, models) {
   return `
-    <article class="submission-item model-admin-item" data-model-id="${escapeAttribute(model.id)}">
-      <div>
-        <span class="status-pill ${model.enabled ? "status-approved" : "status-rejected"}">${model.enabled ? "启用" : "停用"} · ${escapeHtml(model.audience || "all")}</span>
-        <h2>${escapeHtml(model.name || model.model)}</h2>
-        <div class="model-admin-grid">
-          <input data-model-field="name" value="${escapeAttribute(model.name || "")}" />
-          <select data-model-field="provider">
-            ${["deepseek", "siliconflow", "openrouter", "custom"].map(provider => `<option value="${provider}" ${model.provider === provider ? "selected" : ""}>${provider}</option>`).join("")}
-          </select>
-          <input data-model-field="apiBaseUrl" value="${escapeAttribute(model.api_base_url || "")}" />
-          <input data-model-field="apiKey" type="password" placeholder="${model.has_api_key ? "已配置 key，留空不改" : "未配置 key"}" />
-          <input data-model-field="apiKeyEnv" value="${escapeAttribute(model.api_key_env || "")}" />
-          <input data-model-field="model" value="${escapeAttribute(model.model || "")}" />
-          <input data-model-field="temperature" type="number" min="0" max="1.5" step="0.1" value="${escapeAttribute(model.temperature ?? 0.7)}" />
-          <select data-model-field="audience">
-            ${["all", "plan", "user"].map(audience => `<option value="${audience}" ${model.audience === audience ? "selected" : ""}>${audienceLabelForModel(audience)}</option>`).join("")}
-          </select>
-          <select data-model-field="targetPlan">
-            ${["free", "plus", "pro", "admin"].map(plan => `<option value="${plan}" ${model.target_plan === plan ? "selected" : ""}>${planLabel(plan)}</option>`).join("")}
-          </select>
-          <input data-model-field="targetEmail" value="${escapeAttribute(model.target_email || "")}" placeholder="指定用户邮箱" />
-          <input data-model-field="priority" type="number" step="1" value="${escapeAttribute(model.priority ?? 100)}" />
-        </div>
-        <small>每个用户只会命中一个启用模型：指定用户优先，其次套餐，最后所有用户；优先级数字越小越先用。</small>
+    <details class="model-provider-panel" open>
+      <summary>
+        <strong>${escapeHtml(providerLabel(provider))}</strong>
+        <span>${models.length} 个模型</span>
+        <button data-provider-add="${escapeAttribute(provider)}" type="button">设置 / 增加</button>
+      </summary>
+      <div class="model-provider-add hidden" data-provider-form="${escapeAttribute(provider)}">
+        <input data-new-field="name" placeholder="显示名称" />
+        <input data-new-field="model" placeholder="模型名" />
+        <input data-new-field="apiBaseUrl" value="${escapeAttribute(defaultBaseUrl(provider))}" placeholder="API 地址" />
+        <input data-new-field="apiKeyEnv" value="${escapeAttribute(defaultEnvKey(provider))}" placeholder="环境变量名" />
+        <input data-new-field="apiKey" type="password" placeholder="API key，可留空" />
+        <button data-model-create="${escapeAttribute(provider)}" type="button">添加模型</button>
       </div>
-      <aside>
-        <label class="model-enable-toggle">
-          <input data-model-field="enabled" type="checkbox" ${model.enabled ? "checked" : ""} />
-          <span>启用</span>
-        </label>
-        <button data-model-save="${escapeAttribute(model.id)}" type="button">保存</button>
-        <button data-model-test="${escapeAttribute(model.id)}" type="button">测试</button>
-        <button class="danger" data-model-delete="${escapeAttribute(model.id)}" type="button">删除</button>
-      </aside>
-    </article>
+      <div class="model-row-list">
+        ${models.map(modelRow).join("") || `<div class="model-empty-row">这个提供商下面还没有模型。</div>`}
+      </div>
+    </details>
   `;
 }
 
-async function createModel() {
+function modelRow(model) {
+  const role = model.role || "standby";
+  return `
+    <div class="model-row ${role !== "standby" ? "is-selected" : ""}" data-model-id="${escapeAttribute(model.id)}">
+      <select class="model-role-select" data-model-role="${escapeAttribute(model.id)}" aria-label="模型角色">
+        <option value="standby" ${role === "standby" ? "selected" : ""}>备选</option>
+        <option value="primary" ${role === "primary" ? "selected" : ""}>主用</option>
+        <option value="backup" ${role === "backup" ? "selected" : ""}>备用</option>
+      </select>
+      <strong>${escapeHtml(model.name || model.model)}</strong>
+      <small>${escapeHtml(model.model || "")}${model.has_api_key ? " · key 已配置" : ""}</small>
+      <button data-model-test="${escapeAttribute(model.id)}" type="button">测试</button>
+      <button class="danger subtle" data-model-delete="${escapeAttribute(model.id)}" type="button">删除</button>
+      <label>温度 <input data-model-temperature="${escapeAttribute(model.id)}" data-model-field="temperature" type="number" min="0" max="1.5" step="0.1" value="${escapeAttribute(model.temperature ?? 0.7)}" /></label>
+    </div>
+  `;
+}
+
+async function createModel(provider) {
+  const form = modelList.querySelector(`[data-provider-form="${CSS.escape(provider)}"]`);
   const payload = {
-    name: modelList.querySelector("#model-name").value,
-    provider: modelList.querySelector("#model-provider").value,
-    apiBaseUrl: modelList.querySelector("#model-base-url").value,
-    apiKey: modelList.querySelector("#model-api-key").value,
-    apiKeyEnv: modelList.querySelector("#model-env-key").value,
-    model: modelList.querySelector("#model-model").value,
-    temperature: Number(modelList.querySelector("#model-temperature").value || 0.7),
-    audience: modelList.querySelector("#model-audience").value,
-    targetPlan: modelList.querySelector("#model-target-plan").value,
-    targetEmail: modelList.querySelector("#model-target-email").value,
-    priority: Number(modelList.querySelector("#model-priority").value || 100),
-    enabled: true
+    provider,
+    name: form.querySelector('[data-new-field="name"]').value,
+    apiBaseUrl: form.querySelector('[data-new-field="apiBaseUrl"]').value,
+    apiKey: form.querySelector('[data-new-field="apiKey"]').value,
+    apiKeyEnv: form.querySelector('[data-new-field="apiKeyEnv"]').value,
+    model: form.querySelector('[data-new-field="model"]').value,
+    temperature: 0.7,
+    priority: 100,
+    enabled: false
   };
   const response = await fetch("/api/admin/models", {
     method: "POST",
@@ -671,7 +644,6 @@ async function updateModel(id) {
     }
   });
   payload.temperature = Number(payload.temperature || 0.7);
-  payload.priority = Number(payload.priority || 100);
   const response = await fetch("/api/admin/models", {
     method: "PATCH",
     headers: { ...authHeaders(), "Content-Type": "application/json" },
@@ -680,6 +652,22 @@ async function updateModel(id) {
   const data = await response.json().catch(() => ({}));
   if (!response.ok) return renderNotice(modelList, data.detail || data.error || "保存模型失败。");
   await loadModels();
+}
+
+async function setModelRole(id, role) {
+  const priority = role === "primary" ? 10 : (role === "backup" ? 20 : 100);
+  const response = await fetch("/api/admin/models", {
+    method: "PATCH",
+    headers: { ...authHeaders(), "Content-Type": "application/json" },
+    body: JSON.stringify({ id, role, priority, enabled: role !== "standby" })
+  });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) return renderNotice(modelList, data.detail || data.error || "切换模型失败。");
+  await loadModels();
+}
+
+function toggleProviderAdd(provider) {
+  modelList.querySelector(`[data-provider-form="${CSS.escape(provider)}"]`)?.classList.toggle("hidden");
 }
 
 async function testModel(id, button) {
@@ -851,6 +839,35 @@ function audienceLabelForModel(audience) {
   if (audience === "user") return "指定用户";
   if (audience === "plan") return "某类套餐";
   return "所有用户";
+}
+
+function groupModelsByProvider() {
+  const order = ["deepseek", "siliconflow", "openrouter", "custom"];
+  return order.reduce((groups, provider) => {
+    groups[provider] = allModels.filter(model => model.provider === provider);
+    return groups;
+  }, {});
+}
+
+function providerLabel(provider) {
+  if (provider === "siliconflow") return "SiliconFlow";
+  if (provider === "openrouter") return "OpenRouter";
+  if (provider === "custom") return "自定义节点";
+  return "DeepSeek";
+}
+
+function defaultBaseUrl(provider) {
+  if (provider === "siliconflow") return "https://api.siliconflow.cn/v1/chat/completions";
+  if (provider === "openrouter") return "https://openrouter.ai/api/v1/chat/completions";
+  if (provider === "custom") return "";
+  return "https://api.deepseek.com/chat/completions";
+}
+
+function defaultEnvKey(provider) {
+  if (provider === "siliconflow") return "SILICONFLOW_API_KEY";
+  if (provider === "openrouter") return "OPENROUTER_API_KEY";
+  if (provider === "custom") return "";
+  return "DEEPSEEK_API_KEY";
 }
 
 function typeLabel(type) {

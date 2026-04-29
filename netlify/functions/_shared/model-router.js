@@ -19,15 +19,21 @@ export const defaultModelRoutes = modelCatalog.map((item, index) => ({
 }));
 
 export async function resolveModelRoute(user) {
+  const routes = await resolveModelRoutes(user);
+  return routes[0] || decorateRoute(defaultModelRoutes[0]);
+}
+
+export async function resolveModelRoutes(user) {
   const routes = await loadModelRoutes();
-  const plan = await loadUserPlan(user);
-  const userEmail = String(user?.email || "").toLowerCase();
   const matching = routes
     .filter(route => route.enabled !== false)
-    .filter(route => routeMatches(route, { plan, email: userEmail }))
     .sort(compareRoutes);
+  return (matching.length ? matching : [defaultModelRoutes[0]])
+    .slice(0, 2)
+    .map(decorateRoute);
+}
 
-  const route = matching[0] || defaultModelRoutes[0];
+function decorateRoute(route) {
   const providerConfig = routeToProviderConfig(route);
   return {
     ...route,
@@ -60,9 +66,7 @@ export function publicModelRoute(route) {
     model: route.model,
     temperature: Number(route.temperature ?? 0.7),
     enabled: route.enabled !== false,
-    audience: route.audience || "all",
-    target_plan: route.target_plan || null,
-    target_email: route.target_email || null,
+    role: Number(route.priority ?? 100) === 10 ? "primary" : (Number(route.priority ?? 100) === 20 ? "backup" : "standby"),
     priority: Number(route.priority ?? 100),
     created_at: route.created_at || null,
     updated_at: route.updated_at || null
@@ -127,34 +131,7 @@ export async function testModelRoute(route) {
   }
 }
 
-async function loadUserPlan(user) {
-  const email = String(user?.email || "").toLowerCase();
-  if (email === "3492675568@qq.com") return "admin";
-  if (!user?.id) return "free";
-  const query = new URLSearchParams({
-    select: "plan,status,current_period_ends_at",
-    user_id: `eq.${user.id}`,
-    limit: "1"
-  });
-  const result = await supabaseAdminRequest(`/user_entitlements?${query}`);
-  const entitlement = result.ok ? result.data?.[0] : null;
-  if (!entitlement || !["active", "trialing"].includes(entitlement.status)) return "free";
-  if (entitlement.current_period_ends_at && new Date(entitlement.current_period_ends_at).getTime() <= Date.now()) return "free";
-  return ["plus", "pro"].includes(entitlement.plan) ? entitlement.plan : "free";
-}
-
-function routeMatches(route, context) {
-  const audience = route.audience || "all";
-  if (audience === "user") return String(route.target_email || "").toLowerCase() === context.email;
-  if (audience === "plan") return String(route.target_plan || "").toLowerCase() === context.plan;
-  return true;
-}
-
 function compareRoutes(left, right) {
-  const specificity = { user: 0, plan: 1, all: 2 };
-  const leftSpecificity = specificity[left.audience || "all"] ?? 2;
-  const rightSpecificity = specificity[right.audience || "all"] ?? 2;
-  if (leftSpecificity !== rightSpecificity) return leftSpecificity - rightSpecificity;
   return Number(left.priority || 100) - Number(right.priority || 100);
 }
 
