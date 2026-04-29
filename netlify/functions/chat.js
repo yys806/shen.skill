@@ -2,22 +2,14 @@ import { getEnv } from "./_shared/env.js";
 import { json } from "./_shared/json.js";
 import { isAdmin, verifySupabaseUser } from "./_shared/auth.js";
 import { checkRateLimit } from "./_shared/rate-limit.js";
+import { resolveModelRoute } from "./_shared/model-router.js";
 import { loadSkillPrompt, normalizeSkillId } from "./_shared/skill.js";
-import { getProviderConfig, modelExists, normalizeProvider } from "./_shared/providers.js";
 
 const PLAN_LIMITS = {
   free: 50,
   plus: 500,
   pro: 2000,
   admin: null
-};
-
-const sceneInstructions = {
-  self: "当前语气场景是真我复盘：默认理性、短句、拆动机、拆情绪触发点、拆下一步，不要亲密关系口吻。",
-  work: "当前语气场景是工作科研：严谨、清楚、可执行，优先给结构化判断、风险、下一步。",
-  friend: "当前语气场景是朋友室友：更松弛，可以接梗和吐槽，但不要失去解决问题的方向。",
-  family: "当前语气场景是家人：简短、报备、让人放心，少讲大道理。",
-  relationship: "当前语气场景是亲密关系：更软、更会哄人，但仍然尊重边界和真实情绪。"
 };
 
 export default async (req) => {
@@ -30,6 +22,11 @@ export default async (req) => {
       detail: error?.message || "未知服务器错误。"
     }, 500);
   }
+};
+
+export const config = {
+  path: "/api/chat",
+  method: ["POST"]
 };
 
 async function handleChat(req) {
@@ -54,50 +51,30 @@ async function handleChat(req) {
 
   const body = await readRequestJson(req);
   const messages = Array.isArray(body.messages) ? body.messages : [];
-  const counterpart = cleanText(body.counterpart || "");
-  const scene = cleanText(body.scene || "self");
+  if (!messages.length) {
+    return json({ error: "messages is required" }, 400);
+  }
+
   const skill = await normalizeSkillId(cleanText(body.skill || "maoxuan-skill"), {
     includeDisabled: isAdmin(authResult.user)
   });
-  const provider = normalizeProvider(body.provider || "deepseek");
-  const temperature = clamp(Number(body.temperature ?? 0.72), 0, 1.5);
-  const model = cleanText(body.model || getEnv("DEEPSEEK_MODEL", "deepseek-v4-flash"));
-  const providerConfig = getProviderConfig(provider);
+  const modelRoute = await resolveModelRoute(authResult.user);
+  const provider = modelRoute.provider;
+  const model = modelRoute.model;
+  const temperature = modelRoute.temperature;
+  const providerConfig = modelRoute.providerConfig;
 
   if (!providerConfig.apiKey) {
     return json({
       error: `Missing ${providerConfig.name} API key`,
-      detail: `请在 Netlify 环境变量里配置 ${provider.toUpperCase()}_API_KEY。`
+      detail: `请在后台模型管理中配置 ${providerConfig.name} 的 API key 或环境变量。`
     }, 500);
-  }
-
-  if (!modelExists(provider, model)) {
-    return json({
-      error: "Unknown model",
-      detail: "当前提供商和模型不匹配，请在模型弹窗里重新选择。"
-    }, 400);
-  }
-
-  if (!messages.length) {
-    return json({ error: "messages is required" }, 400);
   }
 
   const skillPrompt = await loadSkillPrompt(skill, {
     includeDisabled: isAdmin(authResult.user)
   });
   const memories = await loadRecentMemories(req, authResult.user.id, skill);
-  const needsSceneContext = false;
-  const contextRules = needsSceneContext
-    ? [
-        `- 当前对话对象关系：${counterpart || "未填写；如身份影响很大，先问对方是谁。"}`,
-        `- 当前语气场景：${scene}`,
-        `- 场景执行说明：${sceneInstructions[scene] || sceneInstructions.self}`,
-        "- 如果用户在消息里显式改变身份或场景，以用户最新消息为准，但回答时要说明你已按新场景切换。"
-      ]
-    : [
-        "- 当前 skill 不使用“你是谁”和“语气场景”控制项；只按 skill 本身、模型和温度执行。",
-        "- 不要追问用户身份，除非问题本身必须明确立场、角色或使用场景。"
-      ];
   const systemPrompt = [
     skillPrompt,
     "",
@@ -108,19 +85,15 @@ async function handleChat(req) {
     "",
     "## 网页封装运行规则",
     "- 你正在作为所选 skill 的网页聊天人格运行。",
-    "- Dock 栏里的选择是强约束，不是装饰；必须按当前对话设置执行。",
+    "- 前台只选择 skill；模型、温度和可用节点由管理员后台统一控制。",
     "- 回答要短，不要 AI 长篇；先像人一样接住，再给判断或建议。",
     "- 不要声称自己真的就是某个现实本人；你是基于 skill 的人格镜像。",
     `- 当前 skill：${skill}`,
     `- 当前模型提供商：${providerConfig.name}`,
     `- 当前模型：${model}`,
-    `- 当前登录用户：${authResult.user?.email || authResult.user?.id || "unknown"}`,
-    ...contextRules
+    `- 当前登录用户：${authResult.user?.email || authResult.user?.id || "unknown"}`
   ].join("\n");
 
-  let response;
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), providerConfig.timeoutMs);
   const requestBody = {
     model,
     temperature,
@@ -135,6 +108,9 @@ async function handleChat(req) {
     requestBody.thinking = { type: "disabled" };
   }
 
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), providerConfig.timeoutMs);
+  let response;
   try {
     response = await fetch(providerConfig.url, {
       method: "POST",
@@ -152,7 +128,7 @@ async function handleChat(req) {
     return json({
       error: aborted ? `${providerConfig.name} timeout` : `${providerConfig.name} network error`,
       detail: aborted
-        ? `模型响应超过 ${Math.round(providerConfig.timeoutMs / 1000)} 秒，已主动中断。可以换一个更快的模型，或稍后重试。`
+        ? `模型响应超过 ${Math.round(providerConfig.timeoutMs / 1000)} 秒，已主动中断。可以换一个更快的后台模型，或稍后重试。`
         : `无法连接 ${providerConfig.name}：${error.message}`
     }, 502);
   } finally {
@@ -177,7 +153,12 @@ async function handleChat(req) {
 
   return json({
     content,
-    user: authResult.user?.email || authResult.user?.id || null
+    user: authResult.user?.email || authResult.user?.id || null,
+    model: {
+      name: modelRoute.name,
+      provider,
+      model
+    }
   });
 }
 
@@ -210,11 +191,6 @@ async function loadRecentMemories(req, userId, skill) {
   }
 }
 
-export const config = {
-  path: "/api/chat",
-  method: ["POST"]
-};
-
 async function readRequestJson(req) {
   try {
     return await req.json();
@@ -226,18 +202,10 @@ async function readRequestJson(req) {
 async function readResponseBody(response) {
   const text = await response.text().catch(() => "");
   if (!text) return null;
-  const contentType = response.headers.get("content-type") || "";
-  if (contentType.includes("application/json")) {
-    try {
-      return JSON.parse(text);
-    } catch {
-      return { raw: text, parseError: "invalid json" };
-    }
-  }
   try {
     return JSON.parse(text);
   } catch {
-    return { raw: text, contentType };
+    return { raw: text, contentType: response.headers.get("content-type") || "" };
   }
 }
 
@@ -284,11 +252,6 @@ function normalizeMessage(message) {
 
 function cleanText(value) {
   return String(value || "").trim().slice(0, 200);
-}
-
-function clamp(value, min, max) {
-  if (Number.isNaN(value)) return min;
-  return Math.max(min, Math.min(max, value));
 }
 
 async function checkMonthlyQuota(req, user) {

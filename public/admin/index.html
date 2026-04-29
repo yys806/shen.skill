@@ -3,25 +3,19 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>镜室后台 | Admin</title>
+    <title>镜室 - 后台 | Admin</title>
     <link rel="icon" href="/icon.png" type="image/png" />
     <link rel="stylesheet" href="/styles.css" />
   </head>
   <body class="home-page admin-page locked">
     <main id="admin-main" class="skill-detail-shell admin-main hidden">
       <nav class="skill-detail-nav">
-        <a class="home-brand" href="/"><span></span><strong>镜室后台</strong></a>
+        <a class="home-brand" href="/"><span></span><strong>镜室 - 后台</strong></a>
         <div>
           <a href="/submit-skill/">提交页</a>
           <a href="/">回首页</a>
         </div>
       </nav>
-
-      <section class="admin-head">
-        <p class="home-kicker">admin console</p>
-        <h1>镜室后台</h1>
-        <p>管理员可审核 skill、支付记录，查看用户状态，调整套餐和管理公开 skill。</p>
-      </section>
 
       <section class="admin-panel">
         <div id="admin-auth" class="submission-auth"></div>
@@ -30,6 +24,7 @@
           <button data-admin-tab="skills" type="button">Skill 管理</button>
           <button data-admin-tab="payments" type="button">支付审核</button>
           <button data-admin-tab="notifications" type="button">通知公告</button>
+          <button data-admin-tab="models" type="button">模型管理</button>
           <button data-admin-tab="users" type="button">用户管理</button>
         </div>
         <div id="submission-tools" class="admin-tools">
@@ -48,6 +43,7 @@
         <div id="skill-list" class="submission-list hidden"></div>
         <div id="payment-list" class="submission-list hidden"></div>
         <div id="notification-list" class="submission-list hidden"></div>
+        <div id="model-list" class="submission-list hidden"></div>
         <div id="user-list" class="submission-list hidden"></div>
       </section>
     </main>

@@ -19,6 +19,7 @@ let allUsers = [];
 let allSkills = [];
 let allPayments = [];
 let allNotifications = [];
+let allModels = [];
 let noticeTargets = [];
 
 const adminMain = document.querySelector("#admin-main");
@@ -30,6 +31,7 @@ const submissionList = document.querySelector("#submission-list");
 const skillList = document.querySelector("#skill-list");
 const paymentList = document.querySelector("#payment-list");
 const notificationList = document.querySelector("#notification-list");
+const modelList = document.querySelector("#model-list");
 const userList = document.querySelector("#user-list");
 const statusFilter = document.querySelector("#status-filter");
 const userSearch = document.querySelector("#user-search");
@@ -113,6 +115,7 @@ function renderTabs() {
   skillList.classList.toggle("hidden", activeTab !== "skills");
   paymentList.classList.toggle("hidden", activeTab !== "payments");
   notificationList.classList.toggle("hidden", activeTab !== "notifications");
+  modelList.classList.toggle("hidden", activeTab !== "models");
   userList.classList.toggle("hidden", activeTab !== "users");
   submissionTools.classList.toggle("hidden", activeTab !== "submissions");
   userTools.classList.toggle("hidden", activeTab !== "users");
@@ -123,6 +126,7 @@ async function loadActiveTab() {
   if (activeTab === "skills") return loadSkills();
   if (activeTab === "payments") return loadPayments();
   if (activeTab === "notifications") return loadNotifications();
+  if (activeTab === "models") return loadModels();
   if (activeTab === "users") return loadUsers();
   return loadSubmissions();
 }
@@ -529,6 +533,182 @@ async function deleteNotification(id) {
   await loadNotifications();
 }
 
+async function loadModels() {
+  renderNotice(modelList, "正在读取模型配置...");
+  const response = await fetch("/api/admin/models", { headers: authHeaders() });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) return renderNotice(modelList, data.detail || data.error || "读取模型配置失败。");
+  allModels = data.models || [];
+  renderModels();
+}
+
+function renderModels() {
+  modelList.innerHTML = `
+    <article class="submission-item model-admin-form">
+      <div>
+        <span class="status-pill">新增节点</span>
+        <h2>添加模型 / 自定义 API 节点</h2>
+        <div class="model-admin-grid">
+          <input id="model-name" placeholder="显示名称，例如 DeepSeek 快速节点" />
+          <select id="model-provider">
+            <option value="deepseek">DeepSeek</option>
+            <option value="siliconflow">SiliconFlow</option>
+            <option value="openrouter">OpenRouter</option>
+            <option value="custom">自定义</option>
+          </select>
+          <input id="model-base-url" placeholder="API 地址，例如 https://api.deepseek.com/chat/completions" />
+          <input id="model-api-key" type="password" placeholder="API key，可留空改用环境变量" />
+          <input id="model-env-key" placeholder="环境变量名，例如 DEEPSEEK_API_KEY" />
+          <input id="model-model" placeholder="模型名，例如 deepseek-v4-flash" />
+          <input id="model-temperature" type="number" min="0" max="1.5" step="0.1" value="0.7" />
+          <select id="model-audience">
+            <option value="all">所有用户</option>
+            <option value="plan">某类套餐</option>
+            <option value="user">指定用户</option>
+          </select>
+          <select id="model-target-plan">
+            <option value="free">Free</option>
+            <option value="plus">Plus</option>
+            <option value="pro">Pro</option>
+            <option value="admin">管理员</option>
+          </select>
+          <input id="model-target-email" placeholder="指定用户邮箱" />
+          <input id="model-priority" type="number" step="1" value="100" placeholder="优先级，越小越先用" />
+        </div>
+      </div>
+      <aside>
+        <button id="model-create" class="approve" type="button">添加</button>
+      </aside>
+    </article>
+    ${allModels.length ? allModels.map(model => modelRow(model)).join("") : `<article class="submission-empty">当前没有模型配置。</article>`}
+  `;
+
+  modelList.querySelector("#model-create")?.addEventListener("click", createModel);
+  modelList.querySelectorAll("[data-model-save]").forEach(button => {
+    button.addEventListener("click", () => updateModel(button.dataset.modelSave));
+  });
+  modelList.querySelectorAll("[data-model-test]").forEach(button => {
+    button.addEventListener("click", () => testModel(button.dataset.modelTest, button));
+  });
+  modelList.querySelectorAll("[data-model-delete]").forEach(button => {
+    button.addEventListener("click", () => deleteModel(button.dataset.modelDelete));
+  });
+}
+
+function modelRow(model) {
+  return `
+    <article class="submission-item model-admin-item" data-model-id="${escapeAttribute(model.id)}">
+      <div>
+        <span class="status-pill ${model.enabled ? "status-approved" : "status-rejected"}">${model.enabled ? "启用" : "停用"} · ${escapeHtml(model.audience || "all")}</span>
+        <h2>${escapeHtml(model.name || model.model)}</h2>
+        <div class="model-admin-grid">
+          <input data-model-field="name" value="${escapeAttribute(model.name || "")}" />
+          <select data-model-field="provider">
+            ${["deepseek", "siliconflow", "openrouter", "custom"].map(provider => `<option value="${provider}" ${model.provider === provider ? "selected" : ""}>${provider}</option>`).join("")}
+          </select>
+          <input data-model-field="apiBaseUrl" value="${escapeAttribute(model.api_base_url || "")}" />
+          <input data-model-field="apiKey" type="password" placeholder="${model.has_api_key ? "已配置 key，留空不改" : "未配置 key"}" />
+          <input data-model-field="apiKeyEnv" value="${escapeAttribute(model.api_key_env || "")}" />
+          <input data-model-field="model" value="${escapeAttribute(model.model || "")}" />
+          <input data-model-field="temperature" type="number" min="0" max="1.5" step="0.1" value="${escapeAttribute(model.temperature ?? 0.7)}" />
+          <select data-model-field="audience">
+            ${["all", "plan", "user"].map(audience => `<option value="${audience}" ${model.audience === audience ? "selected" : ""}>${audienceLabelForModel(audience)}</option>`).join("")}
+          </select>
+          <select data-model-field="targetPlan">
+            ${["free", "plus", "pro", "admin"].map(plan => `<option value="${plan}" ${model.target_plan === plan ? "selected" : ""}>${planLabel(plan)}</option>`).join("")}
+          </select>
+          <input data-model-field="targetEmail" value="${escapeAttribute(model.target_email || "")}" placeholder="指定用户邮箱" />
+          <input data-model-field="priority" type="number" step="1" value="${escapeAttribute(model.priority ?? 100)}" />
+        </div>
+        <small>每个用户只会命中一个启用模型：指定用户优先，其次套餐，最后所有用户；优先级数字越小越先用。</small>
+      </div>
+      <aside>
+        <label class="model-enable-toggle">
+          <input data-model-field="enabled" type="checkbox" ${model.enabled ? "checked" : ""} />
+          <span>启用</span>
+        </label>
+        <button data-model-save="${escapeAttribute(model.id)}" type="button">保存</button>
+        <button data-model-test="${escapeAttribute(model.id)}" type="button">测试</button>
+        <button class="danger" data-model-delete="${escapeAttribute(model.id)}" type="button">删除</button>
+      </aside>
+    </article>
+  `;
+}
+
+async function createModel() {
+  const payload = {
+    name: modelList.querySelector("#model-name").value,
+    provider: modelList.querySelector("#model-provider").value,
+    apiBaseUrl: modelList.querySelector("#model-base-url").value,
+    apiKey: modelList.querySelector("#model-api-key").value,
+    apiKeyEnv: modelList.querySelector("#model-env-key").value,
+    model: modelList.querySelector("#model-model").value,
+    temperature: Number(modelList.querySelector("#model-temperature").value || 0.7),
+    audience: modelList.querySelector("#model-audience").value,
+    targetPlan: modelList.querySelector("#model-target-plan").value,
+    targetEmail: modelList.querySelector("#model-target-email").value,
+    priority: Number(modelList.querySelector("#model-priority").value || 100),
+    enabled: true
+  };
+  const response = await fetch("/api/admin/models", {
+    method: "POST",
+    headers: { ...authHeaders(), "Content-Type": "application/json" },
+    body: JSON.stringify(payload)
+  });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) return renderNotice(modelList, data.detail || data.error || "新增模型失败。");
+  await loadModels();
+}
+
+async function updateModel(id) {
+  const item = modelList.querySelector(`[data-model-id="${CSS.escape(id)}"]`);
+  const payload = { id };
+  item.querySelectorAll("[data-model-field]").forEach(field => {
+    if (field.type === "checkbox") {
+      payload[field.dataset.modelField] = field.checked;
+    } else if (field.dataset.modelField !== "apiKey" || field.value.trim()) {
+      payload[field.dataset.modelField] = field.value;
+    }
+  });
+  payload.temperature = Number(payload.temperature || 0.7);
+  payload.priority = Number(payload.priority || 100);
+  const response = await fetch("/api/admin/models", {
+    method: "PATCH",
+    headers: { ...authHeaders(), "Content-Type": "application/json" },
+    body: JSON.stringify(payload)
+  });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) return renderNotice(modelList, data.detail || data.error || "保存模型失败。");
+  await loadModels();
+}
+
+async function testModel(id, button) {
+  button.disabled = true;
+  button.textContent = "测试中";
+  const response = await fetch("/api/admin/models", {
+    method: "PATCH",
+    headers: { ...authHeaders(), "Content-Type": "application/json" },
+    body: JSON.stringify({ id, action: "test" })
+  });
+  const data = await response.json().catch(() => ({}));
+  button.disabled = false;
+  button.textContent = data.ok ? `已接通 ${data.latencyMs || 0}ms` : "测试失败";
+  button.classList.toggle("approve", Boolean(data.ok));
+  if (!data.ok) alert(data.error || "测试失败。");
+}
+
+async function deleteModel(id) {
+  if (!confirm("确认删除这个模型配置吗？")) return;
+  const response = await fetch("/api/admin/models", {
+    method: "DELETE",
+    headers: { ...authHeaders(), "Content-Type": "application/json" },
+    body: JSON.stringify({ id })
+  });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) return renderNotice(modelList, data.detail || data.error || "删除模型失败。");
+  await loadModels();
+}
+
 async function loadUsers() {
   renderNotice(userList, "正在读取用户列表...");
   const response = await fetch("/api/admin/users", { headers: authHeaders() });
@@ -665,6 +845,12 @@ function audienceLabel(item) {
   if (item.audience === "user") return `用户：${item.target_email || item.target_user_id || "unknown"}`;
   if (item.audience === "plan") return `套餐：${planLabel(item.target_plan)}`;
   return "所有人";
+}
+
+function audienceLabelForModel(audience) {
+  if (audience === "user") return "指定用户";
+  if (audience === "plan") return "某类套餐";
+  return "所有用户";
 }
 
 function typeLabel(type) {

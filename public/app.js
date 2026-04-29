@@ -807,12 +807,12 @@ function renderDock() {
   const model = findModel(settings.provider, settings.model);
   const needsContext = Boolean(skill.needsContext);
   dom.skillLabel.textContent = skill.name;
-  dom.counterpartLabel.textContent = settings.counterpart || "未填写";
-  dom.sceneLabel.textContent = scene.name;
-  dom.counterpartDock.classList.toggle("hidden", !needsContext);
-  dom.sceneDock.classList.toggle("hidden", !needsContext);
-  dom.modelLabel.textContent = model ? `${model.vendor} · ${model.label}` : settings.model;
-  dom.temperatureLabel.textContent = settings.temperature.toFixed(1);
+  if (dom.counterpartLabel) dom.counterpartLabel.textContent = settings.counterpart || "未填写";
+  if (dom.sceneLabel) dom.sceneLabel.textContent = scene.name;
+  if (dom.counterpartDock) dom.counterpartDock.classList.toggle("hidden", !needsContext);
+  if (dom.sceneDock) dom.sceneDock.classList.toggle("hidden", !needsContext);
+  if (dom.modelLabel) dom.modelLabel.textContent = model ? `${model.vendor} · ${model.label}` : settings.model;
+  if (dom.temperatureLabel) dom.temperatureLabel.textContent = settings.temperature.toFixed(1);
   dom.workspace.classList.toggle("history-collapsed", Boolean(appState.historyCollapsed));
   dom.historyPanel.classList.toggle("collapsed", Boolean(appState.historyCollapsed));
   dom.toggleHistory.textContent = appState.historyCollapsed ? "展开" : "折叠";

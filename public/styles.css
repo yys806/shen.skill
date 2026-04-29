@@ -901,6 +901,13 @@ body.home-page::after {
   padding: clamp(24px, 4vw, 42px);
 }
 
+.admin-panel {
+  display: grid;
+  grid-template-columns: minmax(150px, 190px) minmax(0, 1fr);
+  gap: 18px;
+  align-items: start;
+}
+
 .submission-status-panel {
   margin-top: 24px;
 }
@@ -917,6 +924,10 @@ body.home-page::after {
   border: 1px solid rgba(27, 23, 18, 0.1);
   border-radius: 22px;
   background: rgba(255, 252, 244, 0.56);
+}
+
+.admin-panel > .submission-auth {
+  grid-column: 1 / -1;
 }
 
 .submission-auth span {
@@ -1001,13 +1012,22 @@ body.home-page::after {
 
 .admin-tabs {
   display: flex;
-  flex-wrap: wrap;
+  flex-direction: column;
+  flex-wrap: nowrap;
   gap: 10px;
-  margin-bottom: 18px;
+  margin-bottom: 0;
   padding: 8px;
   border: 1px solid rgba(27, 23, 18, 0.1);
   border-radius: 22px;
   background: rgba(255, 252, 244, 0.46);
+  position: sticky;
+  top: 18px;
+  grid-column: 1;
+}
+
+.admin-tools,
+.submission-list {
+  grid-column: 2;
 }
 
 .admin-tabs button,
@@ -1021,12 +1041,44 @@ body.home-page::after {
 
 .admin-tabs button {
   padding: 12px 18px;
+  text-align: left;
   transition: transform 180ms var(--ease-snap), box-shadow 180ms var(--ease-soft), background 180ms var(--ease-soft);
 }
 
 .admin-tabs button.active {
   color: #fff8e8;
   background: var(--night);
+}
+
+.model-admin-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.model-admin-grid input,
+.model-admin-grid select {
+  min-width: 0;
+  border: 1px solid rgba(27, 23, 18, 0.12);
+  border-radius: 16px;
+  padding: 12px 13px;
+  color: var(--ink);
+  background: rgba(255, 252, 244, 0.72);
+  font: inherit;
+}
+
+.model-enable-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding: 10px 13px;
+  border: 1px solid rgba(35, 93, 76, 0.2);
+  border-radius: 999px;
+  color: var(--green);
+  background: rgba(255, 252, 244, 0.72);
+  font-weight: 900;
 }
 
 .admin-tools {
@@ -1960,12 +2012,31 @@ body.home-page::after {
 }
 
 .chat-page .dock-right {
-  flex-basis: 310px;
+  flex-basis: 300px;
 }
 
 .chat-page .dock-right .dock-item {
   min-width: 136px;
   flex-basis: 148px;
+}
+
+.chat-page .dock {
+  min-height: 54px;
+}
+
+.chat-page .dock-left {
+  flex-basis: 150px;
+}
+
+.chat-page .dock-center {
+  flex: 1 1 auto;
+  justify-content: center;
+  padding: 0 10px;
+}
+
+.chat-page .dock-center .dock-item {
+  flex: 0 1 210px;
+  max-width: 240px;
 }
 
 .notification-count {
@@ -2527,6 +2598,24 @@ body.home-page::after {
 
   .pricing-grid.pricing-three,
   .refund-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .admin-panel {
+    grid-template-columns: 1fr;
+  }
+
+  .admin-tabs,
+  .admin-tools,
+  .submission-list {
+    grid-column: 1;
+  }
+
+  .admin-tabs {
+    position: static;
+  }
+
+  .model-admin-grid {
     grid-template-columns: 1fr;
   }
 

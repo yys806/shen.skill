@@ -652,3 +652,75 @@ on conflict (id) do nothing;
 update public.skill_settings
 set display_order = 999
 where id = 'shen.skill' and display_order = 1000;
+
+create table if not exists public.model_routes (
+  id uuid primary key default gen_random_uuid(),
+  slug text not null unique,
+  name text not null,
+  provider text not null default 'custom' check (provider in ('deepseek', 'siliconflow', 'openrouter', 'custom')),
+  api_base_url text not null,
+  api_key text,
+  api_key_env text,
+  model text not null,
+  temperature numeric not null default 0.7,
+  enabled boolean not null default false,
+  audience text not null default 'all' check (audience in ('all', 'plan', 'user')),
+  target_plan text check (target_plan in ('free', 'plus', 'pro', 'admin')),
+  target_email citext,
+  priority integer not null default 100,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+alter table public.model_routes enable row level security;
+
+drop trigger if exists model_routes_set_updated_at on public.model_routes;
+create trigger model_routes_set_updated_at
+before update on public.model_routes
+for each row execute function public.set_updated_at();
+
+drop policy if exists "admins can read model routes" on public.model_routes;
+create policy "admins can read model routes"
+on public.model_routes for select
+using (
+  lower(coalesce((auth.jwt() ->> 'email'), '')) = '3492675568@qq.com'
+);
+
+drop policy if exists "admins can insert model routes" on public.model_routes;
+create policy "admins can insert model routes"
+on public.model_routes for insert
+with check (
+  lower(coalesce((auth.jwt() ->> 'email'), '')) = '3492675568@qq.com'
+);
+
+drop policy if exists "admins can update model routes" on public.model_routes;
+create policy "admins can update model routes"
+on public.model_routes for update
+using (
+  lower(coalesce((auth.jwt() ->> 'email'), '')) = '3492675568@qq.com'
+)
+with check (
+  lower(coalesce((auth.jwt() ->> 'email'), '')) = '3492675568@qq.com'
+);
+
+drop policy if exists "admins can delete model routes" on public.model_routes;
+create policy "admins can delete model routes"
+on public.model_routes for delete
+using (
+  lower(coalesce((auth.jwt() ->> 'email'), '')) = '3492675568@qq.com'
+);
+
+create index if not exists model_routes_audience_idx
+on public.model_routes (enabled, audience, target_plan, target_email, priority);
+
+insert into public.model_routes
+  (slug, name, provider, api_base_url, api_key_env, model, temperature, enabled, audience, priority)
+values
+  ('deepseek-deepseek-v4-flash', 'DeepSeek · DeepSeek v4 Flash', 'deepseek', 'https://api.deepseek.com/chat/completions', 'DEEPSEEK_API_KEY', 'deepseek-v4-flash', 0.7, true, 'all', 10),
+  ('deepseek-deepseek-v4-pro', 'DeepSeek · DeepSeek v4 Pro', 'deepseek', 'https://api.deepseek.com/chat/completions', 'DEEPSEEK_API_KEY', 'deepseek-v4-pro', 0.7, false, 'all', 101),
+  ('siliconflow-pro-moonshotai-kimi-k2-6', 'SiliconFlow · Kimi K2.6', 'siliconflow', 'https://api.siliconflow.cn/v1/chat/completions', 'SILICONFLOW_API_KEY', 'Pro/moonshotai/Kimi-K2.6', 0.7, false, 'all', 102),
+  ('siliconflow-pro-zai-org-glm-5-1', 'SiliconFlow · GLM 5.1', 'siliconflow', 'https://api.siliconflow.cn/v1/chat/completions', 'SILICONFLOW_API_KEY', 'Pro/zai-org/GLM-5.1', 0.7, false, 'all', 103),
+  ('siliconflow-pro-minimaxai-minimax-m2-5', 'SiliconFlow · MiniMax M2.5', 'siliconflow', 'https://api.siliconflow.cn/v1/chat/completions', 'SILICONFLOW_API_KEY', 'Pro/MiniMaxAI/MiniMax-M2.5', 0.7, false, 'all', 104),
+  ('siliconflow-pro-deepseek-ai-deepseek-v3-2', 'SiliconFlow · DeepSeek V3.2', 'siliconflow', 'https://api.siliconflow.cn/v1/chat/completions', 'SILICONFLOW_API_KEY', 'Pro/deepseek-ai/DeepSeek-V3.2', 0.7, false, 'all', 105),
+  ('openrouter-qwen-qwen3-6-plus', 'OpenRouter · Qwen 3.6 Plus', 'openrouter', 'https://openrouter.ai/api/v1/chat/completions', 'OPENROUTER_API_KEY', 'qwen/qwen3.6-plus', 0.7, false, 'all', 106)
+on conflict (slug) do nothing;
