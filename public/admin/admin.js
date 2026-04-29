@@ -5,6 +5,11 @@ const statusLabels = {
   rejected: "已拒绝",
   published: "已发布"
 };
+const paymentStatusLabels = {
+  pending: "待核对",
+  approved: "已通过",
+  rejected: "已拒绝"
+};
 
 let supabaseClient = null;
 let currentSession = null;
@@ -12,6 +17,7 @@ let activeTab = "submissions";
 let allSubmissions = [];
 let allUsers = [];
 let allSkills = [];
+let allPayments = [];
 
 const adminMain = document.querySelector("#admin-main");
 const adminGate = document.querySelector("#admin-gate");
@@ -20,6 +26,7 @@ const loginFeedback = document.querySelector("#admin-login-feedback");
 const authBox = document.querySelector("#admin-auth");
 const submissionList = document.querySelector("#submission-list");
 const skillList = document.querySelector("#skill-list");
+const paymentList = document.querySelector("#payment-list");
 const userList = document.querySelector("#user-list");
 const statusFilter = document.querySelector("#status-filter");
 const userSearch = document.querySelector("#user-search");
@@ -100,7 +107,8 @@ function renderTabs() {
     button.classList.toggle("active", button.dataset.adminTab === activeTab);
   });
   submissionList.classList.toggle("hidden", activeTab !== "submissions");
-  skillList?.classList.toggle("hidden", activeTab !== "skills");
+  skillList.classList.toggle("hidden", activeTab !== "skills");
+  paymentList.classList.toggle("hidden", activeTab !== "payments");
   userList.classList.toggle("hidden", activeTab !== "users");
   submissionTools.classList.toggle("hidden", activeTab !== "submissions");
   userTools.classList.toggle("hidden", activeTab !== "users");
@@ -109,6 +117,7 @@ function renderTabs() {
 async function loadActiveTab() {
   renderTabs();
   if (activeTab === "skills") return loadSkills();
+  if (activeTab === "payments") return loadPayments();
   if (activeTab === "users") return loadUsers();
   return loadSubmissions();
 }
@@ -285,6 +294,63 @@ async function saveSkillOrder() {
   allSkills = allSkills.map((skill, index) => ({ ...skill, displayOrder: index }));
 }
 
+async function loadPayments() {
+  renderNotice(paymentList, "正在读取支付记录...");
+  const response = await fetch("/api/admin/payment-requests", { headers: authHeaders() });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) return renderNotice(paymentList, data.detail || data.error || "读取支付记录失败。");
+  allPayments = data.payments || [];
+  renderPayments();
+}
+
+function renderPayments() {
+  if (!allPayments.length) return renderNotice(paymentList, "当前没有支付申请。");
+  paymentList.innerHTML = allPayments.map(payment => `
+    <article class="submission-item payment-admin-item" data-payment-id="${escapeAttribute(payment.id)}">
+      <div>
+        <span class="status-pill status-${escapeAttribute(payment.status || "pending")}">${escapeHtml(paymentStatusLabels[payment.status] || payment.status || "待核对")}</span>
+        <h2>${escapeHtml(planLabel(payment.plan))} · ￥${escapeHtml(payment.amount_cny)}</h2>
+        <dl class="submission-meta">
+          <dt>用户邮箱</dt><dd>${escapeHtml(payment.user_email || "unknown")}</dd>
+          <dt>付款方式</dt><dd>${escapeHtml(paymentMethodLabel(payment.payment_method))}</dd>
+          <dt>付款用户名</dt><dd>${escapeHtml(payment.payer_name || "")}</dd>
+          <dt>提交时间</dt><dd>${formatDate(payment.created_at)}</dd>
+          <dt>有效期</dt><dd>${payment.ends_at ? formatDate(payment.ends_at) : "审核通过后生成一个月有效期"}</dd>
+        </dl>
+        <label class="review-note">
+          <span>审核备注</span>
+          <textarea data-payment-note="${escapeAttribute(payment.id)}" rows="2" placeholder="拒绝原因或核对说明">${escapeHtml(payment.review_note || "")}</textarea>
+        </label>
+        <div class="payment-request-actions">
+          <button data-payment-id="${escapeAttribute(payment.id)}" data-payment-status="approved" ${payment.status === "approved" ? "disabled" : ""} type="button">通过并开通</button>
+          <button class="danger" data-payment-id="${escapeAttribute(payment.id)}" data-payment-status="rejected" ${payment.status === "rejected" ? "disabled" : ""} type="button">拒绝</button>
+        </div>
+      </div>
+      <aside>
+        <small>${escapeHtml(payment.user_email || payment.user_id || "unknown")}</small>
+        <time>${formatDate(payment.created_at)}</time>
+      </aside>
+    </article>
+  `).join("");
+
+  paymentList.querySelectorAll("[data-payment-status]").forEach(button => {
+    button.addEventListener("click", () => updatePaymentStatus(button.dataset.paymentId, button.dataset.paymentStatus));
+  });
+}
+
+async function updatePaymentStatus(id, status) {
+  const textarea = paymentList.querySelector(`[data-payment-note="${CSS.escape(id)}"]`);
+  const response = await fetch("/api/admin/payment-requests", {
+    method: "PATCH",
+    headers: { ...authHeaders(), "Content-Type": "application/json" },
+    body: JSON.stringify({ id, status, reviewNote: textarea?.value || "" })
+  });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) return renderNotice(paymentList, data.detail || data.error || "支付审核失败。");
+  await loadPayments();
+  if (status === "approved") await loadUsers();
+}
+
 async function loadUsers() {
   renderNotice(userList, "正在读取用户列表...");
   const response = await fetch("/api/admin/users", { headers: authHeaders() });
@@ -308,7 +374,7 @@ function renderUsers() {
         <span class="status-pill">${escapeHtml(planLabel(user.plan))}</span>
         <strong>${escapeHtml(user.nickname || "未设置昵称")}</strong>
         <p>${escapeHtml(user.email || "unknown")}</p>
-        <small>额度：${formatUsage(user.usage)} · 注册：${formatDate(user.created_at)}</small>
+        <small>额度：${formatUsage(user.usage)} · 注册：${formatDate(user.created_at)}${user.current_period_ends_at ? ` · 到期：${formatDate(user.current_period_ends_at)}` : ""}</small>
       </div>
       <div class="user-admin-actions">
         <select data-plan-select="${escapeAttribute(user.id)}" ${user.plan === "admin" ? "disabled" : ""}>
@@ -392,6 +458,10 @@ function planLabel(plan) {
   if (plan === "pro") return "Pro";
   if (plan === "plus") return "Plus";
   return "Free";
+}
+
+function paymentMethodLabel(method) {
+  return method === "alipay" ? "支付宝" : "微信支付";
 }
 
 function formatUsage(usage = {}) {

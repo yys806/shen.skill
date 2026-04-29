@@ -369,6 +369,64 @@ using (auth.uid() = user_id);
 create index if not exists checkout_sessions_user_created_idx
 on public.checkout_sessions (user_id, created_at desc);
 
+create table if not exists public.payment_requests (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users(id) on delete cascade,
+  user_email citext not null,
+  plan text not null check (plan in ('plus', 'pro')),
+  amount_cny integer not null,
+  payment_method text not null check (payment_method in ('wechat', 'alipay')),
+  payer_name text not null,
+  status text not null default 'pending' check (status in ('pending', 'approved', 'rejected')),
+  review_note text,
+  reviewed_by_email citext,
+  reviewed_at timestamptz,
+  starts_at timestamptz,
+  ends_at timestamptz,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+alter table public.payment_requests enable row level security;
+
+drop trigger if exists payment_requests_set_updated_at on public.payment_requests;
+create trigger payment_requests_set_updated_at
+before update on public.payment_requests
+for each row execute function public.set_updated_at();
+
+drop policy if exists "users can insert own payment requests" on public.payment_requests;
+create policy "users can insert own payment requests"
+on public.payment_requests for insert
+with check (auth.uid() = user_id);
+
+drop policy if exists "users can read own payment requests" on public.payment_requests;
+create policy "users can read own payment requests"
+on public.payment_requests for select
+using (auth.uid() = user_id);
+
+drop policy if exists "admins can read payment requests" on public.payment_requests;
+create policy "admins can read payment requests"
+on public.payment_requests for select
+using (
+  lower(coalesce((auth.jwt() ->> 'email'), '')) = '3492675568@qq.com'
+);
+
+drop policy if exists "admins can update payment requests" on public.payment_requests;
+create policy "admins can update payment requests"
+on public.payment_requests for update
+using (
+  lower(coalesce((auth.jwt() ->> 'email'), '')) = '3492675568@qq.com'
+)
+with check (
+  lower(coalesce((auth.jwt() ->> 'email'), '')) = '3492675568@qq.com'
+);
+
+create index if not exists payment_requests_created_idx
+on public.payment_requests (created_at desc);
+
+create index if not exists payment_requests_status_created_idx
+on public.payment_requests (status, created_at desc);
+
 create table if not exists public.mirror_conversations (
   id text primary key,
   user_id uuid not null references auth.users(id) on delete cascade,

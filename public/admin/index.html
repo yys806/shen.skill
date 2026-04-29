@@ -20,7 +20,7 @@
       <section class="admin-head">
         <p class="home-kicker">admin console</p>
         <h1>镜室后台</h1>
-        <p>管理员可审核 skill、查看用户状态、调整套餐和删除异常账号。</p>
+        <p>管理员可审核 skill、支付记录，查看用户状态，调整套餐和管理公开 skill。</p>
       </section>
 
       <section class="admin-panel">
@@ -28,6 +28,7 @@
         <div class="admin-tabs" role="tablist" aria-label="后台功能">
           <button class="active" data-admin-tab="submissions" type="button">Skill 审批</button>
           <button data-admin-tab="skills" type="button">Skill 管理</button>
+          <button data-admin-tab="payments" type="button">支付审核</button>
           <button data-admin-tab="users" type="button">用户管理</button>
         </div>
         <div id="submission-tools" class="admin-tools">
@@ -44,6 +45,7 @@
         </div>
         <div id="submission-list" class="submission-list"></div>
         <div id="skill-list" class="submission-list hidden"></div>
+        <div id="payment-list" class="submission-list hidden"></div>
         <div id="user-list" class="submission-list hidden"></div>
       </section>
     </main>

@@ -39,7 +39,8 @@ export default async (req) => {
     updated_at: null
   };
   const isAdmin = String(authResult.user?.email || "").toLowerCase() === ADMIN_EMAIL;
-  const plan = isAdmin ? "admin" : normalizePlan(entitlement.plan);
+  const activePaid = isEntitlementActive(entitlement);
+  const plan = isAdmin ? "admin" : (activePaid ? normalizePlan(entitlement.plan) : "free");
   const usage = await queryMonthlyUsage(authResult.authorization, authResult.user.id);
   const limit = PLAN_LIMITS[plan];
 
@@ -53,8 +54,8 @@ export default async (req) => {
       unlimited: limit === null,
       period: currentMonthStart()
     },
-    isPaid: ["plus", "pro"].includes(plan) && ["active", "trialing"].includes(entitlement.status),
-    isPro: plan === "pro" && ["active", "trialing"].includes(entitlement.status),
+    isPaid: ["plus", "pro"].includes(plan) && activePaid,
+    isPro: plan === "pro" && activePaid,
     isAdmin
   });
 };
@@ -118,6 +119,12 @@ function normalizePlan(plan) {
   return ["free", "plus", "pro"].includes(String(plan || "").toLowerCase())
     ? String(plan).toLowerCase()
     : "free";
+}
+
+function isEntitlementActive(entitlement) {
+  if (!["active", "trialing"].includes(entitlement.status)) return false;
+  if (!entitlement.current_period_ends_at) return true;
+  return new Date(entitlement.current_period_ends_at).getTime() > Date.now();
 }
 
 function currentMonthStart() {

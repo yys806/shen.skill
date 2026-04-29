@@ -26,8 +26,8 @@
         <p class="home-kicker">pricing / public beta</p>
         <h1>定价说明</h1>
         <p>
-          镜室按“可控额度 + 更好模型 + 更强记忆”来分层。价格先按公开试用版保守设置，
-          避免无限调用把服务烧穿；后续会根据真实成本和使用量继续调整。
+          镜室按“可控额度 + 稳定对话 + 更强记忆”来分层。当前采用微信/支付宝人工审核开通，
+          支付后提交付款账号，管理员确认后套餐立即生效，有效期一个月。
         </p>
       </section>
 
@@ -35,7 +35,7 @@
         <article class="pricing-card plan-card">
           <span class="status-pill">默认</span>
           <h2>Free</h2>
-          <p class="price-line">¥0 / 月</p>
+          <p class="price-line">￥0 / 月</p>
           <ul class="feature-list">
             <li class="yes">使用公开 skill 库</li>
             <li class="yes">基础模型对话</li>
@@ -50,7 +50,7 @@
         <article class="pricing-card plan-card featured">
           <span class="status-pill" id="billing-status">正在读取状态</span>
           <h2>Plus</h2>
-          <p class="price-line">¥19 / 月</p>
+          <p class="price-line">￥19 / 月</p>
           <ul class="feature-list">
             <li class="yes">Free 的全部权益</li>
             <li class="yes">每月 500 次消息额度</li>
@@ -65,7 +65,7 @@
         <article class="pricing-card plan-card pro-card">
           <span class="status-pill">推荐给重度用户</span>
           <h2>Pro</h2>
-          <p class="price-line">¥49 / 月</p>
+          <p class="price-line">￥49 / 月</p>
           <ul class="feature-list">
             <li class="yes">Plus 的全部权益</li>
             <li class="yes">每月 2000 次消息额度</li>
@@ -79,13 +79,38 @@
       </section>
 
       <section class="pricing-note">
-        <p id="billing-feedback" class="field-help">需要先登录镜室账号。支付由 Paddle 托管处理。</p>
+        <p id="billing-feedback" class="field-help">需要先登录镜室账号。当前支付采用微信/支付宝人工审核开通。</p>
         <p>
-          当前版本先接入支付和会员状态同步，不会立刻锁死已有聊天功能。
-          如果你在测试付款中遇到问题，可以先看 <a href="/refund/">Refund policy</a>。
+          支付后请提交你的微信/支付宝用户名，管理员核对后会把套餐开通到对应账号。
+          如遇误付或重复付款，可以先看 <a href="/refund/">Refund policy</a>。
         </p>
       </section>
     </main>
+
+    <div id="payment-modal" class="payment-modal hidden" aria-hidden="true">
+      <div class="payment-card" role="dialog" aria-modal="true" aria-labelledby="payment-title">
+        <button id="payment-close" class="payment-close" type="button" aria-label="关闭">×</button>
+        <p class="home-kicker">manual payment</p>
+        <h2 id="payment-title">选择支付方式</h2>
+        <p id="payment-copy">请选择微信或支付宝完成支付。</p>
+        <div id="payment-methods" class="payment-method-grid">
+          <button type="button" data-pay-method="wechat">微信支付</button>
+          <button type="button" data-pay-method="alipay">支付宝</button>
+        </div>
+        <div id="payment-qr-stage" class="payment-qr-stage hidden">
+          <strong id="payment-amount">请支付 19 元</strong>
+          <img id="payment-qr" src="" alt="收款码" />
+          <p id="payment-method-label" class="field-help"></p>
+          <button id="payment-paid" class="modal-primary" type="button">我已支付</button>
+        </div>
+        <form id="payment-confirm-form" class="payment-confirm-form hidden">
+          <label for="payer-name">你的微信/支付宝用户名</label>
+          <input id="payer-name" name="payerName" type="text" autocomplete="name" placeholder="用于管理员核对收款记录" />
+          <button class="modal-primary" type="submit">提交支付记录</button>
+        </form>
+        <p id="payment-feedback" class="field-help"></p>
+      </div>
+    </div>
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script type="module" src="/pricing/pricing.js"></script>

@@ -65,13 +65,14 @@ async function listUsers() {
   const users = (profiles.data || []).map(profile => {
     const isAdminUser = String(profile.email || "").toLowerCase() === ADMIN_EMAIL;
     const entitlement = entitlementByUser.get(profile.id) || {};
-    const plan = isAdminUser ? "admin" : normalizePlan(entitlement.plan);
+    const activePaid = isEntitlementActive(entitlement);
+    const plan = isAdminUser ? "admin" : (activePaid ? normalizePlan(entitlement.plan) : "free");
     const limit = PLAN_LIMITS[plan];
     const used = usageByUser.get(profile.id) || 0;
     return {
       ...profile,
       plan,
-      status: entitlement.status || (plan === "free" ? "inactive" : "active"),
+      status: activePaid ? entitlement.status : "inactive",
       current_period_ends_at: entitlement.current_period_ends_at || null,
       usage: {
         used,
@@ -91,6 +92,8 @@ async function updateUserPlan(req) {
   const userId = String(body.userId || "").trim();
   const plan = normalizePlan(body.plan);
   const status = plan === "free" ? "inactive" : "active";
+  const now = new Date();
+  const endsAt = plan === "free" ? null : addOneMonth(now).toISOString();
 
   if (!userId) return json({ error: "Missing userId", detail: "缺少用户 ID。" }, 400);
 
@@ -105,6 +108,7 @@ async function updateUserPlan(req) {
       plan,
       status,
       provider: "admin",
+      current_period_ends_at: endsAt,
       updated_at: new Date().toISOString()
     })
   });
@@ -158,6 +162,18 @@ function normalizePlan(plan) {
   return ["free", "plus", "pro"].includes(String(plan || "").toLowerCase())
     ? String(plan).toLowerCase()
     : "free";
+}
+
+function isEntitlementActive(entitlement) {
+  if (!entitlement || !["active", "trialing"].includes(entitlement.status)) return false;
+  if (!entitlement.current_period_ends_at) return true;
+  return new Date(entitlement.current_period_ends_at).getTime() > Date.now();
+}
+
+function addOneMonth(date) {
+  const next = new Date(date);
+  next.setMonth(next.getMonth() + 1);
+  return next;
 }
 
 function currentMonthStart() {
