@@ -2,10 +2,7 @@ import { ADMIN_EMAIL, isAdmin, verifySupabaseUser } from "./_shared/auth.js";
 import { json } from "./_shared/json.js";
 import { supabaseAdminRequest } from "./_shared/supabase-admin.js";
 
-const PLAN_AMOUNTS = {
-  plus: 19,
-  pro: 49
-};
+const PLAN_AMOUNTS = { plus: 19, pro: 49 };
 
 export default async (req) => {
   if (!["GET", "PATCH"].includes(req.method)) {
@@ -66,9 +63,15 @@ async function reviewPaymentRequest(req, adminUser) {
     reviewed_at: now.toISOString()
   };
 
+  let current = {};
   if (status === "approved") {
+    const currentEntitlement = await queryEntitlement(payment.user_id);
+    if (!currentEntitlement.ok) {
+      return json({ error: "Entitlement query failed", detail: currentEntitlement.detail }, currentEntitlement.status || 500);
+    }
+    current = currentEntitlement.data?.[0] || {};
     updatePayload.starts_at = now.toISOString();
-    updatePayload.ends_at = addOneMonth(now).toISOString();
+    updatePayload.ends_at = calculateNextEndsAt(payment, current, now).toISOString();
   }
 
   const updateResult = await supabaseAdminRequest(`/payment_requests?id=eq.${encodeURIComponent(id)}`, {
@@ -82,6 +85,7 @@ async function reviewPaymentRequest(req, adminUser) {
   if (!updateResult.ok) return json({ error: "Payment update failed", detail: updateResult.detail }, updateResult.status || 500);
 
   if (status === "approved") {
+    const currentBonus = Number(current.quota_bonus || 0);
     const entitlementResult = await supabaseAdminRequest("/user_entitlements?on_conflict=user_id", {
       method: "POST",
       headers: {
@@ -94,6 +98,7 @@ async function reviewPaymentRequest(req, adminUser) {
         status: "active",
         provider: `manual_${payment.payment_method}`,
         provider_transaction_id: payment.id,
+        quota_bonus: Math.max(0, currentBonus + Number(payment.quota_delta || 0)),
         current_period_ends_at: updatePayload.ends_at,
         updated_at: now.toISOString()
       })
@@ -118,4 +123,26 @@ function addOneMonth(date) {
   const next = new Date(date);
   next.setMonth(next.getMonth() + 1);
   return next;
+}
+
+function addMonths(date, months) {
+  const next = new Date(date);
+  next.setMonth(next.getMonth() + Math.max(1, Number(months || 1)));
+  return next;
+}
+
+function calculateNextEndsAt(payment, entitlement, now) {
+  const currentEndsAt = entitlement.current_period_ends_at ? new Date(entitlement.current_period_ends_at) : null;
+  const base = currentEndsAt && currentEndsAt.getTime() > now.getTime() ? currentEndsAt : now;
+  if (payment.action === "upgrade" && Number(payment.period_months || 1) <= 1) return base;
+  return addMonths(base, payment.period_months || 1);
+}
+
+async function queryEntitlement(userId) {
+  const query = new URLSearchParams({
+    select: "quota_bonus,current_period_ends_at",
+    user_id: `eq.${userId}`,
+    limit: "1"
+  });
+  return supabaseAdminRequest(`/user_entitlements?${query}`);
 }

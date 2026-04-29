@@ -56,6 +56,7 @@ let supabase = null;
 let session = null;
 let appState = loadState(currentStateKey);
 let accountUsage = null;
+let accountEntitlement = null;
 let pendingSignup = null;
 let otpCooldownTimer = null;
 let launchSkillId = new URLSearchParams(window.location.search).get("skill") || "";
@@ -437,6 +438,7 @@ function renderAuthModal() {
         <strong>${escapeHtml(nickname)}</strong>
         <span>${escapeHtml(session.user.email || session.user.id)}</span>
         <small id="account-usage-text">${escapeHtml(formatAccountUsage())}</small>
+        <small id="account-expiry-text">${escapeHtml(formatAccountExpiry())}</small>
       </div>
       <div class="account-manage-grid">
         <label for="nickname-update">修改昵称</label>
@@ -1056,12 +1058,14 @@ async function refreshAccountPlan() {
   if (!session?.access_token) {
     accountPlan = "free";
     accountUsage = null;
+    accountEntitlement = null;
     return;
   }
 
   if (String(session.user?.email || "").toLowerCase() === "3492675568@qq.com") {
     accountPlan = "admin";
     accountUsage = { unlimited: true, used: 0, limit: null, remaining: null };
+    accountEntitlement = { plan: "admin", status: "active", current_period_ends_at: null };
     return;
   }
 
@@ -1074,11 +1078,13 @@ async function refreshAccountPlan() {
     const plan = String(data.entitlement?.plan || "free").toLowerCase();
     const status = String(data.entitlement?.status || "inactive").toLowerCase();
     accountUsage = data.usage || null;
+    accountEntitlement = data.entitlement || null;
     accountPlan = ["plus", "pro"].includes(plan) && ["active", "trialing"].includes(status)
       ? plan
       : "free";
   } catch {
     accountPlan = "free";
+    accountEntitlement = null;
   }
 }
 
@@ -1161,6 +1167,8 @@ function setAccountFeedback(message, isError = false) {
 function updateAccountUsageText() {
   const target = dom.modalBody?.querySelector?.("#account-usage-text");
   if (target) target.textContent = formatAccountUsage();
+  const expiry = dom.modalBody?.querySelector?.("#account-expiry-text");
+  if (expiry) expiry.textContent = formatAccountExpiry();
 }
 
 async function checkNicknameDuplicateForAccount(nickname) {
@@ -1187,6 +1195,14 @@ function formatAccountUsage() {
   if (!accountUsage) return "剩余额度：读取中";
   if (accountUsage.unlimited) return "剩余额度：无限";
   return `剩余额度：${accountUsage.remaining}/${accountUsage.limit}，本月已用 ${accountUsage.used}`;
+}
+
+function formatAccountExpiry() {
+  if (accountPlan === "admin") return "订阅到期：管理员无限期";
+  if (!accountEntitlement || accountPlan === "free") return "订阅到期：Free 暂无订阅";
+  const endsAt = accountEntitlement.current_period_ends_at;
+  if (!endsAt) return "订阅到期：未设置";
+  return `订阅到期：${new Date(endsAt).toLocaleString("zh-CN")}`;
 }
 
 function planBadge() {

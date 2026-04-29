@@ -299,6 +299,7 @@ create table if not exists public.user_entitlements (
   user_id uuid primary key references auth.users(id) on delete cascade,
   plan text not null default 'free',
   status text not null default 'inactive',
+  quota_bonus integer not null default 0,
   provider text,
   provider_customer_id text,
   provider_subscription_id text,
@@ -307,6 +308,9 @@ create table if not exists public.user_entitlements (
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
+
+alter table public.user_entitlements
+add column if not exists quota_bonus integer not null default 0;
 
 alter table public.user_entitlements enable row level security;
 
@@ -375,6 +379,10 @@ create table if not exists public.payment_requests (
   user_email citext not null,
   plan text not null check (plan in ('plus', 'pro')),
   amount_cny integer not null,
+  billing_cycle text not null default 'monthly' check (billing_cycle in ('monthly', 'yearly')),
+  action text not null default 'subscribe' check (action in ('subscribe', 'renew', 'upgrade')),
+  quota_delta integer not null default 0,
+  period_months integer not null default 1,
   payment_method text not null check (payment_method in ('wechat', 'alipay')),
   payer_name text not null,
   status text not null default 'pending' check (status in ('pending', 'approved', 'rejected')),
@@ -386,6 +394,18 @@ create table if not exists public.payment_requests (
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
+
+alter table public.payment_requests
+add column if not exists billing_cycle text not null default 'monthly';
+
+alter table public.payment_requests
+add column if not exists action text not null default 'subscribe';
+
+alter table public.payment_requests
+add column if not exists quota_delta integer not null default 0;
+
+alter table public.payment_requests
+add column if not exists period_months integer not null default 1;
 
 alter table public.payment_requests enable row level security;
 

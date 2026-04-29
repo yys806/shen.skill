@@ -5,6 +5,13 @@ import { checkRateLimit } from "./_shared/rate-limit.js";
 import { loadSkillPrompt, normalizeSkillId } from "./_shared/skill.js";
 import { getProviderConfig, modelExists, normalizeProvider } from "./_shared/providers.js";
 
+const PLAN_LIMITS = {
+  free: 50,
+  plus: 500,
+  pro: 2000,
+  admin: null
+};
+
 const sceneInstructions = {
   self: "当前语气场景是真我复盘：默认理性、短句、拆动机、拆情绪触发点、拆下一步，不要亲密关系口吻。",
   work: "当前语气场景是工作科研：严谨、清楚、可执行，优先给结构化判断、风险、下一步。",
@@ -33,6 +40,11 @@ async function handleChat(req) {
   const authResult = await verifySupabaseUser(req);
   if (!authResult.ok) {
     return json({ error: "Unauthorized", detail: authResult.detail }, 401);
+  }
+
+  const quota = await checkMonthlyQuota(req, authResult.user);
+  if (!quota.ok) {
+    return json({ error: "Quota exceeded", detail: quota.detail }, 429);
   }
 
   const rateLimit = await checkRateLimit(req, authResult.user.id, "chat", 20, 60_000);
@@ -277,4 +289,90 @@ function cleanText(value) {
 function clamp(value, min, max) {
   if (Number.isNaN(value)) return min;
   return Math.max(min, Math.min(max, value));
+}
+
+async function checkMonthlyQuota(req, user) {
+  if (isAdmin(user)) return { ok: true };
+  const entitlement = await queryEntitlement(req, user.id);
+  const plan = entitlement.active ? normalizePlan(entitlement.plan) : "free";
+  const baseLimit = PLAN_LIMITS[plan] ?? PLAN_LIMITS.free;
+  const limit = baseLimit + Number(entitlement.quota_bonus || 0);
+  const used = await queryMonthlyUsage(req, user.id);
+  if (used >= limit) {
+    return {
+      ok: false,
+      detail: `本月消息额度已用完：${used}/${limit}。可以到“定价说明”续费或升级。`
+    };
+  }
+  return { ok: true };
+}
+
+async function queryEntitlement(req, userId) {
+  const supabaseUrl = getEnv("SUPABASE_URL", "https://gqhzwngzfoigzqndlbsq.supabase.co").replace(/\/$/, "");
+  const supabaseAnonKey = getEnv("SUPABASE_ANON_KEY");
+  const query = new URLSearchParams({
+    select: "plan,status,current_period_ends_at,quota_bonus",
+    user_id: `eq.${userId}`,
+    limit: "1"
+  });
+  try {
+    const response = await fetch(`${supabaseUrl}/rest/v1/user_entitlements?${query}`, {
+      headers: {
+        "apikey": supabaseAnonKey,
+        "Authorization": req.headers.get("authorization") || "",
+        "Accept": "application/json"
+      }
+    });
+    const data = await response.json().catch(() => []);
+    const row = Array.isArray(data) ? data[0] : null;
+    return {
+      ...(row || {}),
+      active: isEntitlementActive(row)
+    };
+  } catch {
+    return { plan: "free", quota_bonus: 0, active: false };
+  }
+}
+
+async function queryMonthlyUsage(req, userId) {
+  const supabaseUrl = getEnv("SUPABASE_URL", "https://gqhzwngzfoigzqndlbsq.supabase.co").replace(/\/$/, "");
+  const supabaseAnonKey = getEnv("SUPABASE_ANON_KEY");
+  const query = new URLSearchParams({
+    select: "id",
+    user_id: `eq.${userId}`,
+    event_type: "eq.chat",
+    created_at: `gte.${currentMonthStart()}`,
+    limit: "10000"
+  });
+  try {
+    const response = await fetch(`${supabaseUrl}/rest/v1/request_events?${query}`, {
+      headers: {
+        "apikey": supabaseAnonKey,
+        "Authorization": req.headers.get("authorization") || "",
+        "Accept": "application/json",
+        "Prefer": "count=exact"
+      }
+    });
+    const data = await response.json().catch(() => []);
+    const range = response.headers.get("content-range") || "";
+    const count = Number(range.split("/").pop());
+    return Number.isFinite(count) ? count : (Array.isArray(data) ? data.length : 0);
+  } catch {
+    return 0;
+  }
+}
+
+function isEntitlementActive(entitlement) {
+  if (!entitlement || !["active", "trialing"].includes(entitlement.status)) return false;
+  if (!entitlement.current_period_ends_at) return true;
+  return new Date(entitlement.current_period_ends_at).getTime() > Date.now();
+}
+
+function normalizePlan(plan) {
+  return ["plus", "pro"].includes(String(plan || "").toLowerCase()) ? String(plan).toLowerCase() : "free";
+}
+
+function currentMonthStart() {
+  const now = new Date();
+  return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1)).toISOString();
 }

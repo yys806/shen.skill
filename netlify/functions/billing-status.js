@@ -21,7 +21,7 @@ export default async (req) => {
   }
 
   const query = new URLSearchParams({
-    select: "plan,status,provider,current_period_ends_at,updated_at",
+    select: "plan,status,provider,quota_bonus,current_period_ends_at,updated_at",
     user_id: `eq.${authResult.user.id}`,
     limit: "1"
   });
@@ -43,14 +43,18 @@ export default async (req) => {
   const plan = isAdmin ? "admin" : (activePaid ? normalizePlan(entitlement.plan) : "free");
   const usage = await queryMonthlyUsage(authResult.authorization, authResult.user.id);
   const limit = PLAN_LIMITS[plan];
+  const quotaBonus = Number(entitlement.quota_bonus || 0);
+  const effectiveLimit = limit === null ? null : limit + quotaBonus;
 
   return json({
     ok: true,
     entitlement: { ...entitlement, plan },
     usage: {
       used: usage.ok ? usage.count : 0,
-      limit,
-      remaining: limit === null ? null : Math.max(0, limit - (usage.ok ? usage.count : 0)),
+      limit: effectiveLimit,
+      baseLimit: limit,
+      quotaBonus,
+      remaining: effectiveLimit === null ? null : Math.max(0, effectiveLimit - (usage.ok ? usage.count : 0)),
       unlimited: limit === null,
       period: currentMonthStart()
     },

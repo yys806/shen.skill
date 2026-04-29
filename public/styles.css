@@ -1653,6 +1653,40 @@ body.home-page::after {
   font-weight: 900;
 }
 
+.billing-cycle-switch {
+  width: fit-content;
+  display: flex;
+  gap: 6px;
+  margin: 18px auto 0;
+  padding: 6px;
+  border: 1px solid rgba(27, 23, 18, 0.12);
+  border-radius: 999px;
+  background: rgba(255, 252, 244, 0.68);
+}
+
+.billing-cycle-switch button {
+  min-width: 78px;
+  min-height: 38px;
+  border: 0;
+  border-radius: 999px;
+  color: var(--muted);
+  background: transparent;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.billing-cycle-switch button.active {
+  color: #fff8e8;
+  background: linear-gradient(135deg, var(--night), var(--lacquer-dark));
+}
+
+.checkout-button:disabled,
+.payment-confirm-form button:disabled {
+  cursor: not-allowed;
+  opacity: 0.54;
+  filter: grayscale(0.2);
+}
+
 .payment-modal {
   position: fixed;
   inset: 0;
@@ -1783,6 +1817,63 @@ body.home-page::after {
   flex-wrap: wrap;
   gap: 8px;
   margin-top: 12px;
+}
+
+.compact-payment {
+  align-items: center;
+  padding-block: 16px;
+}
+
+.compact-payment h2 {
+  font-size: 24px;
+}
+
+.compact-payment aside {
+  align-content: center;
+  gap: 10px;
+}
+
+.compact-payment aside button,
+.user-admin-actions button {
+  border: 0;
+  border-radius: 999px;
+  padding: 11px 16px;
+  color: #fff8e8;
+  background: var(--night);
+  font-weight: 900;
+}
+
+.compact-payment aside button.approve {
+  background: var(--green);
+}
+
+.compact-payment aside button.danger,
+.user-admin-actions button.danger {
+  background: var(--lacquer);
+}
+
+.compact-payment aside button:disabled {
+  opacity: 0.42;
+  cursor: not-allowed;
+}
+
+.admin-mini-input,
+.admin-date-input {
+  min-height: 42px;
+  border: 1px solid rgba(27, 23, 18, 0.14);
+  border-radius: 14px;
+  padding: 0 10px;
+  background: rgba(255, 252, 244, 0.76);
+  color: var(--ink);
+  font: inherit;
+}
+
+.admin-mini-input {
+  width: 96px;
+}
+
+.admin-date-input {
+  width: 190px;
 }
 
 .refund-grid {

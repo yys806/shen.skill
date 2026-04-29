@@ -31,6 +31,11 @@
         </p>
       </section>
 
+      <div class="billing-cycle-switch" aria-label="选择订阅周期">
+        <button class="active" data-cycle="monthly" type="button">按月</button>
+        <button data-cycle="yearly" type="button">按年</button>
+      </div>
+
       <section class="pricing-grid pricing-three">
         <article class="pricing-card plan-card">
           <span class="status-pill">默认</span>
@@ -48,9 +53,9 @@
         </article>
 
         <article class="pricing-card plan-card featured">
-          <span class="status-pill" id="billing-status">正在读取状态</span>
+          <span class="status-pill">适合轻度用户</span>
           <h2>Plus</h2>
-          <p class="price-line">￥19 / 月</p>
+          <p class="price-line" data-price-line="plus">￥19 / 月</p>
           <ul class="feature-list">
             <li class="yes">Free 的全部权益</li>
             <li class="yes">每月 500 次消息额度</li>
@@ -65,7 +70,7 @@
         <article class="pricing-card plan-card pro-card">
           <span class="status-pill">推荐给重度用户</span>
           <h2>Pro</h2>
-          <p class="price-line">￥49 / 月</p>
+          <p class="price-line" data-price-line="pro">￥49 / 月</p>
           <ul class="feature-list">
             <li class="yes">Plus 的全部权益</li>
             <li class="yes">每月 2000 次消息额度</li>
@@ -79,6 +84,7 @@
       </section>
 
       <section class="pricing-note">
+        <p id="billing-status" class="field-help">正在读取状态</p>
         <p id="billing-feedback" class="field-help">需要先登录镜室账号。当前支付采用微信/支付宝人工审核开通。</p>
         <p>
           支付后请提交你的微信/支付宝用户名，管理员核对后会把套餐开通到对应账号。

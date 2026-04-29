@@ -306,14 +306,15 @@ async function loadPayments() {
 function renderPayments() {
   if (!allPayments.length) return renderNotice(paymentList, "当前没有支付申请。");
   paymentList.innerHTML = allPayments.map(payment => `
-    <article class="submission-item payment-admin-item" data-payment-id="${escapeAttribute(payment.id)}">
+    <article class="submission-item payment-admin-item compact-payment" data-payment-id="${escapeAttribute(payment.id)}">
       <div>
         <span class="status-pill status-${escapeAttribute(payment.status || "pending")}">${escapeHtml(paymentStatusLabels[payment.status] || payment.status || "待核对")}</span>
-        <h2>${escapeHtml(planLabel(payment.plan))} · ￥${escapeHtml(payment.amount_cny)}</h2>
+        <h2>${escapeHtml(planLabel(payment.plan))} · ￥${escapeHtml(payment.amount_cny)} · ${escapeHtml(cycleLabel(payment.billing_cycle))}</h2>
         <dl class="submission-meta">
           <dt>用户邮箱</dt><dd>${escapeHtml(payment.user_email || "unknown")}</dd>
           <dt>付款方式</dt><dd>${escapeHtml(paymentMethodLabel(payment.payment_method))}</dd>
           <dt>付款用户名</dt><dd>${escapeHtml(payment.payer_name || "")}</dd>
+          <dt>动作</dt><dd>${escapeHtml(actionLabel(payment.action))}，追加额度 ${escapeHtml(payment.quota_delta || 0)} 次</dd>
           <dt>提交时间</dt><dd>${formatDate(payment.created_at)}</dd>
           <dt>有效期</dt><dd>${payment.ends_at ? formatDate(payment.ends_at) : "审核通过后生成一个月有效期"}</dd>
         </dl>
@@ -321,14 +322,10 @@ function renderPayments() {
           <span>审核备注</span>
           <textarea data-payment-note="${escapeAttribute(payment.id)}" rows="2" placeholder="拒绝原因或核对说明">${escapeHtml(payment.review_note || "")}</textarea>
         </label>
-        <div class="payment-request-actions">
-          <button data-payment-id="${escapeAttribute(payment.id)}" data-payment-status="approved" ${payment.status === "approved" ? "disabled" : ""} type="button">通过并开通</button>
-          <button class="danger" data-payment-id="${escapeAttribute(payment.id)}" data-payment-status="rejected" ${payment.status === "rejected" ? "disabled" : ""} type="button">拒绝</button>
-        </div>
       </div>
       <aside>
-        <small>${escapeHtml(payment.user_email || payment.user_id || "unknown")}</small>
-        <time>${formatDate(payment.created_at)}</time>
+        <button class="approve" data-payment-id="${escapeAttribute(payment.id)}" data-payment-status="approved" ${payment.status === "approved" ? "disabled" : ""} type="button">通过</button>
+        <button class="danger" data-payment-id="${escapeAttribute(payment.id)}" data-payment-status="rejected" ${payment.status === "rejected" ? "disabled" : ""} type="button">拒绝</button>
       </aside>
     </article>
   `).join("");
@@ -382,6 +379,8 @@ function renderUsers() {
           <option value="plus" ${user.plan === "plus" ? "selected" : ""}>Plus</option>
           <option value="pro" ${user.plan === "pro" ? "selected" : ""}>Pro</option>
         </select>
+        <input class="admin-mini-input" data-quota-bonus="${escapeAttribute(user.id)}" type="number" min="0" step="1" value="${escapeAttribute(user.usage?.quotaBonus || 0)}" ${user.plan === "admin" ? "disabled" : ""} title="额外额度" />
+        <input class="admin-date-input" data-expiry="${escapeAttribute(user.id)}" type="datetime-local" value="${escapeAttribute(toDateTimeLocal(user.current_period_ends_at))}" ${user.plan === "admin" ? "disabled" : ""} title="到期时间" />
         <button data-save-plan="${escapeAttribute(user.id)}" ${user.plan === "admin" ? "disabled" : ""} type="button">保存套餐</button>
         <button class="danger" data-delete-user="${escapeAttribute(user.id)}" data-email="${escapeAttribute(user.email || "")}" ${user.plan === "admin" ? "disabled" : ""} type="button">删除用户</button>
       </div>
@@ -398,10 +397,17 @@ function renderUsers() {
 
 async function updatePlan(userId) {
   const select = userList.querySelector(`[data-plan-select="${CSS.escape(userId)}"]`);
+  const quotaInput = userList.querySelector(`[data-quota-bonus="${CSS.escape(userId)}"]`);
+  const expiryInput = userList.querySelector(`[data-expiry="${CSS.escape(userId)}"]`);
   const response = await fetch("/api/admin/users", {
     method: "PATCH",
     headers: { ...authHeaders(), "Content-Type": "application/json" },
-    body: JSON.stringify({ userId, plan: select.value })
+    body: JSON.stringify({
+      userId,
+      plan: select.value,
+      quotaBonus: Number(quotaInput?.value || 0),
+      currentPeriodEndsAt: expiryInput?.value ? new Date(expiryInput.value).toISOString() : null
+    })
   });
   const data = await response.json().catch(() => ({}));
   if (!response.ok) return renderNotice(userList, data.detail || data.error || "套餐更新失败。");
@@ -464,6 +470,16 @@ function paymentMethodLabel(method) {
   return method === "alipay" ? "支付宝" : "微信支付";
 }
 
+function cycleLabel(cycle) {
+  return cycle === "yearly" ? "按年" : "按月";
+}
+
+function actionLabel(action) {
+  if (action === "renew") return "续费";
+  if (action === "upgrade") return "升级";
+  return "开通";
+}
+
 function formatUsage(usage = {}) {
   if (usage.unlimited) return "无限";
   return `${usage.remaining ?? 0}/${usage.limit ?? 0} 剩余，本月已用 ${usage.used ?? 0}`;
@@ -471,6 +487,14 @@ function formatUsage(usage = {}) {
 
 function formatDate(value) {
   return new Date(value || Date.now()).toLocaleString("zh-CN");
+}
+
+function toDateTimeLocal(value) {
+  if (!value) return "";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  const offsetMs = date.getTimezoneOffset() * 60_000;
+  return new Date(date.getTime() - offsetMs).toISOString().slice(0, 16);
 }
 
 function escapeHtml(value) {

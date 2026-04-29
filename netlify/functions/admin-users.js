@@ -41,7 +41,7 @@ async function listUsers() {
       order: "created_at.desc"
     })}`),
     supabaseAdminRequest(`/user_entitlements?${new URLSearchParams({
-      select: "user_id,plan,status,current_period_ends_at,updated_at"
+      select: "user_id,plan,status,quota_bonus,current_period_ends_at,updated_at"
     })}`),
     supabaseAdminRequest(`/request_events?${new URLSearchParams({
       select: "user_id",
@@ -68,6 +68,8 @@ async function listUsers() {
     const activePaid = isEntitlementActive(entitlement);
     const plan = isAdminUser ? "admin" : (activePaid ? normalizePlan(entitlement.plan) : "free");
     const limit = PLAN_LIMITS[plan];
+    const quotaBonus = Number(entitlement.quota_bonus || 0);
+    const effectiveLimit = limit === null ? null : limit + quotaBonus;
     const used = usageByUser.get(profile.id) || 0;
     return {
       ...profile,
@@ -76,8 +78,10 @@ async function listUsers() {
       current_period_ends_at: entitlement.current_period_ends_at || null,
       usage: {
         used,
-        limit,
-        remaining: limit === null ? null : Math.max(0, limit - used),
+        limit: effectiveLimit,
+        baseLimit: limit,
+        quotaBonus,
+        remaining: effectiveLimit === null ? null : Math.max(0, effectiveLimit - used),
         unlimited: limit === null,
         period: currentMonthStart()
       }
@@ -93,7 +97,11 @@ async function updateUserPlan(req) {
   const plan = normalizePlan(body.plan);
   const status = plan === "free" ? "inactive" : "active";
   const now = new Date();
-  const endsAt = plan === "free" ? null : addOneMonth(now).toISOString();
+  const quotaBonus = Math.max(0, Number(body.quotaBonus || 0));
+  const rawEndsAt = String(body.currentPeriodEndsAt || "").trim();
+  const endsAt = plan === "free"
+    ? null
+    : (rawEndsAt ? new Date(rawEndsAt).toISOString() : addOneMonth(now).toISOString());
 
   if (!userId) return json({ error: "Missing userId", detail: "缺少用户 ID。" }, 400);
 
@@ -107,6 +115,7 @@ async function updateUserPlan(req) {
       user_id: userId,
       plan,
       status,
+      quota_bonus: quotaBonus,
       provider: "admin",
       current_period_ends_at: endsAt,
       updated_at: new Date().toISOString()
