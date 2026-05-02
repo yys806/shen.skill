@@ -304,6 +304,10 @@ Stay hungry. Stay foolish.`]
         }
       }
 
+      if (readHomeSnapshot()) {
+        document.body.classList.add("home-restored");
+      }
+
       function saveHomeSnapshot() {
         const terminal = document.querySelector("#terminal-dialogue");
         const grid = document.querySelector(".home-skill-grid");
@@ -356,9 +360,12 @@ Stay hungry. Stay foolish.`]
       window.addEventListener("scroll", updateActiveSection, { passive: true });
       window.addEventListener("resize", updateActiveSection);
       window.addEventListener("pagehide", saveHomeSnapshot);
+      document.addEventListener("visibilitychange", () => {
+        if (document.visibilityState === "hidden") saveHomeSnapshot();
+      });
       window.addEventListener("pageshow", event => {
         updateActiveSection();
-        if (event.persisted) restoreHomePosition();
+        restoreHomePosition();
       });
     </script>
     <script type="module" src="/notifications.js"></script>

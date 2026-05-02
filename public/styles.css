@@ -155,6 +155,16 @@ body.home-page::after {
   animation: rise 680ms 180ms var(--ease-out) both;
 }
 
+.home-restored .home-nav,
+.home-restored .hero-text,
+.home-restored .home-hero .mirror-card {
+  animation: none;
+}
+
+.home-restored .terminal-line {
+  animation-duration: 1ms;
+}
+
 .home-kicker {
   width: fit-content;
   margin: 0 0 16px;
@@ -1084,16 +1094,16 @@ body.home-page::after {
 .model-console-note,
 .model-provider-panel {
   border: 1px solid rgba(27, 23, 18, 0.1);
-  border-radius: 24px;
-  background: rgba(255, 252, 244, 0.62);
-  box-shadow: 0 18px 42px rgba(52, 33, 11, 0.08);
+  border-radius: 22px;
+  background: rgba(255, 252, 244, 0.68);
+  box-shadow: 0 12px 34px rgba(52, 33, 11, 0.06);
 }
 
 .model-console-note {
   display: flex;
   align-items: center;
   gap: 14px;
-  padding: 16px 18px;
+  padding: 12px 16px;
 }
 
 .model-console-note strong {
@@ -1107,22 +1117,30 @@ body.home-page::after {
 
 .model-provider-panel {
   overflow: hidden;
-  border-radius: 30px;
+  border-radius: 22px;
+  transition: border-color 180ms var(--ease-soft), box-shadow 180ms var(--ease-soft), background 180ms var(--ease-soft);
 }
 
 .model-provider-panel summary {
   display: grid;
-  grid-template-columns: 18px minmax(0, 1fr) auto 42px;
+  grid-template-columns: minmax(0, 1fr) auto 38px;
   align-items: center;
-  gap: 10px;
-  min-height: 58px;
-  padding: 8px 12px 8px 16px;
+  gap: 8px;
+  min-height: 46px;
+  padding: 6px 9px 6px 14px;
   cursor: pointer;
   list-style: none;
 }
 
 .model-provider-panel summary::-webkit-details-marker {
   display: none;
+}
+
+.provider-left {
+  display: inline-flex;
+  align-items: center;
+  min-width: 0;
+  gap: 10px;
 }
 
 .provider-chevron {
@@ -1139,8 +1157,11 @@ body.home-page::after {
 }
 
 .model-provider-panel summary strong {
-  font-size: 22px;
+  overflow: hidden;
+  font-size: 17px;
   letter-spacing: -0.04em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .model-provider-panel summary span {
@@ -1160,12 +1181,12 @@ body.home-page::after {
 }
 
 .provider-settings {
-  width: 38px;
-  height: 38px;
+  width: 32px;
+  height: 32px;
   display: inline-grid;
   place-items: center;
   padding: 0 !important;
-  font-size: 18px;
+  font-size: 15px;
   line-height: 1;
 }
 
@@ -1173,7 +1194,7 @@ body.home-page::after {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr)) auto;
   gap: 9px;
-  padding: 0 18px 16px;
+  padding: 0 12px 12px;
 }
 
 .model-provider-add.hidden {
@@ -1198,12 +1219,13 @@ body.home-page::after {
 
 .admin-model-row {
   display: grid;
-  grid-template-columns: 170px minmax(140px, 0.9fr) minmax(180px, 1.2fr) 70px 70px 118px;
+  grid-template-columns: 150px minmax(120px, 0.9fr) minmax(160px, 1.2fr) 64px 62px 106px;
   align-items: center;
-  gap: 8px;
-  min-height: 74px;
-  padding: 8px 14px;
+  gap: 7px;
+  min-height: 48px;
+  padding: 6px 12px;
   border-top: 1px solid rgba(27, 23, 18, 0.06);
+  transition: background 160ms var(--ease-soft), transform 160ms var(--ease-soft);
 }
 
 .admin-model-row.saved-flash {
@@ -1228,14 +1250,19 @@ body.home-page::after {
 }
 
 .admin-model-row strong {
-  font-size: 16px;
+  overflow: hidden;
+  font-size: 14px;
   letter-spacing: -0.03em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .admin-model-row small {
+  overflow: hidden;
   color: var(--muted);
-  word-break: break-all;
-  font-size: 13px;
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .admin-model-row label {
@@ -1248,8 +1275,8 @@ body.home-page::after {
 }
 
 .admin-model-row label input {
-  width: 58px;
-  padding: 7px 8px;
+  width: 52px;
+  padding: 6px 7px;
 }
 
 .admin-model-row .danger.subtle {
@@ -1271,8 +1298,8 @@ body.home-page::after {
   position: relative;
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  min-height: 42px;
-  padding: 4px;
+  min-height: 34px;
+  padding: 3px;
   border: 1px solid rgba(27, 23, 18, 0.12);
   border-radius: 999px;
   background: rgba(255, 252, 244, 0.7);
@@ -1282,11 +1309,11 @@ body.home-page::after {
   position: relative;
   z-index: 1;
   border: 0;
-  padding: 6px 8px;
+  padding: 5px 6px;
   color: var(--muted);
   background: transparent;
   box-shadow: none;
-  font-size: 13px;
+  font-size: 12px;
 }
 
 .model-role-switch button.active {

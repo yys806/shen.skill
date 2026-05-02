@@ -21,6 +21,7 @@ let allPayments = [];
 let allNotifications = [];
 let allModels = [];
 let noticeTargets = [];
+const loadedTabs = new Set();
 
 const adminMain = document.querySelector("#admin-main");
 const adminGate = document.querySelector("#admin-gate");
@@ -123,6 +124,11 @@ function renderTabs() {
 
 async function loadActiveTab() {
   renderTabs();
+  if (loadedTabs.has(activeTab)) {
+    renderCachedTab(activeTab);
+    void refreshActiveTabQuietly(activeTab);
+    return;
+  }
   if (activeTab === "skills") return loadSkills();
   if (activeTab === "payments") return loadPayments();
   if (activeTab === "notifications") return loadNotifications();
@@ -131,12 +137,44 @@ async function loadActiveTab() {
   return loadSubmissions();
 }
 
-async function loadSubmissions() {
+function renderCachedTab(tab) {
+  if (tab === "skills") return renderSkills();
+  if (tab === "payments") return renderPayments();
+  if (tab === "notifications") return renderNotificationsAdmin();
+  if (tab === "models") return renderModels();
+  if (tab === "users") return renderUsers();
+  return renderSubmissions();
+}
+
+async function refreshActiveTabQuietly(tab) {
+  try {
+    if (tab === "skills") return loadSkills({ quiet: true });
+    if (tab === "payments") return loadPayments({ quiet: true });
+    if (tab === "notifications") return loadNotifications({ quiet: true });
+    if (tab === "models") return loadModels({ quiet: true });
+    if (tab === "users") return loadUsers({ quiet: true });
+    return loadSubmissions({ quiet: true });
+  } catch {
+    // Keep cached admin content visible when a background refresh fails.
+  }
+}
+
+async function loadSubmissions(options = {}) {
+  if (options.quiet) {
+    const response = await fetch("/api/admin/skill-submissions", { headers: authHeaders() });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) return;
+    allSubmissions = data.submissions || [];
+    loadedTabs.add("submissions");
+    renderSubmissions();
+    return;
+  }
   renderNotice(submissionList, "正在读取提交列表...");
   const response = await fetch("/api/admin/skill-submissions", { headers: authHeaders() });
   const data = await response.json().catch(() => ({}));
   if (!response.ok) return renderNotice(submissionList, data.detail || data.error || "读取失败。");
   allSubmissions = data.submissions || [];
+  loadedTabs.add("submissions");
   renderSubmissions();
 }
 
@@ -192,15 +230,30 @@ async function updateSubmissionStatus(id, status) {
   });
   const data = await response.json().catch(() => ({}));
   if (!response.ok) return renderNotice(submissionList, data.detail || data.error || "更新失败。");
-  await loadSubmissions();
+  if (data.submission) {
+    allSubmissions = allSubmissions.map(item => item.id === id ? data.submission : item);
+    renderSubmissions();
+  } else {
+    await loadSubmissions({ quiet: true });
+  }
 }
 
-async function loadSkills() {
+async function loadSkills(options = {}) {
+  if (options.quiet) {
+    const response = await fetch("/api/admin/skills", { headers: authHeaders() });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) return;
+    allSkills = data.skills || [];
+    loadedTabs.add("skills");
+    renderSkills();
+    return;
+  }
   renderNotice(skillList, "正在读取 Skill 列表...");
   const response = await fetch("/api/admin/skills", { headers: authHeaders() });
   const data = await response.json().catch(() => ({}));
   if (!response.ok) return renderNotice(skillList, data.detail || data.error || "读取 Skill 失败。");
   allSkills = data.skills || [];
+  loadedTabs.add("skills");
   renderSkills();
 }
 
@@ -240,7 +293,9 @@ async function updateSkillEnabled(id, enabled) {
   });
   const data = await response.json().catch(() => ({}));
   if (!response.ok) return renderNotice(skillList, data.detail || data.error || "更新 Skill 失败。");
-  await loadSkills();
+  allSkills = allSkills.map(skill => skill.id === id ? { ...skill, enabled } : skill);
+  renderSkills();
+  void loadSkills({ quiet: true });
 }
 
 function bindSkillDragSorting() {
@@ -300,12 +355,22 @@ async function saveSkillOrder() {
   allSkills = allSkills.map((skill, index) => ({ ...skill, displayOrder: index }));
 }
 
-async function loadPayments() {
+async function loadPayments(options = {}) {
+  if (options.quiet) {
+    const response = await fetch("/api/admin/payment-requests", { headers: authHeaders() });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) return;
+    allPayments = data.payments || [];
+    loadedTabs.add("payments");
+    renderPayments();
+    return;
+  }
   renderNotice(paymentList, "正在读取支付记录...");
   const response = await fetch("/api/admin/payment-requests", { headers: authHeaders() });
   const data = await response.json().catch(() => ({}));
   if (!response.ok) return renderNotice(paymentList, data.detail || data.error || "读取支付记录失败。");
   allPayments = data.payments || [];
+  loadedTabs.add("payments");
   renderPayments();
 }
 
@@ -350,11 +415,25 @@ async function updatePaymentStatus(id, status) {
   });
   const data = await response.json().catch(() => ({}));
   if (!response.ok) return renderNotice(paymentList, data.detail || data.error || "支付审核失败。");
-  await loadPayments();
-  if (status === "approved") await loadUsers();
+  if (data.payment) {
+    allPayments = allPayments.map(item => item.id === id ? data.payment : item);
+    renderPayments();
+  } else {
+    await loadPayments({ quiet: true });
+  }
+  if (status === "approved") void loadUsers({ quiet: true });
 }
 
-async function loadNotifications() {
+async function loadNotifications(options = {}) {
+  if (options.quiet) {
+    const noticeResponse = await fetch("/api/admin/notifications", { headers: authHeaders() });
+    const data = await noticeResponse.json().catch(() => ({}));
+    if (!noticeResponse.ok) return;
+    allNotifications = data.notifications || [];
+    loadedTabs.add("notifications");
+    renderNotificationsAdmin();
+    return;
+  }
   renderNotice(notificationList, "正在读取通知公告...");
   const [noticeResponse, usersResponse] = await Promise.all([
     fetch("/api/admin/notifications", { headers: authHeaders() }),
@@ -367,6 +446,7 @@ async function loadNotifications() {
     if (usersResponse.ok) allUsers = userData.users || [];
   }
   allNotifications = data.notifications || [];
+  loadedTabs.add("notifications");
   renderNotificationsAdmin();
 }
 
@@ -530,23 +610,40 @@ async function deleteNotification(id) {
   await loadNotifications();
 }
 
-async function loadModels() {
+async function loadModels(options = {}) {
+  if (options.quiet) {
+    const response = await fetch("/api/admin/models", { headers: authHeaders() });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) return;
+    allModels = data.models || [];
+    loadedTabs.add("models");
+    renderModels();
+    return;
+  }
   renderNotice(modelList, "正在读取模型配置...");
   const response = await fetch("/api/admin/models", { headers: authHeaders() });
   const data = await response.json().catch(() => ({}));
   if (!response.ok) return renderNotice(modelList, data.detail || data.error || "读取模型配置失败。");
   allModels = data.models || [];
+  loadedTabs.add("models");
   renderModels();
 }
 
 function renderModels() {
+  const openProviders = new Set([...modelList.querySelectorAll(".model-provider-panel[open]")]
+    .map(panel => panel.dataset.providerPanel));
+  const editingProviders = new Set([...modelList.querySelectorAll(".model-provider-add:not(.hidden)")]
+    .map(form => form.dataset.providerForm));
   const groups = groupModelsByProvider();
   modelList.innerHTML = `
     <article class="model-console-note">
       <strong>模型路由</strong>
       <span>只需要选一个主用模型和一个备用模型。主用失败、超时或返回空内容时，会自动切换备用。</span>
     </article>
-    ${Object.entries(groups).map(([provider, models]) => providerPanel(provider, models)).join("")}
+    ${Object.entries(groups).map(([provider, models]) => providerPanel(provider, models, {
+      open: openProviders.has(provider),
+      editing: editingProviders.has(provider)
+    })).join("")}
   `;
 
   bindModelRows(modelList);
@@ -562,16 +659,18 @@ function renderModels() {
   });
 }
 
-function providerPanel(provider, models) {
+function providerPanel(provider, models, state = {}) {
   return `
-    <details class="model-provider-panel" data-provider-panel="${escapeAttribute(provider)}">
+    <details class="model-provider-panel" data-provider-panel="${escapeAttribute(provider)}" ${state.open ? "open" : ""}>
       <summary>
-        <span class="provider-chevron" aria-hidden="true"></span>
-        <strong>${escapeHtml(providerLabel(provider))}</strong>
+        <span class="provider-left">
+          <span class="provider-chevron" aria-hidden="true"></span>
+          <strong>${escapeHtml(providerLabel(provider))}</strong>
+        </span>
         <span class="provider-count" data-provider-count="${escapeAttribute(provider)}">${models.length} 个模型</span>
         <button class="provider-settings" data-provider-add="${escapeAttribute(provider)}" type="button" aria-label="设置 ${escapeAttribute(providerLabel(provider))}">⚙</button>
       </summary>
-      <div class="model-provider-add hidden" data-provider-form="${escapeAttribute(provider)}">
+      <div class="model-provider-add ${state.editing ? "" : "hidden"}" data-provider-form="${escapeAttribute(provider)}">
         <input data-new-field="name" placeholder="显示名称" />
         <input data-new-field="model" placeholder="模型名" />
         <input data-new-field="apiBaseUrl" value="${escapeAttribute(defaultBaseUrl(provider))}" placeholder="API 地址" />
@@ -777,12 +876,22 @@ async function deleteModel(id) {
   }
 }
 
-async function loadUsers() {
+async function loadUsers(options = {}) {
+  if (options.quiet) {
+    const response = await fetch("/api/admin/users", { headers: authHeaders() });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) return;
+    allUsers = data.users || [];
+    loadedTabs.add("users");
+    renderUsers();
+    return;
+  }
   renderNotice(userList, "正在读取用户列表...");
   const response = await fetch("/api/admin/users", { headers: authHeaders() });
   const data = await response.json().catch(() => ({}));
   if (!response.ok) return renderNotice(userList, data.detail || data.error || "读取用户失败。");
   allUsers = data.users || [];
+  loadedTabs.add("users");
   renderUsers();
 }
 

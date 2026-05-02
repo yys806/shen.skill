@@ -212,15 +212,15 @@ dom.form.addEventListener("submit", async event => {
     thinking.content = data.content || "我这边没拿到模型回复，可能是模型名或 API key 配置的问题。";
     thinking.createdAt = Date.now();
     conversation.updatedAt = Date.now();
-    await syncAccountUsage(true);
     persistAndRender();
+    void syncAccountUsage(true);
   } catch (error) {
     thinking.pending = false;
     thinking.content = `这下卡住了：${error.message}\n\n先检查 Netlify 环境变量、Supabase 登录状态和模型名。`;
     thinking.createdAt = Date.now();
     conversation.updatedAt = Date.now();
-    await syncAccountUsage(true);
     persistAndRender();
+    void syncAccountUsage(true);
   }
 });
 
