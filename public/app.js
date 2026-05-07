@@ -14,6 +14,7 @@ const modelOptions = [
   { provider: "deepseek", model: "deepseek-v4-flash", label: "DeepSeek v4 Flash", vendor: "DeepSeek" },
   { provider: "deepseek", model: "deepseek-v4-pro", label: "DeepSeek v4 Pro", vendor: "DeepSeek" }
 ];
+const SIGNUP_INVITE_CODE = "08060910";
 
 let accountPlan = "free";
 
@@ -483,6 +484,7 @@ function renderAuthModal() {
       <label for="password">密码</label>
       <input id="password" type="password" autocomplete="${isSignup ? "new-password" : "current-password"}" placeholder="大小写 + 数字 + 特殊符号" />
       ${isSignup ? '<label for="confirm-password">确认密码</label><input id="confirm-password" type="password" autocomplete="new-password" placeholder="再输入一次密码" />' : ""}
+      ${isSignup ? '<label for="invite-code">邀请码</label><input id="invite-code" type="text" inputmode="numeric" autocomplete="off" maxlength="16" placeholder="输入邀请码后才可以注册" />' : ""}
       ${isSignup ? '<label for="signup-otp">邮箱验证码</label><div class="otp-row"><input id="signup-otp" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="8" placeholder="输入 8 位验证码" /><button id="otp-send" class="modal-primary" type="button">发送验证码</button></div>' : ""}
       ${isSignup ? '<label class="policy-check"><input id="policy-agree" type="checkbox" /> <span>我已阅读并同意 <a href="/privacy/" target="_blank" rel="noreferrer">隐私政策</a> 和 <a href="/terms/" target="_blank" rel="noreferrer">服务条款</a></span></label>' : ""}
       <button id="auth-submit" class="modal-primary" type="button">${isSignup ? "验证并注册" : "登录"}</button>
@@ -548,6 +550,7 @@ async function submitAuth(mode) {
   const nickname = dom.modalBody.querySelector("#nickname").value.trim();
   const email = identifier;
   const confirmPassword = dom.modalBody.querySelector("#confirm-password").value;
+  const inviteCode = dom.modalBody.querySelector("#invite-code")?.value.trim();
   const token = dom.modalBody.querySelector("#signup-otp")?.value.trim();
   const agreedToPolicies = dom.modalBody.querySelector("#policy-agree")?.checked;
   const passwordError = validatePassword(password, confirmPassword);
@@ -555,10 +558,11 @@ async function submitAuth(mode) {
   if (!email) return setFeedback("邮箱不能为空。");
   if (!isEmail(email)) return setFeedback("注册时请输入有效邮箱。");
   if (passwordError) return setFeedback(passwordError);
+  if (!isValidInviteCode(inviteCode)) return setFeedback("邀请码不正确，暂时不能注册。");
   if (!/^\d{8}$/.test(token || "")) return setFeedback("请输入邮件里的 8 位数字验证码。");
   if (!agreedToPolicies) return setFeedback("注册前需要先阅读并同意隐私政策和服务条款。");
 
-  pendingSignup = { email, password, nickname };
+  pendingSignup = { email, password, nickname, inviteCode };
   return verifySignupOtp();
 }
 
@@ -582,12 +586,14 @@ async function sendSignupOtp() {
   const email = dom.modalBody.querySelector("#email")?.value.trim();
   const password = dom.modalBody.querySelector("#password")?.value;
   const confirmPassword = dom.modalBody.querySelector("#confirm-password")?.value;
+  const inviteCode = dom.modalBody.querySelector("#invite-code")?.value.trim();
   const passwordError = validatePassword(password || "", confirmPassword || "");
 
   if (!nickname) return setFeedback("昵称不能为空。");
   if (!email) return setFeedback("邮箱不能为空。");
   if (!isEmail(email)) return setFeedback("注册时请输入有效邮箱。");
   if (passwordError) return setFeedback(passwordError);
+  if (!isValidInviteCode(inviteCode)) return setFeedback("邀请码不正确，暂时不能发送验证码。");
 
   const duplicate = await checkProfileDuplicate(nickname, email);
   if (duplicate) return;
@@ -611,13 +617,15 @@ async function sendSignupOtp() {
     updateAuthState();
   }
 
-  pendingSignup = { email, password, nickname };
+  pendingSignup = { email, password, nickname, inviteCode };
   startOtpCooldown();
   dom.modalBody.querySelector("#signup-otp")?.focus();
   setFeedback(`验证码已发送到 ${email}。`);
 }
 
 async function verifySignupOtp() {
+  const inviteCode = dom.modalBody.querySelector("#invite-code")?.value.trim() || pendingSignup?.inviteCode;
+  if (!isValidInviteCode(inviteCode)) return setFeedback("邀请码不正确，暂时不能注册。");
   if (!pendingSignup?.email) return setFeedback("请先点击发送验证码。");
   const token = dom.modalBody.querySelector("#signup-otp")?.value.trim();
   if (!/^\d{8}$/.test(token || "")) return setFeedback("请输入 8 位数字验证码。");
@@ -654,6 +662,8 @@ async function verifySignupOtp() {
 }
 
 async function resendSignupOtp() {
+  const inviteCode = dom.modalBody.querySelector("#invite-code")?.value.trim() || pendingSignup?.inviteCode;
+  if (!isValidInviteCode(inviteCode)) return setFeedback("邀请码不正确，暂时不能重新发送验证码。");
   if (!pendingSignup?.email) return setFeedback("请先点击发送验证码。");
   setFeedback("正在重新发送验证码...");
   const { error } = await supabase.auth.resend({
@@ -759,6 +769,10 @@ function normalizeNickname(nickname) {
 
 function isEmail(value) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
+}
+
+function isValidInviteCode(value) {
+  return String(value || "").trim() === SIGNUP_INVITE_CODE;
 }
 
 function escapePostgrestValue(value) {
