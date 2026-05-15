@@ -1208,21 +1208,23 @@ function codeStatusLabel(status) {
 
 function codeGroupLabel(groupKey) {
   const group = codeGroups.find(item => item.key === groupKey);
-  return group?.label || groupKey || "未知卡密组";
+  return group?.label || groupKey || "未知卡密";
 }
 
 function renderCodes() {
   selectedCodeIds = new Set([...selectedCodeIds].filter(id => allCodes.some(code => code.id === id)));
+  const unusedCodes = allCodes.filter(code => code.status === "unused");
+  const allUnusedSelected = unusedCodes.length > 0 && unusedCodes.every(code => selectedCodeIds.has(code.id));
   const groupOptions = codeGroups.map(group => (
-    `<option value="${escapeAttribute(group.key)}">${escapeHtml(group.label)} · ${escapeHtml(group.quotaDelta)} 次 · ${Number(group.periodMonths || 0) === 0 ? "不延长" : `${escapeHtml(group.periodMonths)} 月`}</option>`
+    `<option value="${escapeAttribute(group.key)}">${escapeHtml(group.label)} · ${escapeHtml(group.quotaDelta)} 次 · ${Number(group.periodMonths || 0) === 0 ? "仅升级" : `${escapeHtml(group.periodMonths)} 个月`}</option>`
   )).join("");
   codeList.innerHTML = `
-    <article class="submission-item compact-payment">
+    <article class="submission-item compact-payment code-manager-panel">
       <div>
-        <span class="status-pill">生成卡密</span>
-        <h2>会员卡密</h2>
+        <span class="status-pill">卡密中心</span>
+        <h2>生成与批量复制会员卡密</h2>
         <dl class="submission-meta">
-          <dt>说明</dt><dd>Plus 升 Pro 差价卡只能由有效 Plus 用户兑换；兑换后保留当前到期日并升级到 Pro。</dd>
+          <dt>说明</dt><dd>Plus 到 Pro 差价卡只允许有效 Plus 用户兑换；兑换后保留当前到期日，并升级为 Pro。</dd>
         </dl>
         <div class="admin-code-form">
           <select id="code-group">${groupOptions}</select>
@@ -1231,20 +1233,20 @@ function renderCodes() {
           <button id="code-create" class="modal-primary" type="button">生成</button>
         </div>
         <div class="admin-code-bulk">
-          <button id="code-select-all" type="button">全选未使用</button>
-          <button id="code-clear-selection" type="button">清空选择</button>
-          <button id="code-copy-selected" type="button">复制选中卡密</button>
+          <button id="code-toggle-all" class="${allUnusedSelected ? "is-active" : ""}" type="button">${allUnusedSelected ? "取消全选" : "全选未使用"}</button>
+          <button id="code-clear-selection" type="button" ${selectedCodeIds.size ? "" : "disabled"}>清空选择</button>
+          <button id="code-copy-selected" class="primary" type="button" ${selectedCodeIds.size ? "" : "disabled"}>复制选中卡密</button>
           <button id="code-copy-created" type="button" ${lastCreatedCodeIds.size ? "" : "disabled"}>复制本次生成</button>
-          <span id="code-copy-feedback" class="field-help">已选择 ${selectedCodeIds.size} 个卡密</span>
+          <span id="code-copy-feedback" class="field-help">已选 ${selectedCodeIds.size} 张</span>
         </div>
       </div>
     </article>
     ${allCodes.length ? allCodes.map(code => `
-      <article class="submission-item compact-payment">
+      <article class="submission-item compact-payment code-card ${selectedCodeIds.has(code.id) ? "is-selected" : ""}">
         <div>
-          <label class="code-select-row">
+          <label class="code-select-row ${selectedCodeIds.has(code.id) ? "checked" : ""} ${code.status !== "unused" ? "disabled" : ""}">
             <input data-code-select="${escapeAttribute(code.id)}" type="checkbox" ${selectedCodeIds.has(code.id) ? "checked" : ""} ${code.status !== "unused" ? "disabled" : ""} />
-            <span>选择</span>
+            <span>${selectedCodeIds.has(code.id) ? "已选" : "选择"}</span>
           </label>
           <span class="status-pill status-${escapeAttribute(code.status || "unused")}">${escapeHtml(codeStatusLabel(code.status))}</span>
           <h2 class="code-text">${escapeHtml(code.code)}</h2>
@@ -1265,7 +1267,7 @@ function renderCodes() {
     `).join("") : `<article class="submission-empty">还没有生成过卡密。</article>`}
   `;
   codeList.querySelector("#code-create")?.addEventListener("click", createCodes);
-  codeList.querySelector("#code-select-all")?.addEventListener("click", selectAllUnusedCodes);
+  codeList.querySelector("#code-toggle-all")?.addEventListener("click", toggleAllUnusedCodes);
   codeList.querySelector("#code-clear-selection")?.addEventListener("click", clearCodeSelection);
   codeList.querySelector("#code-copy-selected")?.addEventListener("click", copySelectedCodes);
   codeList.querySelector("#code-copy-created")?.addEventListener("click", copyLastCreatedCodes);
@@ -1273,7 +1275,7 @@ function renderCodes() {
     input.addEventListener("change", () => {
       if (input.checked) selectedCodeIds.add(input.dataset.codeSelect);
       else selectedCodeIds.delete(input.dataset.codeSelect);
-      updateCodeCopyFeedback();
+      renderCodes();
     });
   });
   codeList.querySelectorAll("[data-copy-code]").forEach(button => {
@@ -1301,11 +1303,12 @@ async function createCodes() {
   selectedCodeIds = new Set(created.map(code => code.id));
   allCodes = [...created, ...allCodes];
   renderCodes();
-  window.setTimeout(copyLastCreatedCodes, 0);
 }
 
-function selectAllUnusedCodes() {
-  selectedCodeIds = new Set(allCodes.filter(code => code.status === "unused").map(code => code.id));
+function toggleAllUnusedCodes() {
+  const unusedCodes = allCodes.filter(code => code.status === "unused");
+  const allUnusedSelected = unusedCodes.length > 0 && unusedCodes.every(code => selectedCodeIds.has(code.id));
+  selectedCodeIds = allUnusedSelected ? new Set() : new Set(unusedCodes.map(code => code.id));
   renderCodes();
 }
 
@@ -1326,14 +1329,14 @@ function copyLastCreatedCodes() {
 
 async function copyCodesToClipboard(codes) {
   const cleanCodes = [...new Set((codes || []).filter(Boolean))];
-  if (!cleanCodes.length) return updateCodeCopyFeedback("没有可复制的卡密。", true);
+  if (!cleanCodes.length) return updateCodeCopyFeedback("先选择要复制的卡密", true);
   const text = cleanCodes.join("\n");
   try {
     await navigator.clipboard.writeText(text);
-    updateCodeCopyFeedback(`已复制 ${cleanCodes.length} 个卡密。`);
+    updateCodeCopyFeedback(`已复制 ${cleanCodes.length} 张卡密`);
   } catch {
     fallbackCopyText(text);
-    updateCodeCopyFeedback(`已复制 ${cleanCodes.length} 个卡密。`);
+    updateCodeCopyFeedback(`已复制 ${cleanCodes.length} 张卡密`);
   }
 }
 
@@ -1352,6 +1355,6 @@ function fallbackCopyText(text) {
 function updateCodeCopyFeedback(message = "", isError = false) {
   const target = codeList.querySelector("#code-copy-feedback");
   if (!target) return;
-  target.textContent = message || `已选择 ${selectedCodeIds.size} 个卡密`;
+  target.textContent = message || `已选 ${selectedCodeIds.size} 张`;
   target.classList.toggle("is-error", Boolean(isError));
 }
