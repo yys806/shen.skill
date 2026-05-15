@@ -4,6 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>镜室 - 后台 | Admin</title>
+    <meta name="robots" content="noindex,nofollow,noarchive" />
     <link rel="icon" href="/icon.png" type="image/png" />
     <link rel="stylesheet" href="/styles.css" />
   </head>
@@ -22,7 +23,7 @@
         <div class="admin-tabs" role="tablist" aria-label="后台功能">
           <button class="active" data-admin-tab="submissions" type="button">Skill 审批</button>
           <button data-admin-tab="skills" type="button">Skill 管理</button>
-          <button data-admin-tab="payments" type="button">支付审核</button>
+          <button data-admin-tab="codes" type="button">卡密管理</button>
           <button data-admin-tab="notifications" type="button">通知公告</button>
           <button data-admin-tab="models" type="button">模型管理</button>
           <button data-admin-tab="users" type="button">用户管理</button>
@@ -34,6 +35,7 @@
         <div id="submission-list" class="submission-list"></div>
         <div id="skill-list" class="submission-list hidden"></div>
         <div id="payment-list" class="submission-list hidden"></div>
+        <div id="code-list" class="submission-list hidden"></div>
         <div id="notification-list" class="submission-list hidden"></div>
         <div id="model-list" class="submission-list hidden"></div>
         <div id="user-list" class="submission-list hidden"></div>
@@ -54,7 +56,7 @@
       </div>
     </section>
 
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="/mirror-auth.js"></script>
     <script src="/admin/admin.js"></script>
   </body>
 </html>

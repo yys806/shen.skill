@@ -4,7 +4,12 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>镜室定价 | Mirror Room</title>
-    <meta name="description" content="镜室 Free、Plus、Pro 套餐定价与权益说明。" />
+    <meta name="description" content="镜室 Free、Plus、Pro 套餐定价与卡密兑换说明。" />
+    <meta property="og:title" content="镜室定价 | Plus / Pro 会员卡密" />
+    <meta property="og:description" content="通过镜室小店购买会员卡密，回到站内兑换后自动开通 Plus 或 Pro。" />
+    <meta property="og:url" content="https://skill-chat.cn/pricing/" />
+    <meta property="og:image" content="https://skill-chat.cn/icon.png" />
+    <link rel="canonical" href="https://skill-chat.cn/pricing/" />
     <link rel="icon" href="/icon.png" type="image/png" />
     <link rel="stylesheet" href="/styles.css" />
   </head>
@@ -23,11 +28,11 @@
       </nav>
 
       <section class="pricing-hero">
-        <p class="home-kicker">pricing / public beta</p>
+        <p class="home-kicker">pricing / membership code</p>
         <h1>定价说明</h1>
         <p>
-          镜室按“可控额度 + 稳定对话 + 更强记忆”来分层。当前采用微信/支付宝人工审核开通，
-          支付后提交付款账号，管理员确认后套餐立即生效，有效期一个月。
+          镜室按“可控额度 + 稳定对话 + 更强记忆”来分层。现在通过镜室小店购买会员卡密，
+          支付完成后复制卡密回到本页兑换，套餐会自动生效。
         </p>
       </section>
 
@@ -40,7 +45,7 @@
         <article class="pricing-card plan-card">
           <span class="status-pill">默认</span>
           <h2>Free</h2>
-          <p class="price-line">￥0 / 月</p>
+          <p class="price-line">¥0 / 月</p>
           <ul class="feature-list">
             <li class="yes">使用公开 skill 库</li>
             <li class="yes">基础模型对话</li>
@@ -55,22 +60,22 @@
         <article class="pricing-card plan-card featured">
           <span class="status-pill">适合轻度用户</span>
           <h2>Plus</h2>
-          <p class="price-line" data-price-line="plus">￥19 / 月</p>
+          <p class="price-line" data-price-line="plus">¥19 / 月</p>
           <ul class="feature-list">
             <li class="yes">Free 的全部权益</li>
             <li class="yes">每月 500 次消息额度</li>
             <li class="yes">更稳定的上下文与历史会话</li>
-            <li class="yes">模型测试与常用模型优先可用</li>
+            <li class="yes">常用模型优先可用</li>
             <li class="no">Pro 高级模型池</li>
             <li class="no">更高频的记忆沉淀与后续私有 skill 优先权</li>
           </ul>
-          <button class="home-primary checkout-button" data-plan="plus" type="button">升级 Plus</button>
+          <button class="home-primary checkout-button" data-plan="plus" type="button">购买 Plus 月卡</button>
         </article>
 
         <article class="pricing-card plan-card pro-card">
           <span class="status-pill">推荐给重度用户</span>
           <h2>Pro</h2>
-          <p class="price-line" data-price-line="pro">￥49 / 月</p>
+          <p class="price-line" data-price-line="pro">¥49 / 月</p>
           <ul class="feature-list">
             <li class="yes">Plus 的全部权益</li>
             <li class="yes">每月 2000 次消息额度</li>
@@ -79,46 +84,39 @@
             <li class="yes">新 skill、私有 skill 与发布流程优先体验</li>
             <li class="yes">后续团队空间/导出功能优先开放</li>
           </ul>
-          <button class="home-primary checkout-button" data-plan="pro" type="button">升级 Pro</button>
+          <button class="home-primary checkout-button" data-plan="pro" type="button">购买 Pro 月卡</button>
         </article>
       </section>
 
       <section class="pricing-note">
-        <p id="billing-status" class="field-help">正在读取状态</p>
-        <p id="billing-feedback" class="field-help">需要先登录镜室账号。当前支付采用微信/支付宝人工审核开通。</p>
+        <p id="billing-status" class="field-help">正在读取状态...</p>
+        <p id="billing-feedback" class="field-help">需要先登录镜室账号。购买后请复制小店订单里的卡密，在下方兑换。</p>
+
+        <div class="redeem-panel">
+          <div>
+            <p class="home-kicker">redeem code</p>
+            <h2>兑换会员卡密</h2>
+            <p>在小店支付成功后，订单页会显示卡密。把卡密粘贴到这里，即可自动开通、续费或升级会员。</p>
+          </div>
+          <form id="redeem-form" class="redeem-form">
+            <input id="redeem-code" type="text" autocomplete="off" placeholder="输入卡密，例如 PMXXXXXXXXXXXX" />
+            <button class="home-primary" type="submit">兑换会员</button>
+          </form>
+          <p id="redeem-feedback" class="field-help"></p>
+        </div>
+
         <p>
-          支付后请提交你的微信/支付宝用户名，管理员核对后会把套餐开通到对应账号。
-          如遇误付或重复付款，可以先看 <a href="/refund/">Refund policy</a>。
+          也可以直接进入
+          <a id="shop-link" href="https://pay.ldxp.cn/shop/S5I572HE" target="_blank" rel="noreferrer">镜室小店</a>
+          查看全部商品。卡密只能兑换一次，请不要泄露给他人。
+        </p>
+        <p>
+          如遇误付、重复付款或卡密异常，可以先看 <a href="/refund/">Refund policy</a>，或联系管理员处理。
         </p>
       </section>
     </main>
 
-    <div id="payment-modal" class="payment-modal hidden" aria-hidden="true">
-      <div class="payment-card" role="dialog" aria-modal="true" aria-labelledby="payment-title">
-        <button id="payment-close" class="payment-close" type="button" aria-label="关闭">×</button>
-        <p class="home-kicker">manual payment</p>
-        <h2 id="payment-title">选择支付方式</h2>
-        <p id="payment-copy">请选择微信或支付宝完成支付。</p>
-        <div id="payment-methods" class="payment-method-grid">
-          <button type="button" data-pay-method="wechat">微信支付</button>
-          <button type="button" data-pay-method="alipay">支付宝</button>
-        </div>
-        <div id="payment-qr-stage" class="payment-qr-stage hidden">
-          <strong id="payment-amount">请支付 19 元</strong>
-          <img id="payment-qr" src="" alt="收款码" />
-          <p id="payment-method-label" class="field-help"></p>
-          <button id="payment-paid" class="modal-primary" type="button">我已支付</button>
-        </div>
-        <form id="payment-confirm-form" class="payment-confirm-form hidden">
-          <label for="payer-name">你的微信/支付宝用户名</label>
-          <input id="payer-name" name="payerName" type="text" autocomplete="name" placeholder="用于管理员核对收款记录" />
-          <button class="modal-primary" type="submit">提交支付记录</button>
-        </form>
-        <p id="payment-feedback" class="field-help"></p>
-      </div>
-    </div>
-
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script type="module" src="/pricing/pricing.js"></script>
+    <script src="/mirror-auth.js"></script>
+    <script type="module" src="/pricing/pricing.js?v=card-code-20260515"></script>
   </body>
 </html>

@@ -18,6 +18,9 @@ let allSubmissions = [];
 let allUsers = [];
 let allSkills = [];
 let allPayments = [];
+let allCodes = [];
+let codeGroups = [];
+let selectedCodeGroup = "plus_monthly";
 let allNotifications = [];
 let allModels = [];
 let noticeTargets = [];
@@ -31,6 +34,7 @@ const authBox = document.querySelector("#admin-auth");
 const submissionList = document.querySelector("#submission-list");
 const skillList = document.querySelector("#skill-list");
 const paymentList = document.querySelector("#payment-list");
+const codeList = document.querySelector("#code-list");
 const notificationList = document.querySelector("#notification-list");
 const modelList = document.querySelector("#model-list");
 const userList = document.querySelector("#user-list");
@@ -45,8 +49,8 @@ bootAdminPage();
 async function bootAdminPage() {
   try {
     const config = await getJson("/api/config");
-    if (!config.hasSupabase) {
-      setLoginFeedback("Supabase 未配置，后台暂不可用。", true);
+    if (!config.hasMirrorAuth && !config.hasSupabase) {
+      setLoginFeedback("认证服务未配置，后台暂不可用。", true);
       return;
     }
 
@@ -115,6 +119,7 @@ function renderTabs() {
   submissionList.classList.toggle("hidden", activeTab !== "submissions");
   skillList.classList.toggle("hidden", activeTab !== "skills");
   paymentList.classList.toggle("hidden", activeTab !== "payments");
+  codeList?.classList.toggle("hidden", activeTab !== "codes");
   notificationList.classList.toggle("hidden", activeTab !== "notifications");
   modelList.classList.toggle("hidden", activeTab !== "models");
   userList.classList.toggle("hidden", activeTab !== "users");
@@ -130,7 +135,7 @@ async function loadActiveTab() {
     return;
   }
   if (activeTab === "skills") return loadSkills();
-  if (activeTab === "payments") return loadPayments();
+  if (activeTab === "codes") return loadCodes();
   if (activeTab === "notifications") return loadNotifications();
   if (activeTab === "models") return loadModels();
   if (activeTab === "users") return loadUsers();
@@ -139,7 +144,7 @@ async function loadActiveTab() {
 
 function renderCachedTab(tab) {
   if (tab === "skills") return renderSkills();
-  if (tab === "payments") return renderPayments();
+  if (tab === "codes") return renderCodes();
   if (tab === "notifications") return renderNotificationsAdmin();
   if (tab === "models") return renderModels();
   if (tab === "users") return renderUsers();
@@ -149,7 +154,7 @@ function renderCachedTab(tab) {
 async function refreshActiveTabQuietly(tab) {
   try {
     if (tab === "skills") return loadSkills({ quiet: true });
-    if (tab === "payments") return loadPayments({ quiet: true });
+    if (tab === "codes") return loadCodes({ quiet: true });
     if (tab === "notifications") return loadNotifications({ quiet: true });
     if (tab === "models") return loadModels({ quiet: true });
     if (tab === "users") return loadUsers({ quiet: true });
@@ -422,6 +427,182 @@ async function updatePaymentStatus(id, status) {
     await loadPayments({ quiet: true });
   }
   if (status === "approved") void loadUsers({ quiet: true });
+}
+
+async function loadCodes(options = {}) {
+  if (options.quiet) {
+    const response = await fetch("/api/admin/membership-codes", { headers: authHeaders() });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) return;
+    codeGroups = data.groups || [];
+    allCodes = data.codes || [];
+    loadedTabs.add("codes");
+    renderCodes();
+    return;
+  }
+  renderNotice(codeList, "正在读取卡密列表...");
+  const response = await fetch("/api/admin/membership-codes", { headers: authHeaders() });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) return renderNotice(codeList, data.detail || data.error || "读取卡密失败。");
+  codeGroups = data.groups || [];
+  allCodes = data.codes || [];
+  loadedTabs.add("codes");
+  renderCodes();
+}
+
+function renderCodes() {
+  if (!codeList) return;
+  const groups = codeGroups.length ? codeGroups : [
+    { key: "plus_monthly", label: "Plus 月度" },
+    { key: "plus_yearly", label: "Plus 年度" },
+    { key: "pro_monthly", label: "Pro 月度" },
+    { key: "pro_yearly", label: "Pro 年度" }
+  ];
+  codeList.innerHTML = `
+    <article class="submission-item code-generator">
+      <div>
+        <span class="status-pill">生成卡密</span>
+        <h2>会员卡密</h2>
+        <p>选择四个商品组之一批量生成。卡密全局唯一，只能兑换一次。</p>
+        <div class="code-generator-grid">
+          <select id="code-group">
+            ${groups.map(group => `<option value="${escapeAttribute(group.key)}" ${group.key === selectedCodeGroup ? "selected" : ""}>${escapeHtml(group.label)}</option>`).join("")}
+          </select>
+          <input id="code-count" type="number" min="1" max="200" value="10" />
+          <input id="code-note" type="text" maxlength="300" placeholder="备注，可选" />
+          <button id="code-create" type="button">生成</button>
+        </div>
+        <p id="code-feedback" class="field-help"></p>
+      </div>
+    </article>
+    <article class="submission-item compact code-toolbar">
+      <div>
+        <h2>卡密列表</h2>
+        <p>${escapeHtml(codeSummary())}</p>
+      </div>
+      <aside>
+        <button data-code-refresh type="button">刷新</button>
+        <button data-copy-unused type="button">复制当前组未使用</button>
+      </aside>
+    </article>
+    <div class="code-table">
+      ${allCodes.map(codeRow).join("") || `<article class="submission-empty">还没有卡密。</article>`}
+    </div>
+  `;
+  codeList.querySelector("#code-group")?.addEventListener("change", event => {
+    selectedCodeGroup = event.target.value || selectedCodeGroup;
+  });
+  codeList.querySelector("#code-create")?.addEventListener("click", createCodes);
+  codeList.querySelector("[data-code-refresh]")?.addEventListener("click", () => loadCodes());
+  codeList.querySelector("[data-copy-unused]")?.addEventListener("click", copyUnusedCodes);
+  codeList.querySelectorAll("[data-copy-code]").forEach(button => {
+    button.addEventListener("click", () => copyText(button.dataset.copyCode, button));
+  });
+  codeList.querySelectorAll("[data-code-disable]").forEach(button => {
+    button.addEventListener("click", () => updateCodeStatus(button.dataset.codeDisable, "disabled"));
+  });
+  codeList.querySelectorAll("[data-code-restore]").forEach(button => {
+    button.addEventListener("click", () => updateCodeStatus(button.dataset.codeRestore, "unused"));
+  });
+}
+
+function codeRow(code) {
+  return `
+    <article class="code-row status-${escapeAttribute(code.status)}">
+      <strong>${escapeHtml(code.code)}</strong>
+      <span>${escapeHtml(codeGroupLabel(code.group_key))}</span>
+      <span>${escapeHtml(codeStatusLabel(code.status))}</span>
+      <small>${code.redeemed_by_email ? `兑换：${escapeHtml(code.redeemed_by_email)} · ${formatDate(code.redeemed_at)}` : `创建：${formatDate(code.created_at)}`}</small>
+      <div>
+        <button data-copy-code="${escapeAttribute(code.code)}" type="button">复制</button>
+        ${code.status === "unused"
+          ? `<button class="danger subtle" data-code-disable="${escapeAttribute(code.id)}" type="button">禁用</button>`
+          : ""}
+        ${code.status === "disabled"
+          ? `<button data-code-restore="${escapeAttribute(code.id)}" type="button">恢复</button>`
+          : ""}
+      </div>
+    </article>
+  `;
+}
+
+async function createCodes() {
+  const groupKey = codeList.querySelector("#code-group")?.value;
+  selectedCodeGroup = groupKey || selectedCodeGroup;
+  const count = Number(codeList.querySelector("#code-count")?.value || 1);
+  const note = codeList.querySelector("#code-note")?.value || "";
+  setCodeFeedback("正在生成卡密...");
+  const response = await fetch("/api/admin/membership-codes", {
+    method: "POST",
+    headers: { ...authHeaders(), "Content-Type": "application/json" },
+    body: JSON.stringify({ groupKey, count, note })
+  });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) return setCodeFeedback(data.detail || data.error || "生成失败。", true);
+  allCodes = [...(data.codes || []), ...allCodes];
+  if (data.groups) codeGroups = data.groups;
+  renderCodes();
+  setCodeFeedback(`已生成 ${(data.codes || []).length} 张卡密。`);
+}
+
+async function updateCodeStatus(id, status) {
+  const response = await fetch("/api/admin/membership-codes", {
+    method: "PATCH",
+    headers: { ...authHeaders(), "Content-Type": "application/json" },
+    body: JSON.stringify({ id, status })
+  });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) return setCodeFeedback(data.detail || data.error || "更新失败。", true);
+  if (data.code) {
+    allCodes = allCodes.map(item => item.id === id ? data.code : item);
+    renderCodes();
+  }
+}
+
+function copyUnusedCodes() {
+  const groupKey = codeList.querySelector("#code-group")?.value || selectedCodeGroup;
+  selectedCodeGroup = groupKey;
+  const text = allCodes
+    .filter(code => code.status === "unused" && code.group_key === groupKey)
+    .map(code => code.code)
+    .join("\n");
+  copyText(text, codeList.querySelector("[data-copy-unused]"));
+}
+
+async function copyText(text, button) {
+  if (!text) return;
+  await navigator.clipboard?.writeText(text);
+  if (button) {
+    const old = button.textContent;
+    button.textContent = "已复制";
+    setTimeout(() => { button.textContent = old; }, 900);
+  }
+}
+
+function setCodeFeedback(message, isError = false) {
+  const target = codeList.querySelector("#code-feedback");
+  if (!target) return;
+  target.textContent = message;
+  target.classList.toggle("is-error", Boolean(isError));
+}
+
+function codeSummary() {
+  const unused = allCodes.filter(code => code.status === "unused").length;
+  const redeemed = allCodes.filter(code => code.status === "redeemed").length;
+  const disabled = allCodes.filter(code => code.status === "disabled").length;
+  return `未使用 ${unused} 张，已兑换 ${redeemed} 张，已禁用 ${disabled} 张。`;
+}
+
+function codeGroupLabel(groupKey) {
+  return codeGroups.find(group => group.key === groupKey)?.label
+    || ({ plus_monthly: "Plus 月度", plus_yearly: "Plus 年度", pro_monthly: "Pro 月度", pro_yearly: "Pro 年度" }[groupKey])
+    || groupKey;
+}
+
+function codeStatusLabel(status) {
+  if (status === "redeemed") return "已兑换";
+  if (status === "disabled") return "已禁用";
+  return "未使用";
 }
 
 async function loadNotifications(options = {}) {

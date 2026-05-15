@@ -914,6 +914,10 @@ body.home-page::after {
 .admin-panel {
   display: grid;
   grid-template-columns: minmax(150px, 190px) minmax(0, 1fr);
+  grid-template-areas:
+    "auth auth"
+    "tabs tools"
+    "tabs list";
   gap: 18px;
   align-items: start;
 }
@@ -937,7 +941,7 @@ body.home-page::after {
 }
 
 .admin-panel > .submission-auth {
-  grid-column: 1 / -1;
+  grid-area: auth;
 }
 
 .submission-auth span {
@@ -1032,12 +1036,15 @@ body.home-page::after {
   background: rgba(255, 252, 244, 0.46);
   position: sticky;
   top: 18px;
-  grid-column: 1;
+  grid-area: tabs;
 }
 
-.admin-tools,
+.admin-tools {
+  grid-area: tools;
+}
+
 .submission-list {
-  grid-column: 2;
+  grid-area: list;
 }
 
 .admin-tabs button,
@@ -1605,6 +1612,15 @@ body.home-page::after {
   align-items: center;
 }
 
+.submission-list#user-list {
+  gap: 10px;
+}
+
+.submission-list#user-list .user-admin-item {
+  padding: 16px 18px;
+  border-radius: 22px;
+}
+
 .user-admin-item strong {
   display: block;
   font-size: 20px;
@@ -1661,7 +1677,7 @@ body.home-page::after {
 
 .rich-user p,
 .rich-user small {
-  margin: 6px 0 0;
+  margin: 4px 0 0;
   color: var(--muted);
 }
 
@@ -1989,136 +2005,10 @@ body.home-page::after {
   background: linear-gradient(135deg, var(--night), var(--lacquer-dark));
 }
 
-.checkout-button:disabled,
-.payment-confirm-form button:disabled {
+.checkout-button:disabled {
   cursor: not-allowed;
   opacity: 0.54;
   filter: grayscale(0.2);
-}
-
-.payment-modal {
-  position: fixed;
-  inset: 0;
-  z-index: 80;
-  display: grid;
-  place-items: center;
-  padding: 22px;
-  background: rgba(32, 24, 14, 0.24);
-  backdrop-filter: blur(18px);
-}
-
-.payment-modal.hidden {
-  display: none;
-}
-
-.payment-card {
-  position: relative;
-  width: min(480px, 100%);
-  max-height: calc(100dvh - 44px);
-  overflow-y: auto;
-  padding: 28px;
-  border: 1px solid rgba(27, 23, 18, 0.14);
-  border-radius: 30px;
-  background:
-    radial-gradient(circle at 88% 10%, rgba(35, 93, 76, 0.16), transparent 12rem),
-    linear-gradient(145deg, rgba(255, 252, 244, 0.96), rgba(242, 226, 198, 0.94));
-  box-shadow: 0 36px 90px rgba(45, 29, 9, 0.28);
-}
-
-.payment-card h2 {
-  margin: 0;
-  font-size: 34px;
-  line-height: 1;
-  letter-spacing: -0.08em;
-}
-
-.payment-card p {
-  color: var(--muted);
-  line-height: 1.7;
-}
-
-.payment-close {
-  position: absolute;
-  right: 18px;
-  top: 16px;
-  width: 38px;
-  height: 38px;
-  border: 1px solid rgba(27, 23, 18, 0.12);
-  border-radius: 999px;
-  color: var(--ink);
-  background: rgba(255, 252, 244, 0.72);
-  font-size: 24px;
-  cursor: pointer;
-}
-
-.payment-method-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 12px;
-  margin-top: 18px;
-}
-
-.payment-method-grid button,
-.payment-confirm-form button,
-.payment-qr-stage button {
-  min-height: 48px;
-  border: 0;
-  border-radius: 18px;
-  color: #fff8e8;
-  background: linear-gradient(135deg, var(--night), var(--lacquer-dark));
-  font-weight: 900;
-  cursor: pointer;
-}
-
-.payment-qr-stage {
-  display: grid;
-  justify-items: center;
-  gap: 14px;
-  margin-top: 18px;
-  padding: 18px;
-  border: 1px solid rgba(27, 23, 18, 0.12);
-  border-radius: 24px;
-  background: rgba(255, 252, 244, 0.62);
-}
-
-.payment-qr-stage strong {
-  color: var(--lacquer-dark);
-  font-size: 24px;
-}
-
-.payment-qr-stage img {
-  width: min(280px, 82vw);
-  max-height: 360px;
-  object-fit: contain;
-  border-radius: 20px;
-  background: #fff;
-  box-shadow: 0 18px 48px rgba(45, 29, 9, 0.16);
-}
-
-.payment-confirm-form {
-  display: grid;
-  gap: 10px;
-  margin-top: 18px;
-}
-
-.payment-confirm-form label {
-  font-weight: 900;
-}
-
-.payment-confirm-form input {
-  min-height: 48px;
-  padding: 0 15px;
-  border: 1px solid rgba(27, 23, 18, 0.16);
-  border-radius: 16px;
-  background: rgba(255, 252, 244, 0.82);
-  color: var(--ink);
-  font: inherit;
-}
-
-.payment-qr-stage.hidden,
-.payment-confirm-form.hidden,
-.payment-method-grid.hidden {
-  display: none;
 }
 
 .payment-request-actions {
@@ -2126,6 +2016,94 @@ body.home-page::after {
   flex-wrap: wrap;
   gap: 8px;
   margin-top: 12px;
+}
+
+.redeem-panel {
+  display: grid;
+  gap: 14px;
+  margin: 20px 0;
+  padding: 18px;
+  border: 1px solid rgba(27, 23, 18, 0.1);
+  border-radius: 24px;
+  background: rgba(255, 252, 244, 0.58);
+}
+
+.redeem-panel h2 {
+  margin: 6px 0 8px;
+  font-size: clamp(26px, 3vw, 40px);
+  letter-spacing: -0.08em;
+}
+
+.redeem-form {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+}
+
+.redeem-form input,
+.code-generator-grid input,
+.code-generator-grid select {
+  min-width: 0;
+  border: 1px solid rgba(27, 23, 18, 0.12);
+  border-radius: 999px;
+  padding: 13px 16px;
+  color: var(--ink);
+  background: rgba(255, 252, 244, 0.74);
+  font: inherit;
+  font-weight: 800;
+}
+
+.code-generator-grid {
+  display: grid;
+  grid-template-columns: minmax(150px, 1fr) 100px minmax(160px, 1fr) auto;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.code-generator-grid button,
+.code-toolbar button,
+.code-row button {
+  border: 1px solid rgba(27, 23, 18, 0.11);
+  border-radius: 999px;
+  padding: 10px 13px;
+  color: var(--ink);
+  background: rgba(255, 252, 244, 0.8);
+  font-weight: 900;
+}
+
+.code-table {
+  display: grid;
+  gap: 8px;
+}
+
+.code-row {
+  display: grid;
+  grid-template-columns: minmax(190px, 1fr) 110px 82px minmax(220px, 1.2fr) auto;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  border: 1px solid rgba(27, 23, 18, 0.08);
+  border-radius: 18px;
+  background: rgba(255, 252, 244, 0.62);
+}
+
+.code-row strong {
+  font-family: "Consolas", "Courier New", monospace;
+  letter-spacing: 0.06em;
+}
+
+.code-row small,
+.code-row span {
+  color: var(--muted);
+}
+
+.code-row.status-redeemed {
+  opacity: 0.72;
+}
+
+.code-row.status-disabled {
+  opacity: 0.58;
+  background: rgba(143, 45, 28, 0.06);
 }
 
 .compact-payment {
@@ -2860,12 +2838,17 @@ body.home-page::after {
 
   .admin-panel {
     grid-template-columns: 1fr;
+    grid-template-areas:
+      "auth"
+      "tabs"
+      "tools"
+      "list";
   }
 
   .admin-tabs,
   .admin-tools,
   .submission-list {
-    grid-column: 1;
+    grid-column: auto;
   }
 
   .admin-tabs {

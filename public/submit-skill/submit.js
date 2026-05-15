@@ -18,8 +18,8 @@ bootSubmitPage();
 async function bootSubmitPage() {
   try {
     const config = await getJson("/api/config");
-    if (!config.hasSupabase) {
-      setFeedback("Supabase 还没配置好，暂时不能提交。", true);
+    if (!config.hasMirrorAuth && !config.hasSupabase) {
+      setFeedback("认证服务还没配置好，暂时不能提交。", true);
       form.classList.add("is-disabled");
       return;
     }

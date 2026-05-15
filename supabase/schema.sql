@@ -447,6 +447,61 @@ on public.payment_requests (created_at desc);
 create index if not exists payment_requests_status_created_idx
 on public.payment_requests (status, created_at desc);
 
+create table if not exists public.membership_codes (
+  id uuid primary key default gen_random_uuid(),
+  code text not null unique,
+  group_key text not null check (group_key in ('plus_monthly', 'plus_yearly', 'pro_monthly', 'pro_yearly')),
+  plan text not null check (plan in ('plus', 'pro')),
+  billing_cycle text not null check (billing_cycle in ('monthly', 'yearly')),
+  quota_delta integer not null default 0,
+  period_months integer not null default 1,
+  status text not null default 'unused' check (status in ('unused', 'redeemed', 'disabled')),
+  note text,
+  created_by_email citext,
+  redeemed_by_user_id uuid references auth.users(id) on delete set null,
+  redeemed_by_email citext,
+  redeemed_at timestamptz,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+alter table public.membership_codes enable row level security;
+
+drop trigger if exists membership_codes_set_updated_at on public.membership_codes;
+create trigger membership_codes_set_updated_at
+before update on public.membership_codes
+for each row execute function public.set_updated_at();
+
+drop policy if exists "admins can read membership codes" on public.membership_codes;
+create policy "admins can read membership codes"
+on public.membership_codes for select
+using (
+  lower(coalesce((auth.jwt() ->> 'email'), '')) = '3492675568@qq.com'
+);
+
+drop policy if exists "admins can insert membership codes" on public.membership_codes;
+create policy "admins can insert membership codes"
+on public.membership_codes for insert
+with check (
+  lower(coalesce((auth.jwt() ->> 'email'), '')) = '3492675568@qq.com'
+);
+
+drop policy if exists "admins can update membership codes" on public.membership_codes;
+create policy "admins can update membership codes"
+on public.membership_codes for update
+using (
+  lower(coalesce((auth.jwt() ->> 'email'), '')) = '3492675568@qq.com'
+)
+with check (
+  lower(coalesce((auth.jwt() ->> 'email'), '')) = '3492675568@qq.com'
+);
+
+create index if not exists membership_codes_group_status_idx
+on public.membership_codes (group_key, status, created_at desc);
+
+create index if not exists membership_codes_redeemed_user_idx
+on public.membership_codes (redeemed_by_user_id, redeemed_at desc);
+
 create table if not exists public.notifications (
   id uuid primary key default gen_random_uuid(),
   audience text not null default 'all' check (audience in ('all', 'user', 'plan')),
