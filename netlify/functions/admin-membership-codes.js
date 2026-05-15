@@ -1,13 +1,17 @@
 import { randomBytes } from "node:crypto";
-import { requireAdmin } from "./_shared/admin.js";
+import { ADMIN_EMAIL, isAdmin, verifySupabaseUser } from "./_shared/auth.js";
 import { json } from "./_shared/json.js";
 import { supabaseAdminRequest } from "./_shared/supabase-admin.js";
 import { CODE_GROUPS, normalizeCode, normalizeGroup } from "./_shared/membership.js";
 
 export default async (req) => {
-  const authResult = await requireAdmin(req);
+  const authResult = await verifySupabaseUser(req);
   if (!authResult.ok) {
-    return json({ error: authResult.status === 401 ? "Unauthorized" : "Forbidden", detail: authResult.detail }, authResult.status);
+    return json({ error: "Unauthorized", detail: authResult.detail }, 401);
+  }
+
+  if (!isAdmin(authResult.user)) {
+    return json({ error: "Forbidden", detail: `只有管理员 ${ADMIN_EMAIL} 可以管理卡密。` }, 403);
   }
 
   if (req.method === "GET") return listCodes(req);
