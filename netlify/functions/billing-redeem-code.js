@@ -31,6 +31,18 @@ export default async (req) => {
     }, 409);
   }
 
+  const entitlement = await queryEntitlement(authResult.user.id);
+  if (!entitlement.ok) {
+    return json({ error: "Entitlement query failed", detail: entitlement.detail }, entitlement.status || 500);
+  }
+  const current = entitlement.data?.[0] || {};
+  if (isUpgradeCode(card) && !isActivePlus(current)) {
+    return json({
+      error: "Upgrade code not allowed",
+      detail: "这是一张 Plus 升 Pro 差价卡密，只有当前有效的 Plus 用户可以兑换。"
+    }, 403);
+  }
+
   const redeemResult = await markCodeRedeemed(card, authResult.user);
   if (!redeemResult.ok || !redeemResult.data?.length) {
     return json({
@@ -39,13 +51,6 @@ export default async (req) => {
     }, 409);
   }
 
-  const entitlement = await queryEntitlement(authResult.user.id);
-  if (!entitlement.ok) {
-    await restoreCode(card.id);
-    return json({ error: "Entitlement query failed", detail: entitlement.detail }, entitlement.status || 500);
-  }
-
-  const current = entitlement.data?.[0] || {};
   const endsAt = calculateNextEndsAt({
     currentEndsAt: current.current_period_ends_at,
     periodMonths: card.period_months
@@ -134,9 +139,22 @@ async function queryEntitlement(userId) {
   })}`);
 }
 
+function isUpgradeCode(card) {
+  return String(card.group_key || "").startsWith("plus_to_pro_");
+}
+
+function isActivePlus(entitlement) {
+  const endsAt = entitlement.current_period_ends_at ? new Date(entitlement.current_period_ends_at) : null;
+  return entitlement.plan === "plus"
+    && entitlement.status === "active"
+    && endsAt
+    && endsAt.getTime() > Date.now();
+}
+
 async function createRedeemNotification(user, card, endsAt) {
   const title = `${planLabel(card.plan)} ${card.billing_cycle === "yearly" ? "年度" : "月度"}会员已开通`;
-  const body = `卡密兑换成功，已追加 ${card.quota_delta} 次额度，会员有效期至 ${new Date(endsAt).toLocaleString("zh-CN")}。`;
+  const upgradeText = isUpgradeCode(card) ? "Plus 已升级为 Pro，" : "";
+  const body = `卡密兑换成功，${upgradeText}已追加 ${card.quota_delta} 次额度，会员有效期至 ${new Date(endsAt).toLocaleString("zh-CN")}。`;
   await supabaseAdminRequest("/notifications", {
     method: "POST",
     headers: { "Content-Type": "application/json" },

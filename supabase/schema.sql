@@ -728,7 +728,7 @@ on conflict (slug) do nothing;
 create table if not exists public.membership_codes (
   id uuid primary key default gen_random_uuid(),
   code text not null unique,
-  group_key text not null check (group_key in ('plus_monthly', 'plus_yearly', 'pro_monthly', 'pro_yearly')),
+  group_key text not null check (group_key in ('plus_monthly', 'plus_yearly', 'pro_monthly', 'pro_yearly', 'plus_to_pro_monthly', 'plus_to_pro_yearly')),
   plan text not null check (plan in ('plus', 'pro')),
   billing_cycle text not null check (billing_cycle in ('monthly', 'yearly')),
   quota_delta integer not null default 0,
@@ -744,6 +744,13 @@ create table if not exists public.membership_codes (
 );
 
 alter table public.membership_codes enable row level security;
+
+alter table public.membership_codes
+drop constraint if exists membership_codes_group_key_check;
+
+alter table public.membership_codes
+add constraint membership_codes_group_key_check
+check (group_key in ('plus_monthly', 'plus_yearly', 'pro_monthly', 'pro_yearly', 'plus_to_pro_monthly', 'plus_to_pro_yearly'));
 
 drop trigger if exists membership_codes_set_updated_at on public.membership_codes;
 create trigger membership_codes_set_updated_at

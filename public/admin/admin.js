@@ -18,6 +18,8 @@ let allSubmissions = [];
 let allUsers = [];
 let allSkills = [];
 let allPayments = [];
+let allCodes = [];
+let codeGroups = [];
 let allNotifications = [];
 let allModels = [];
 let noticeTargets = [];
@@ -31,6 +33,7 @@ const authBox = document.querySelector("#admin-auth");
 const submissionList = document.querySelector("#submission-list");
 const skillList = document.querySelector("#skill-list");
 const paymentList = document.querySelector("#payment-list");
+const codeList = document.querySelector("#code-list");
 const notificationList = document.querySelector("#notification-list");
 const modelList = document.querySelector("#model-list");
 const userList = document.querySelector("#user-list");
@@ -115,6 +118,7 @@ function renderTabs() {
   submissionList.classList.toggle("hidden", activeTab !== "submissions");
   skillList.classList.toggle("hidden", activeTab !== "skills");
   paymentList.classList.toggle("hidden", activeTab !== "payments");
+  codeList.classList.toggle("hidden", activeTab !== "codes");
   notificationList.classList.toggle("hidden", activeTab !== "notifications");
   modelList.classList.toggle("hidden", activeTab !== "models");
   userList.classList.toggle("hidden", activeTab !== "users");
@@ -131,6 +135,7 @@ async function loadActiveTab() {
   }
   if (activeTab === "skills") return loadSkills();
   if (activeTab === "payments") return loadPayments();
+  if (activeTab === "codes") return loadCodes();
   if (activeTab === "notifications") return loadNotifications();
   if (activeTab === "models") return loadModels();
   if (activeTab === "users") return loadUsers();
@@ -140,6 +145,7 @@ async function loadActiveTab() {
 function renderCachedTab(tab) {
   if (tab === "skills") return renderSkills();
   if (tab === "payments") return renderPayments();
+  if (tab === "codes") return renderCodes();
   if (tab === "notifications") return renderNotificationsAdmin();
   if (tab === "models") return renderModels();
   if (tab === "users") return renderUsers();
@@ -150,6 +156,7 @@ async function refreshActiveTabQuietly(tab) {
   try {
     if (tab === "skills") return loadSkills({ quiet: true });
     if (tab === "payments") return loadPayments({ quiet: true });
+    if (tab === "codes") return loadCodes({ quiet: true });
     if (tab === "notifications") return loadNotifications({ quiet: true });
     if (tab === "models") return loadModels({ quiet: true });
     if (tab === "users") return loadUsers({ quiet: true });
@@ -422,6 +429,105 @@ async function updatePaymentStatus(id, status) {
     await loadPayments({ quiet: true });
   }
   if (status === "approved") void loadUsers({ quiet: true });
+}
+
+async function loadCodes(options = {}) {
+  if (options.quiet) {
+    const response = await fetch("/api/admin/membership-codes", { headers: authHeaders() });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) return;
+    codeGroups = data.groups || [];
+    allCodes = data.codes || [];
+    loadedTabs.add("codes");
+    renderCodes();
+    return;
+  }
+  renderNotice(codeList, "正在读取卡密...");
+  const response = await fetch("/api/admin/membership-codes", { headers: authHeaders() });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) return renderNotice(codeList, data.detail || data.error || "读取卡密失败。");
+  codeGroups = data.groups || [];
+  allCodes = data.codes || [];
+  loadedTabs.add("codes");
+  renderCodes();
+}
+
+function renderCodes() {
+  const groupOptions = codeGroups.map(group => (
+    `<option value="${escapeAttribute(group.key)}">${escapeHtml(group.label)} · ${escapeHtml(group.quotaDelta)} 次 · ${escapeHtml(group.periodMonths)} 月</option>`
+  )).join("");
+  codeList.innerHTML = `
+    <article class="submission-item compact-payment">
+      <div>
+        <span class="status-pill">生成卡密</span>
+        <h2>会员卡密</h2>
+        <dl class="submission-meta">
+          <dt>说明</dt><dd>Plus 升 Pro 差价卡只能由有效 Plus 用户兑换；兑换后保留当前到期日并升级到 Pro。</dd>
+        </dl>
+        <div class="admin-code-form">
+          <select id="code-group">${groupOptions}</select>
+          <input id="code-count" type="number" min="1" max="100" value="1" />
+          <input id="code-note" type="text" placeholder="备注，可选" />
+          <button id="code-create" class="modal-primary" type="button">生成</button>
+        </div>
+      </div>
+    </article>
+    ${allCodes.length ? allCodes.map(code => `
+      <article class="submission-item compact-payment">
+        <div>
+          <span class="status-pill status-${escapeAttribute(code.status || "unused")}">${escapeHtml(codeStatusLabel(code.status))}</span>
+          <h2 class="code-text">${escapeHtml(code.code)}</h2>
+          <dl class="submission-meta">
+            <dt>类型</dt><dd>${escapeHtml(codeGroupLabel(code.group_key))}</dd>
+            <dt>套餐</dt><dd>${escapeHtml(planLabel(code.plan))} · ${escapeHtml(cycleLabel(code.billing_cycle))}</dd>
+            <dt>额度</dt><dd>${escapeHtml(code.quota_delta || 0)} 次</dd>
+            <dt>有效期</dt><dd>${Number(code.period_months || 0) === 0 ? "不延长，仅升级" : `${escapeHtml(code.period_months)} 个月`}</dd>
+            <dt>兑换者</dt><dd>${escapeHtml(code.redeemed_by_email || "-")}</dd>
+            <dt>创建时间</dt><dd>${formatDate(code.created_at)}</dd>
+          </dl>
+        </div>
+        <aside>
+          <button data-copy-code="${escapeAttribute(code.code)}" type="button">复制</button>
+          <button class="danger" data-disable-code="${escapeAttribute(code.id)}" ${code.status !== "unused" ? "disabled" : ""} type="button">禁用</button>
+        </aside>
+      </article>
+    `).join("") : `<article class="submission-empty">还没有生成过卡密。</article>`}
+  `;
+  codeList.querySelector("#code-create")?.addEventListener("click", createCodes);
+  codeList.querySelectorAll("[data-copy-code]").forEach(button => {
+    button.addEventListener("click", () => navigator.clipboard?.writeText(button.dataset.copyCode));
+  });
+  codeList.querySelectorAll("[data-disable-code]").forEach(button => {
+    button.addEventListener("click", () => updateCodeStatus(button.dataset.disableCode, "disabled"));
+  });
+}
+
+async function createCodes() {
+  const groupKey = codeList.querySelector("#code-group").value;
+  const count = Number(codeList.querySelector("#code-count").value || 1);
+  const note = codeList.querySelector("#code-note").value.trim();
+  const response = await fetch("/api/admin/membership-codes", {
+    method: "POST",
+    headers: { ...authHeaders(), "Content-Type": "application/json" },
+    body: JSON.stringify({ groupKey, count, note })
+  });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) return renderNotice(codeList, data.detail || data.error || "生成卡密失败。");
+  codeGroups = data.groups || codeGroups;
+  allCodes = [...(data.codes || []), ...allCodes];
+  renderCodes();
+}
+
+async function updateCodeStatus(id, status) {
+  const response = await fetch("/api/admin/membership-codes", {
+    method: "PATCH",
+    headers: { ...authHeaders(), "Content-Type": "application/json" },
+    body: JSON.stringify({ id, status })
+  });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) return renderNotice(codeList, data.detail || data.error || "更新卡密失败。");
+  allCodes = allCodes.map(item => item.id === id ? data.code : item).filter(Boolean);
+  renderCodes();
 }
 
 async function loadNotifications(options = {}) {
@@ -1090,4 +1196,15 @@ function escapeHtml(value) {
 
 function escapeAttribute(value) {
   return escapeHtml(value).replace(/'/g, "&#039;");
+}
+
+function codeStatusLabel(status) {
+  if (status === "redeemed") return "已兑换";
+  if (status === "disabled") return "已禁用";
+  return "未使用";
+}
+
+function codeGroupLabel(groupKey) {
+  const group = codeGroups.find(item => item.key === groupKey);
+  return group?.label || groupKey || "未知卡密组";
 }

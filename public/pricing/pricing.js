@@ -12,6 +12,10 @@ const ITEM_LINKS = {
   pro: {
     monthly: "https://pay.ldxp.cn/item/zr7qwp",
     yearly: "https://pay.ldxp.cn/item/ld0efd"
+  },
+  plus_to_pro: {
+    monthly: "https://pay.ldxp.cn/item/j3sork",
+    yearly: "https://pay.ldxp.cn/item/q5mnx1"
   }
 };
 
@@ -133,17 +137,17 @@ function renderPricingState() {
     buttonFor("plus").disabled = true;
     buttonFor("plus").textContent = "您已是 Pro 会员";
     buttonFor("pro").disabled = false;
-    buttonFor("pro").textContent = selectedCycle === "yearly" ? "购买 Pro 年卡" : "购买 Pro 月卡";
+    buttonFor("pro").textContent = selectedCycle === "yearly" ? "续费 Pro 年卡" : "续费 Pro 月卡";
     setFeedback(formatUsageAndExpiry());
     return;
   }
 
   if (currentPlan === "plus") {
     buttonFor("plus").disabled = false;
-    buttonFor("plus").textContent = selectedCycle === "yearly" ? "购买 Plus 年卡" : "购买 Plus 月卡";
+    buttonFor("plus").textContent = selectedCycle === "yearly" ? "续费 Plus 年卡" : "续费 Plus 月卡";
     buttonFor("pro").disabled = false;
-    buttonFor("pro").textContent = selectedCycle === "yearly" ? "购买 Pro 年卡" : "购买 Pro 月卡";
-    setFeedback(formatUsageAndExpiry());
+    buttonFor("pro").textContent = selectedCycle === "yearly" ? "补差价升级 Pro 年度" : "补差价升级 Pro 月度";
+    setFeedback(`${formatUsageAndExpiry()} 你可以购买 Pro 差价卡密，兑换后保留当前到期日并升级为 Pro。`);
     return;
   }
 
@@ -155,7 +159,9 @@ function renderPricingState() {
 }
 
 function openShopItem(plan) {
-  const target = ITEM_LINKS[plan]?.[selectedCycle] || SHOP_LINK;
+  const currentPlan = getCurrentPlan();
+  const linkGroup = currentPlan === "plus" && plan === "pro" ? "plus_to_pro" : plan;
+  const target = ITEM_LINKS[linkGroup]?.[selectedCycle] || SHOP_LINK;
   window.open(target, "_blank", "noopener,noreferrer");
 }
 

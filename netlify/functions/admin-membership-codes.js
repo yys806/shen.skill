@@ -99,7 +99,9 @@ function generateCode(groupKey) {
     plus_monthly: "PM",
     plus_yearly: "PY",
     pro_monthly: "RM",
-    pro_yearly: "RY"
+    pro_yearly: "RY",
+    plus_to_pro_monthly: "UM",
+    plus_to_pro_yearly: "UY"
   }[groupKey] || "MR";
   const chunks = [
     randomBytes(4).toString("hex"),
