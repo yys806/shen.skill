@@ -147,7 +147,7 @@ async function loadActiveTab() {
 function renderCachedTab(tab) {
   if (tab === "skills") return renderSkills();
   if (tab === "payments") return renderPayments();
-  if (tab === "codes") return renderCodesEnhanced();
+  if (tab === "codes") return renderCodes();
   if (tab === "notifications") return renderNotificationsAdmin();
   if (tab === "models") return renderModels();
   if (tab === "users") return renderUsers();
@@ -441,7 +441,7 @@ async function loadCodes(options = {}) {
     codeGroups = data.groups || [];
     allCodes = data.codes || [];
     loadedTabs.add("codes");
-    renderCodesEnhanced();
+    renderCodes();
     return;
   }
   renderNotice(codeList, "正在读取卡密...");
@@ -451,7 +451,7 @@ async function loadCodes(options = {}) {
   codeGroups = data.groups || [];
   allCodes = data.codes || [];
   loadedTabs.add("codes");
-  renderCodesEnhanced();
+  renderCodes();
 }
 
 function renderCodesEnhanced() {
@@ -517,7 +517,7 @@ async function createCodesEnhanced() {
   if (!response.ok) return renderNotice(codeList, data.detail || data.error || "生成卡密失败。");
   codeGroups = data.groups || codeGroups;
   allCodes = [...(data.codes || []), ...allCodes];
-  renderCodesEnhanced();
+  renderCodes();
 }
 
 async function updateCodeStatus(id, status) {
@@ -529,7 +529,7 @@ async function updateCodeStatus(id, status) {
   const data = await response.json().catch(() => ({}));
   if (!response.ok) return renderNotice(codeList, data.detail || data.error || "更新卡密失败。");
   allCodes = allCodes.map(item => item.id === id ? data.code : item).filter(Boolean);
-  renderCodesEnhanced();
+  renderCodes();
 }
 
 async function loadNotifications(options = {}) {
@@ -1300,18 +1300,18 @@ async function createCodes() {
   lastCreatedCodeIds = new Set(created.map(code => code.id));
   selectedCodeIds = new Set(created.map(code => code.id));
   allCodes = [...created, ...allCodes];
-  renderCodesEnhanced();
+  renderCodes();
   window.setTimeout(copyLastCreatedCodes, 0);
 }
 
 function selectAllUnusedCodes() {
   selectedCodeIds = new Set(allCodes.filter(code => code.status === "unused").map(code => code.id));
-  renderCodesEnhanced();
+  renderCodes();
 }
 
 function clearCodeSelection() {
   selectedCodeIds.clear();
-  renderCodesEnhanced();
+  renderCodes();
 }
 
 function copySelectedCodes() {
