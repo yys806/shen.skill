@@ -75,11 +75,11 @@ document.addEventListener("click", event => {
 async function bootNotifications() {
   try {
     const config = await getJson("/api/config");
-    if (!config.hasMirrorAuth && !config.hasSupabase) {
+    if (!config.hasSupabase) {
       renderLoggedOut();
       return;
     }
-    const { createClient } = await import("/mirror-auth-module.js");
+    const { createClient } = await import("https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm");
     supabaseClient = createClient(config.supabaseUrl, config.supabaseAnonKey);
     const { data } = await supabaseClient.auth.getSession();
     session = data.session;

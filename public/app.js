@@ -1,4 +1,4 @@
-import { createClient } from "/mirror-auth-module.js";
+import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm";
 
 let skillOptions = await loadSkillOptions();
 
@@ -80,8 +80,8 @@ async function boot() {
       applySetting("model", config.model, false);
     }
 
-    if (!config.hasMirrorAuth && !config.hasSupabase) {
-      setAuthLabel("认证服务未配置");
+    if (!config.hasSupabase) {
+      setAuthLabel("Supabase 未配置");
       lockChat(true);
       return;
     }
@@ -523,7 +523,7 @@ function renderAuthModal() {
 }
 async function submitAuth(mode) {
   if (!supabase) {
-    setFeedback("认证服务还没配置好。");
+    setFeedback("Supabase 还没配置好。");
     return;
   }
 
@@ -567,7 +567,7 @@ async function submitAuth(mode) {
 }
 
 async function sendPasswordReset() {
-  if (!supabase) return setFeedback("认证服务还没配置好。");
+  if (!supabase) return setFeedback("Supabase 还没配置好。");
   const identifier = dom.modalBody.querySelector("#email")?.value.trim();
   if (!identifier) return setFeedback("先输入邮箱或昵称。");
   const email = await resolveLoginEmail(identifier);
@@ -581,7 +581,7 @@ async function sendPasswordReset() {
 }
 
 async function sendSignupOtp() {
-  if (!supabase) return setFeedback("认证服务还没配置好。");
+  if (!supabase) return setFeedback("Supabase 还没配置好。");
   const nickname = dom.modalBody.querySelector("#nickname")?.value.trim();
   const email = dom.modalBody.querySelector("#email")?.value.trim();
   const password = dom.modalBody.querySelector("#password")?.value;
@@ -604,7 +604,7 @@ async function sendSignupOtp() {
     password,
     options: {
       emailRedirectTo: `${window.location.origin}/chat`,
-      data: { nickname, inviteCode }
+      data: { nickname }
     }
   });
   if (error) return setFeedback(explainSignupError(error.message));

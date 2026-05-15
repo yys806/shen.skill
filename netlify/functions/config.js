@@ -9,7 +9,6 @@ export default async () => {
     supabaseUrl,
     supabaseAnonKey,
     hasSupabase: Boolean(supabaseUrl && supabaseAnonKey),
-    hasMirrorAuth: true,
     model: getEnv("DEEPSEEK_MODEL", "deepseek-v4-flash")
   });
 };

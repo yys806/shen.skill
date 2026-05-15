@@ -1,23 +1,30 @@
 let supabaseClient = null;
 let session = null;
 let billingState = null;
+let selectedPlan = null;
+let selectedMethod = null;
 let selectedCycle = "monthly";
 
-const SHOP_LINK = "https://pay.ldxp.cn/shop/S5I572HE";
-const ITEM_LINKS = {
-  plus: {
-    monthly: "https://pay.ldxp.cn/item/pyfgmq",
-    yearly: "https://pay.ldxp.cn/item/y1l5ld"
+const PRICE_TABLE = {
+  monthly: {
+    plus: 19,
+    pro: 49,
+    upgrade_plus_to_pro: 30
   },
-  pro: {
-    monthly: "https://pay.ldxp.cn/item/zr7qwp",
-    yearly: "https://pay.ldxp.cn/item/ld0efd"
+  yearly: {
+    plus: 199,
+    pro: 399
   }
 };
 
-const PRICE_TABLE = {
-  monthly: { plus: 19, pro: 49 },
-  yearly: { plus: 199, pro: 399 }
+const PLAN_CONFIG = {
+  plus: { name: "Plus", monthlyQuota: 500 },
+  pro: { name: "Pro", monthlyQuota: 2000 }
+};
+
+const METHOD_CONFIG = {
+  wechat: { name: "微信支付", qr: "/pay-wechat.jpg" },
+  alipay: { name: "支付宝", qr: "/pay-alipay.jpg" }
 };
 
 const checkoutButtons = [...document.querySelectorAll(".checkout-button")];
@@ -28,15 +35,24 @@ const priceLines = {
   plus: document.querySelector('[data-price-line="plus"]'),
   pro: document.querySelector('[data-price-line="pro"]')
 };
-const shopLink = document.querySelector("#shop-link");
-const redeemForm = document.querySelector("#redeem-form");
-const redeemCode = document.querySelector("#redeem-code");
-const redeemFeedback = document.querySelector("#redeem-feedback");
+const paymentModal = document.querySelector("#payment-modal");
+const paymentClose = document.querySelector("#payment-close");
+const paymentTitle = document.querySelector("#payment-title");
+const paymentCopy = document.querySelector("#payment-copy");
+const paymentMethods = document.querySelector("#payment-methods");
+const paymentQrStage = document.querySelector("#payment-qr-stage");
+const paymentQr = document.querySelector("#payment-qr");
+const paymentAmount = document.querySelector("#payment-amount");
+const paymentMethodLabel = document.querySelector("#payment-method-label");
+const paymentPaid = document.querySelector("#payment-paid");
+const paymentForm = document.querySelector("#payment-confirm-form");
+const payerName = document.querySelector("#payer-name");
+const paymentFeedback = document.querySelector("#payment-feedback");
 
 bootPricing();
 
 checkoutButtons.forEach(button => {
-  button.addEventListener("click", () => openShopItem(button.dataset.plan || "pro"));
+  button.addEventListener("click", () => openPaymentFlow(button.dataset.plan || "pro"));
 });
 
 cycleButtons.forEach(button => {
@@ -46,18 +62,28 @@ cycleButtons.forEach(button => {
   });
 });
 
-shopLink?.addEventListener("click", event => {
-  event.preventDefault();
-  window.open(SHOP_LINK, "_blank", "noopener,noreferrer");
+paymentClose?.addEventListener("click", closePaymentFlow);
+paymentModal?.addEventListener("click", event => {
+  if (event.target === paymentModal) closePaymentFlow();
 });
 
-redeemForm?.addEventListener("submit", redeemMembershipCode);
+paymentMethods?.querySelectorAll("[data-pay-method]").forEach(button => {
+  button.addEventListener("click", () => showPaymentQr(button.dataset.payMethod));
+});
+
+paymentPaid?.addEventListener("click", () => {
+  paymentForm.classList.remove("hidden");
+  payerName.focus();
+  setPaymentFeedback("把你付款时显示的微信/支付宝用户名填一下，我会交给管理员核对。");
+});
+
+paymentForm?.addEventListener("submit", submitPaymentRequest);
 
 async function bootPricing() {
   try {
     const config = await getJson("/api/config");
-    if (!config.hasMirrorAuth && !config.hasSupabase) {
-      setFeedback("认证服务还没配置好，暂时不能读取会员状态。", true);
+    if (!config.hasSupabase) {
+      setFeedback("Supabase 还没配置好，暂时不能发起支付。", true);
       setButtonsDisabled(true);
       setStatus("未配置");
       return;
@@ -82,7 +108,7 @@ async function refreshBillingStatus() {
   if (!session?.access_token) {
     billingState = null;
     setStatus("未登录");
-    setFeedback("请先到 /chat 登录，再回来购买或兑换卡密。", true);
+    setFeedback("请先到 /chat 登录，再回来升级套餐。", true);
     renderPricingState();
     return;
   }
@@ -108,8 +134,8 @@ function renderPricingState() {
   cycleButtons.forEach(button => {
     button.classList.toggle("active", button.dataset.cycle === selectedCycle);
   });
-  priceLines.plus.textContent = selectedCycle === "yearly" ? "¥199 / 年" : "¥19 / 月";
-  priceLines.pro.textContent = selectedCycle === "yearly" ? "¥399 / 年" : "¥49 / 月";
+  priceLines.plus.textContent = selectedCycle === "yearly" ? "￥199 / 年" : "￥19 / 月";
+  priceLines.pro.textContent = selectedCycle === "yearly" ? "￥399 / 年" : "￥49 / 月";
 
   const currentPlan = getCurrentPlan();
   const expiry = billingState?.entitlement?.current_period_ends_at;
@@ -119,7 +145,7 @@ function renderPricingState() {
   if (!session?.access_token) {
     checkoutButtons.forEach(button => {
       button.disabled = false;
-      button.textContent = button.dataset.plan === "plus" ? "购买 Plus 卡密" : "购买 Pro 卡密";
+      button.textContent = button.dataset.plan === "plus" ? "登录后升级 Plus" : "登录后升级 Pro";
     });
     return;
   }
@@ -138,61 +164,106 @@ function renderPricingState() {
     buttonFor("plus").disabled = true;
     buttonFor("plus").textContent = "您已是 Pro 会员";
     buttonFor("pro").disabled = false;
-    buttonFor("pro").textContent = selectedCycle === "yearly" ? "购买 Pro 年卡" : "购买 Pro 月卡";
+    buttonFor("pro").textContent = "续费 Pro";
     setFeedback(formatUsageAndExpiry());
     return;
   }
 
   if (currentPlan === "plus") {
     buttonFor("plus").disabled = false;
-    buttonFor("plus").textContent = selectedCycle === "yearly" ? "购买 Plus 年卡" : "购买 Plus 月卡";
+    buttonFor("plus").textContent = "续费 Plus";
     buttonFor("pro").disabled = false;
-    buttonFor("pro").textContent = selectedCycle === "yearly" ? "购买 Pro 年卡" : "购买 Pro 月卡";
+    buttonFor("pro").textContent = selectedCycle === "monthly" ? "升级 Pro（补 30 元）" : "升级 Pro";
     setFeedback(formatUsageAndExpiry());
     return;
   }
 
   buttonFor("plus").disabled = false;
-  buttonFor("plus").textContent = selectedCycle === "yearly" ? "购买 Plus 年卡" : "购买 Plus 月卡";
+  buttonFor("plus").textContent = "升级 Plus";
   buttonFor("pro").disabled = false;
-  buttonFor("pro").textContent = selectedCycle === "yearly" ? "购买 Pro 年卡" : "购买 Pro 月卡";
-  setFeedback("当前是 Free 状态。购买后在小店订单页复制卡密，回到这里兑换即可自动开通。");
+  buttonFor("pro").textContent = "升级 Pro";
+  setFeedback("当前是 Free 状态，可以升级 Plus 或 Pro。支付申请提交后，管理员审核通过会自动开通。");
 }
 
-function openShopItem(plan) {
-  const target = ITEM_LINKS[plan]?.[selectedCycle] || SHOP_LINK;
-  window.open(target, "_blank", "noopener,noreferrer");
-}
-
-async function redeemMembershipCode(event) {
-  event.preventDefault();
+function openPaymentFlow(plan) {
   if (!session?.access_token) {
     window.location.href = "/chat";
     return;
   }
-  const code = redeemCode.value.trim();
-  if (!code) return setRedeemFeedback("请输入你在小店支付后看到的卡密。", true);
 
-  setRedeemFeedback("正在兑换卡密...");
-  redeemForm.querySelector("button").disabled = true;
+  if (plan === "plus" && getCurrentPlan() === "pro") return;
+  selectedPlan = PLAN_CONFIG[plan] ? plan : "pro";
+  selectedMethod = null;
+  const amount = calculateAmount(selectedPlan);
+  const config = PLAN_CONFIG[selectedPlan];
+  paymentTitle.textContent = `${actionName(selectedPlan)} ${config.name}`;
+  paymentCopy.textContent = `请选择支付方式，下一步会显示收款码。`;
+  paymentMethods.classList.remove("hidden");
+  paymentQrStage.classList.add("hidden");
+  paymentForm.classList.add("hidden");
+  payerName.value = "";
+  setPaymentFeedback("");
+  paymentAmount.textContent = `请支付 ${amount} 元`;
+  paymentModal.classList.remove("hidden");
+  paymentModal.setAttribute("aria-hidden", "false");
+}
+
+function closePaymentFlow() {
+  paymentModal.classList.add("hidden");
+  paymentModal.setAttribute("aria-hidden", "true");
+}
+
+function showPaymentQr(method) {
+  selectedMethod = METHOD_CONFIG[method] ? method : "wechat";
+  const amount = calculateAmount(selectedPlan);
+  const payment = METHOD_CONFIG[selectedMethod];
+  paymentQr.src = payment.qr;
+  paymentQr.alt = `${payment.name}收款码`;
+  paymentAmount.textContent = `请支付 ${amount} 元`;
+  paymentMethodLabel.textContent = `${payment.name} · ${actionName(selectedPlan)} ${PLAN_CONFIG[selectedPlan].name} · ${cycleName(selectedCycle)}`;
+  paymentQrStage.classList.remove("hidden");
+  paymentForm.classList.add("hidden");
+  setPaymentFeedback("支付完成后点“我已支付”，再提交你的付款用户名。");
+}
+
+async function submitPaymentRequest(event) {
+  event.preventDefault();
+  const name = payerName.value.trim();
+  if (!name) {
+    setPaymentFeedback("请填写付款时显示的微信/支付宝用户名。", true);
+    return;
+  }
+  if (!selectedPlan || !selectedMethod) {
+    setPaymentFeedback("请先选择套餐和支付方式。", true);
+    return;
+  }
+
+  setPaymentFeedback("正在提交支付记录...");
+  paymentForm.querySelector("button").disabled = true;
   try {
-    const response = await fetch("/api/billing/redeem-code", {
+    const response = await fetch("/api/billing/payment-requests", {
       method: "POST",
       headers: {
         "Authorization": `Bearer ${session.access_token}`,
         "Content-Type": "application/json"
       },
-      body: JSON.stringify({ code })
+      body: JSON.stringify({
+        plan: selectedPlan,
+        billingCycle: selectedCycle,
+        paymentMethod: selectedMethod,
+        payerName: name
+      })
     });
     const data = await response.json().catch(() => ({}));
-    if (!response.ok) throw new Error(data.detail || data.error || "兑换失败。");
-    redeemCode.value = "";
-    setRedeemFeedback("兑换成功，会员和额度已经自动生效。");
+    if (!response.ok) throw new Error(data.detail || data.error || "提交失败。");
+    setPaymentFeedback("已提交，等待管理员核对。通过后套餐和额度会自动生效。");
+    setFeedback("支付记录已提交，管理员审核通过后会自动开通或续费。");
     await refreshBillingStatus();
+    setTimeout(closePaymentFlow, 1200);
   } catch (error) {
-    setRedeemFeedback(error.message, true);
+    setPaymentFeedback(`提交失败：${error.message}`, true);
   } finally {
-    redeemForm.querySelector("button").disabled = false;
+    paymentForm.querySelector("button").disabled = false;
   }
 }
 
@@ -218,9 +289,9 @@ function setFeedback(message, isError = false) {
   feedback.classList.toggle("is-error", Boolean(isError));
 }
 
-function setRedeemFeedback(message, isError = false) {
-  redeemFeedback.textContent = message;
-  redeemFeedback.classList.toggle("is-error", Boolean(isError));
+function setPaymentFeedback(message, isError = false) {
+  paymentFeedback.textContent = message;
+  paymentFeedback.classList.toggle("is-error", Boolean(isError));
 }
 
 function buttonFor(plan) {
@@ -231,6 +302,24 @@ function getCurrentPlan() {
   if (!billingState || !session?.access_token) return "free";
   if (billingState.isAdmin) return "admin";
   return String(billingState.entitlement?.plan || "free").toLowerCase();
+}
+
+function calculateAmount(plan) {
+  if (selectedCycle === "monthly" && getCurrentPlan() === "plus" && plan === "pro") {
+    return PRICE_TABLE.monthly.upgrade_plus_to_pro;
+  }
+  return PRICE_TABLE[selectedCycle][plan];
+}
+
+function actionName(plan) {
+  const currentPlan = getCurrentPlan();
+  if (currentPlan === plan) return "续费";
+  if (currentPlan === "plus" && plan === "pro") return "升级";
+  return "升级";
+}
+
+function cycleName(cycle) {
+  return cycle === "yearly" ? "按年" : "按月";
 }
 
 function formatUsageAndExpiry() {
