@@ -14,7 +14,7 @@ const modelOptions = [
   { provider: "deepseek", model: "deepseek-v4-flash", label: "DeepSeek v4 Flash", vendor: "DeepSeek" },
   { provider: "deepseek", model: "deepseek-v4-pro", label: "DeepSeek v4 Pro", vendor: "DeepSeek" }
 ];
-const SIGNUP_INVITE_CODE = "08060910";
+const SIGNUP_INVITE_CODE = "yys0806";
 
 let accountPlan = "free";
 
