@@ -1,8 +1,7 @@
-import { verifySupabaseUser } from "./_shared/auth.js";
+import { isAdmin, verifySupabaseUser } from "./_shared/auth.js";
 import { getEnv } from "./_shared/env.js";
 import { json } from "./_shared/json.js";
 
-const ADMIN_EMAIL = "3492675568@qq.com";
 const PLAN_LIMITS = {
   free: 50,
   plus: 500,
@@ -38,9 +37,9 @@ export default async (req) => {
     current_period_ends_at: null,
     updated_at: null
   };
-  const isAdmin = String(authResult.user?.email || "").toLowerCase() === ADMIN_EMAIL;
+  const adminUser = isAdmin(authResult.user);
   const activePaid = isEntitlementActive(entitlement);
-  const plan = isAdmin ? "admin" : (activePaid ? normalizePlan(entitlement.plan) : "free");
+  const plan = adminUser ? "admin" : (activePaid ? normalizePlan(entitlement.plan) : "free");
   const usage = await queryMonthlyUsage(authResult.authorization, authResult.user.id);
   const limit = PLAN_LIMITS[plan];
   const quotaBonus = Number(entitlement.quota_bonus || 0);
@@ -60,7 +59,7 @@ export default async (req) => {
     },
     isPaid: ["plus", "pro"].includes(plan) && activePaid,
     isPro: plan === "pro" && activePaid,
-    isAdmin
+    isAdmin: adminUser
   });
 };
 

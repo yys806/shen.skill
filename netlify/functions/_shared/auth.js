@@ -1,6 +1,22 @@
 import { getEnv } from "./env.js";
 
-export const ADMIN_EMAIL = "3492675568@qq.com";
+// 管理员邮箱优先读环境变量 ADMIN_EMAILS（逗号分隔）；未配置时回退到默认邮箱保持兼容。
+const DEFAULT_ADMIN_EMAILS = ["3492675568@qq.com"];
+
+export function getAdminEmails() {
+  const parsed = getEnv("ADMIN_EMAILS")
+    .split(",")
+    .map(item => item.trim().toLowerCase())
+    .filter(Boolean);
+  return parsed.length ? parsed : DEFAULT_ADMIN_EMAILS;
+}
+
+// 兼容旧引用：主管理员邮箱，用于提示文案和默认署名。
+export const ADMIN_EMAIL = getAdminEmails()[0];
+
+export function isAdminEmail(email) {
+  return getAdminEmails().includes(String(email || "").trim().toLowerCase());
+}
 
 export async function verifySupabaseUser(req) {
   const supabaseUrl = getEnv("SUPABASE_URL", "https://gqhzwngzfoigzqndlbsq.supabase.co");
@@ -33,5 +49,5 @@ export async function verifySupabaseUser(req) {
 }
 
 export function isAdmin(user) {
-  return String(user?.email || "").toLowerCase() === ADMIN_EMAIL;
+  return isAdminEmail(user?.email);
 }

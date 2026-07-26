@@ -52,9 +52,12 @@ SUPABASE_URL
 SUPABASE_ANON_KEY
 SHEN_SKILL_PATH
 INVITE_CODE
+ADMIN_EMAILS
 ```
 
 `INVITE_CODE` 是注册邀请码，由 `/api/verify-invite` 在服务端校验；没有配置时接口会暂时放行（兼容模式），建议尽快配置。
+
+`ADMIN_EMAILS` 是管理员邮箱列表（逗号分隔，不区分大小写）；没有配置时回退到代码里的默认管理员邮箱。
 
 `SUPABASE_URL` 当前使用：
 

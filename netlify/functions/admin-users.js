@@ -1,4 +1,4 @@
-import { ADMIN_EMAIL, isAdmin, verifySupabaseUser } from "./_shared/auth.js";
+import { ADMIN_EMAIL, isAdmin, isAdminEmail, verifySupabaseUser } from "./_shared/auth.js";
 import { getEnv } from "./_shared/env.js";
 import { json } from "./_shared/json.js";
 import { supabaseAdminRequest } from "./_shared/supabase-admin.js";
@@ -63,7 +63,7 @@ async function listUsers() {
   }
 
   const users = (profiles.data || []).map(profile => {
-    const isAdminUser = String(profile.email || "").toLowerCase() === ADMIN_EMAIL;
+    const isAdminUser = isAdminEmail(profile.email);
     const entitlement = entitlementByUser.get(profile.id) || {};
     const activePaid = isEntitlementActive(entitlement);
     const plan = isAdminUser ? "admin" : (activePaid ? normalizePlan(entitlement.plan) : "free");
@@ -132,7 +132,7 @@ async function deleteUser(req) {
   const email = String(body.email || "").toLowerCase();
 
   if (!userId) return json({ error: "Missing userId", detail: "缺少用户 ID。" }, 400);
-  if (email === ADMIN_EMAIL) return json({ error: "Cannot delete admin", detail: "不能删除当前管理员账号。" }, 400);
+  if (isAdminEmail(email)) return json({ error: "Cannot delete admin", detail: "不能删除管理员账号。" }, 400);
 
   const result = await supabaseAuthAdminRequest(`/admin/users/${encodeURIComponent(userId)}`, {
     method: "DELETE"
