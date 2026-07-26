@@ -36,6 +36,11 @@ const server = http.createServer(async (req, res) => {
       return;
     }
 
+    if (req.method === "POST" && url.pathname === "/api/verify-invite") {
+      await handleVerifyInvite(req, res);
+      return;
+    }
+
     if (req.method === "GET" && url.pathname === "/api/health") {
       sendJson(res, 200, {
         ok: true,
@@ -127,6 +132,28 @@ async function handleChat(req, res) {
 
   const content = data?.choices?.[0]?.message?.content || "";
   sendJson(res, 200, { content, raw: data });
+}
+
+// 本地开发版邀请码校验，行为与 netlify/functions/verify-invite.js 保持一致：
+// 未配置 INVITE_CODE 时放行（兼容模式），配置后严格比对。
+async function handleVerifyInvite(req, res) {
+  const body = await readJsonBody(req).catch(() => ({}));
+  const code = String(body.code || "").trim().slice(0, 64);
+  const expected = String(process.env.INVITE_CODE || "").trim();
+
+  if (!expected) {
+    sendJson(res, 200, { ok: true, mode: "open" });
+    return;
+  }
+  if (!code) {
+    sendJson(res, 400, { ok: false, detail: "请输入邀请码。" });
+    return;
+  }
+  if (code === expected) {
+    sendJson(res, 200, { ok: true });
+    return;
+  }
+  sendJson(res, 403, { ok: false, detail: "邀请码不正确。" });
 }
 
 async function loadSkillPrompt() {
