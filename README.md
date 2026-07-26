@@ -18,7 +18,7 @@ DEEPSEEK_MODEL=deepseek-v4-flash
 SUPABASE_URL=https://gqhzwngzfoigzqndlbsq.supabase.co
 SUPABASE_ANON_KEY=your-supabase-anon-key
 PORT=8787
-SHEN_SKILL_PATH=skills\shen.skill\SKILL.md
+SHEN_SKILL_PATH=private-skills\shen.skill\SKILL.md
 ```
 
 3. 启动：
@@ -37,8 +37,8 @@ http://localhost:8787
 
 - DeepSeek API key 只在后端/Netlify 环境变量中使用，不会发到浏览器。
 - Supabase anon key 是前端初始化登录所需的 public key，但仍建议通过 Netlify 环境变量注入，不要写死在代码里。
-- 默认读取 `skills/shen.skill/SKILL.md`。如果你后续继续精修这份 skill，网页会在每次请求时重新读取最新内容。
-- 后面要加新的 skill，可以继续放到 `skills/` 目录下；当前前端先使用 `shen.skill`。
+- 私人 skill `shen.skill` 已移到 `private-skills/`（该目录在 `.gitignore` 中，不进入仓库和线上部署）；本地开发默认读取 `private-skills/shen.skill/SKILL.md`，缺失时自动回退到内置提示词。
+- 后面要加新的公开 skill，可以继续放到 `skills/` 目录下。
 - 线上模型提供商当前只保留 DeepSeek。
 
 ## Netlify 环境变量

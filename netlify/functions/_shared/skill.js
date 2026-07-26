@@ -19,13 +19,20 @@ export async function normalizeSkillId(skill = fallbackSkillId, options = {}) {
 
 export async function loadSkillPrompt(skill = fallbackSkillId, options = {}) {
   const safeSkill = await normalizeSkillId(skill, options);
-  const skillPath = path.join(process.cwd(), "skills", safeSkill, "SKILL.md");
+  // 私人 skill 已移出仓库分发：先读公开的 skills/，再读本地 private-skills/（仅本地开发存在）。
+  const candidatePaths = [
+    path.join(process.cwd(), "skills", safeSkill, "SKILL.md"),
+    path.join(process.cwd(), "private-skills", safeSkill, "SKILL.md")
+  ];
 
-  try {
-    return await readFile(skillPath, "utf8");
-  } catch {
-    return fallbackPrompt;
+  for (const skillPath of candidatePaths) {
+    try {
+      return await readFile(skillPath, "utf8");
+    } catch {
+      // 继续尝试下一个路径。
+    }
   }
+  return fallbackPrompt;
 }
 
 async function loadAllowedSkills({ includeDisabled = false } = {}) {

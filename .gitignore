@@ -7,3 +7,6 @@ Thumbs.db
 
 # Local Netlify folder
 .netlify
+
+# 私人 skill（含真实个人信息，只保留在本地，不进入仓库与部署）
+private-skills/

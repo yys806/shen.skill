@@ -11,7 +11,11 @@ loadDotEnv(path.join(__dirname, ".env"));
 
 const PORT = Number(process.env.PORT || 8787);
 const SILICONFLOW_URL = "https://api.siliconflow.cn/v1/chat/completions";
-const DEFAULT_SKILL_PATH = path.join(__dirname, "skills", "shen.skill", "SKILL.md");
+// 私人 skill 已移到 private-skills/（不入库）；旧路径仅作兼容回退。
+const DEFAULT_SKILL_PATHS = [
+  path.join(__dirname, "private-skills", "shen.skill", "SKILL.md"),
+  path.join(__dirname, "skills", "shen.skill", "SKILL.md")
+];
 
 const mimeTypes = {
   ".html": "text/html; charset=utf-8",
@@ -126,19 +130,22 @@ async function handleChat(req, res) {
 }
 
 async function loadSkillPrompt() {
-  const configuredPath = process.env.SHEN_SKILL_PATH || DEFAULT_SKILL_PATH;
-  const skillPath = path.isAbsolute(configuredPath)
-    ? configuredPath
-    : path.join(__dirname, configuredPath);
-  try {
-    return await readFile(skillPath, "utf8");
-  } catch {
-    return [
-      "# shen.skill fallback",
-      "你是禹尧珅的综合人格镜像。默认先判断对方是谁，再选择语气。",
-      "和用户本人对话时偏理性复盘；工作场景严谨；亲密关系可温柔；朋友场景可松弛。"
-    ].join("\n");
+  const configuredPath = process.env.SHEN_SKILL_PATH || "";
+  const candidatePaths = configuredPath
+    ? [path.isAbsolute(configuredPath) ? configuredPath : path.join(__dirname, configuredPath), ...DEFAULT_SKILL_PATHS]
+    : DEFAULT_SKILL_PATHS;
+  for (const skillPath of candidatePaths) {
+    try {
+      return await readFile(skillPath, "utf8");
+    } catch {
+      // 路径不存在时继续尝试下一个候选路径。
+    }
   }
+  return [
+    "# shen.skill fallback",
+    "你是禹尧珅的综合人格镜像。默认先判断对方是谁，再选择语气。",
+    "和用户本人对话时偏理性复盘；工作场景严谨；亲密关系可温柔；朋友场景可松弛。"
+  ].join("\n");
 }
 
 async function serveStatic(pathname, res) {
