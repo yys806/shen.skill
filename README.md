@@ -51,7 +51,10 @@ DEEPSEEK_MODEL
 SUPABASE_URL
 SUPABASE_ANON_KEY
 SHEN_SKILL_PATH
+INVITE_CODE
 ```
+
+`INVITE_CODE` 是注册邀请码，由 `/api/verify-invite` 在服务端校验；没有配置时接口会暂时放行（兼容模式），建议尽快配置。
 
 `SUPABASE_URL` 当前使用：
 
