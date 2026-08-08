@@ -261,7 +261,7 @@ function inferCatalogFromText(text) {
   const lower = text.toLowerCase();
   if (lower.includes("buffett") || text.includes("巴菲特") || lower.includes("economic moat")) {
     return {
-      label: "公用",
+      label: "moat / margin of safety / plain english",
       description: "巴菲特思维操作系统，基于股东信、股东大会、采访和传记提炼投资判断框架。",
       summary: "一个把 Warren Buffett 的核心心智模型、决策启发式和表达 DNA 封装起来的投资与决策视角。它适合用来审视企业、投资、合作伙伴和长期选择，而不是预测短期市场。",
       bestFor: ["判断企业是否有经济护城河", "检查自己是否在能力圈内决策", "用安全边际审视价格与价值", "评估管理层诚信和所有者思维", "把复杂机会放进「太难」篮子"],
@@ -271,7 +271,7 @@ function inferCatalogFromText(text) {
 
   if (text.includes("张雪峰") || lower.includes("zhangxuefeng")) {
     return {
-      label: "公用",
+      label: "education choice / career reality / plain talk",
       description: "张雪峰思维操作系统，聚焦教育选择、职业规划、普通家庭决策和阶层流动现实。",
       summary: "一个把张雪峰的教育选择框架、就业倒推法、阶层现实主义和东北大哥式表达封装起来的升学与职业决策视角。它适合帮普通家庭把专业、学校、行业和试错成本算清楚。",
       bestFor: ["高考志愿和专业选择", "考研院校与专业取舍", "用就业数据倒推今天的选择", "普通家庭的职业规划", "识别看起来体面但中位数很差的坑"],

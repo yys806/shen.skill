@@ -8,7 +8,7 @@ const builtinPrivateSkills = [
     name: "禹尧珅",
     description: "禹尧珅的个人综合人格 skill，默认只在管理员启用后公开。",
     needsContext: true,
-    label: "自用",
+    label: "private self / colleague / relationship",
     source: "local://skills/shen.skill",
     summary: "用于复盘、理解本人语气和关系/工作场景的个人 skill。管理员可以决定是否公开启用。",
     bestFor: ["个人复盘", "工作协作语气", "关系语气理解"],
