@@ -39,7 +39,7 @@ async function loadCatalog() {
   const fallback = [{
     id: "maoxuan-skill",
     name: "毛选",
-    label: "contradiction / practice / strategy",
+    label: "公用",
     source: "https://github.com/leezythu/maoxuan-skill.git",
     summary: "把毛选方法论蒸馏成可对话的分析框架。",
     bestFor: ["复杂局势拆解"],

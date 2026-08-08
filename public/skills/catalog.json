@@ -4,7 +4,7 @@
     "name": "毛选",
     "description": "毛选思维框架 skill，专注问题分析与战略判断。",
     "needsContext": false,
-    "label": "contradiction / practice / strategy",
+    "label": "公用",
     "source": "https://github.com/leezythu/maoxuan-skill.git",
     "summary": "把《矛盾论》《实践论》《论持久战》等方法论蒸馏成可对话的分析框架。它不复读语录，而是帮你判断主要矛盾、力量关系、阶段任务和可执行策略。",
     "bestFor": [
@@ -24,7 +24,7 @@
     "name": "八字",
     "description": "四柱八字命理分析 skill，通过出生信息进行结构化推演。",
     "needsContext": false,
-    "label": "four pillars / wuxing / structured reading",
+    "label": "公用",
     "source": "https://github.com/jinchenma94/bazi-skill.git",
     "summary": "通过出生信息排出四柱八字，结合五行、十神、格局、大运流年做结构化推演。更适合当作一种传统模型视角，而不是确定性结论。",
     "bestFor": [
@@ -44,7 +44,7 @@
     "name": "乔布斯",
     "description": "Steve Jobs 视角，聚焦产品、审美、取舍和表达。",
     "needsContext": false,
-    "label": "taste / product / ruthless focus",
+    "label": "公用",
     "source": "https://github.com/alchaincyf/steve-jobs-skill.git",
     "summary": "Steve Jobs 的产品审美与决策框架：技术与人文交汇、极致取舍、端到端体验和强表达。适合逼你删掉平庸，把东西做得更锋利。",
     "bestFor": [
@@ -64,7 +64,7 @@
     "name": "马斯克",
     "description": "Elon Musk 视角，偏第一性原理、工程压强和目标拆解。",
     "needsContext": false,
-    "label": "first principles / engineering pressure",
+    "label": "公用",
     "source": "https://github.com/alchaincyf/elon-musk-skill.git",
     "summary": "Elon Musk 的第一性原理、工程压强和目标拆解方式。适合把问题还原到物理约束、成本结构、迭代速度和高压执行。",
     "bestFor": [
@@ -84,7 +84,7 @@
     "name": "芒格",
     "description": "Charlie Munger 视角，偏多元思维模型、反向思考和理性判断。",
     "needsContext": false,
-    "label": "mental models / inversion / rationality",
+    "label": "公用",
     "source": "https://github.com/alchaincyf/munger-skill.git",
     "summary": "Charlie Munger 的多元思维模型与反向思考。它不追求显得聪明，而是系统避开愚蠢：偏见、激励、机会成本和能力圈。",
     "bestFor": [
@@ -104,7 +104,7 @@
     "name": "峰哥亡命天涯",
     "description": "峰哥亡命天涯视角，漂泊江湖、现实去魅和黑色幽默。",
     "needsContext": false,
-    "label": "street realism / black humor / boundary",
+    "label": "公用",
     "source": "https://github.com/rottenpen/fengge-wangmingtianya-perspective.git",
     "summary": "一个带漂泊江湖感、现实主义去魅和黑色幽默的中文表达视角。适合把情绪翻译成边界、资源和下一步止损动作。",
     "bestFor": [
@@ -124,7 +124,7 @@
     "name": "巴菲特",
     "description": "巴菲特思维操作系统，基于股东信、股东大会、采访和传记提炼投资判断框架。",
     "needsContext": false,
-    "label": "moat / margin of safety / plain english",
+    "label": "公用",
     "source": "https://github.com/will2025btc/buffett-perspective.git",
     "summary": "一个把 Warren Buffett 的核心心智模型、决策启发式和表达 DNA 封装起来的投资与决策视角。它适合用来审视企业、投资、合作伙伴和长期选择，而不是预测短期市场。",
     "bestFor": [
@@ -147,7 +147,7 @@
     "name": "张雪峰.skill",
     "description": "张雪峰思维操作系统，聚焦教育选择、职业规划、普通家庭决策和阶层流动现实。",
     "needsContext": false,
-    "label": "education choice / career reality / plain talk",
+    "label": "公用",
     "source": "https://github.com/alchaincyf/zhangxuefeng-skill.git",
     "summary": "一个把张雪峰的教育选择框架、就业倒推法、阶层现实主义和东北大哥式表达封装起来的升学与职业决策视角。它适合帮普通家庭把专业、学校、行业和试错成本算清楚。",
     "bestFor": [
